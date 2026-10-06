@@ -1,0 +1,166 @@
+import { z } from 'zod';
+
+export const ThemeTokensSchema = z.object({
+  primaryColor: z.string().default('#3157D5'),
+  secondaryColor: z.string().default('#0F172A'),
+  backgroundColor: z.string().default('#FFFFFF'),
+  textColor: z.string().default('#0F172A'),
+  subtextColor: z.string().default('#64748B'),
+  borderColor: z.string().default('#E2E8F0'),
+  fontFamily: z.enum(['sans', 'serif', 'mono']).default('sans'),
+  headerLayout: z.enum(['split', 'centered', 'stacked']).default('split'),
+  borderRadius: z.enum(['none', 'sm', 'md', 'lg']).default('md'),
+});
+
+export type ThemeTokens = z.infer<typeof ThemeTokensSchema>;
+
+export interface DocumentTemplateMeta {
+  id: string;
+  name: string;
+  description: string;
+  category: 'minimal' | 'modern' | 'corporate' | 'creative';
+  defaultTokens: ThemeTokens;
+}
+
+export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
+  modern: {
+    id: 'modern',
+    name: 'Modern Fintech',
+    description: 'Clean high-contrast layout with elegant colored accents and modern cards.',
+    category: 'modern',
+    defaultTokens: {
+      primaryColor: '#3157D5',
+      secondaryColor: '#1E293B',
+      backgroundColor: '#FFFFFF',
+      textColor: '#0F172A',
+      subtextColor: '#64748B',
+      borderColor: '#E2E8F0',
+      fontFamily: 'sans',
+      headerLayout: 'split',
+      borderRadius: 'md',
+    },
+  },
+  minimal: {
+    id: 'minimal',
+    name: 'Minimal Monochrome',
+    description: 'Clean typographic layout focusing on whitespace and clarity.',
+    category: 'minimal',
+    defaultTokens: {
+      primaryColor: '#18181B',
+      secondaryColor: '#71717A',
+      backgroundColor: '#FFFFFF',
+      textColor: '#18181B',
+      subtextColor: '#71717A',
+      borderColor: '#E4E4E7',
+      fontFamily: 'sans',
+      headerLayout: 'split',
+      borderRadius: 'none',
+    },
+  },
+  professional: {
+    id: 'professional',
+    name: 'Professional Navy',
+    description: 'Traditional corporate layout with deep navy headers and crisp borders.',
+    category: 'corporate',
+    defaultTokens: {
+      primaryColor: '#1E3A8A',
+      secondaryColor: '#3B82F6',
+      backgroundColor: '#FFFFFF',
+      textColor: '#0F172A',
+      subtextColor: '#475569',
+      borderColor: '#CBD5E1',
+      fontFamily: 'sans',
+      headerLayout: 'split',
+      borderRadius: 'sm',
+    },
+  },
+  classic: {
+    id: 'classic',
+    name: 'Classic Serif',
+    description: 'Timeless formal document styling with serif typography.',
+    category: 'corporate',
+    defaultTokens: {
+      primaryColor: '#27272A',
+      secondaryColor: '#52525B',
+      backgroundColor: '#FFFFFF',
+      textColor: '#18181B',
+      subtextColor: '#71717A',
+      borderColor: '#D4D4D8',
+      fontFamily: 'serif',
+      headerLayout: 'centered',
+      borderRadius: 'none',
+    },
+  },
+  corporate: {
+    id: 'corporate',
+    name: 'Executive Corporate',
+    description: 'Structured layout with dark header block and legal statement containers.',
+    category: 'corporate',
+    defaultTokens: {
+      primaryColor: '#0F766E',
+      secondaryColor: '#134E4A',
+      backgroundColor: '#FFFFFF',
+      textColor: '#0F172A',
+      subtextColor: '#64748B',
+      borderColor: '#E2E8F0',
+      fontFamily: 'sans',
+      headerLayout: 'stacked',
+      borderRadius: 'md',
+    },
+  },
+  service_business: {
+    id: 'service_business',
+    name: 'Service & Trades',
+    description: 'Designed for hourly, job-based, and contractor billing.',
+    category: 'modern',
+    defaultTokens: {
+      primaryColor: '#D97706',
+      secondaryColor: '#B45309',
+      backgroundColor: '#FFFFFF',
+      textColor: '#0F172A',
+      subtextColor: '#64748B',
+      borderColor: '#FED7AA',
+      fontFamily: 'sans',
+      headerLayout: 'split',
+      borderRadius: 'md',
+    },
+  },
+  consulting: {
+    id: 'consulting',
+    name: 'Consulting Advisory',
+    description: 'Executive design with statement area and project milestone grouping.',
+    category: 'creative',
+    defaultTokens: {
+      primaryColor: '#4F46E5',
+      secondaryColor: '#4338CA',
+      backgroundColor: '#FFFFFF',
+      textColor: '#0F172A',
+      subtextColor: '#64748B',
+      borderColor: '#E0E7FF',
+      fontFamily: 'sans',
+      headerLayout: 'split',
+      borderRadius: 'md',
+    },
+  },
+  retail: {
+    id: 'retail',
+    name: 'Retail & POS Receipt',
+    description: 'Clean compact itemized layout with tax summary breakdown.',
+    category: 'minimal',
+    defaultTokens: {
+      primaryColor: '#0284C7',
+      secondaryColor: '#0369A1',
+      backgroundColor: '#FFFFFF',
+      textColor: '#0F172A',
+      subtextColor: '#64748B',
+      borderColor: '#BAE6FD',
+      fontFamily: 'sans',
+      headerLayout: 'split',
+      borderRadius: 'sm',
+    },
+  },
+};
+
+export function getTemplate(id: string): DocumentTemplateMeta {
+  return TEMPLATES[id] || TEMPLATES.modern;
+}
