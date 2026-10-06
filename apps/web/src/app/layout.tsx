@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { TenantProvider } from '@/lib/auth/tenant-context';
 
 export const metadata: Metadata = {
   title: 'BillCraft — Production-Ready Invoice Generator',
@@ -15,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
-        {children}
+        <TenantProvider>{children}</TenantProvider>
       </body>
     </html>
   );
