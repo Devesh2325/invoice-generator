@@ -15,6 +15,7 @@ import { TEMPLATES } from '@invoice/theme';
 import { saveDocument } from '@/lib/storage/indexed-db';
 import { exportDocumentToPdf, triggerPrint } from '@/lib/pdf/export-pdf';
 import { DocumentPreview } from './document-preview';
+import { InlineDocumentCanvas } from './inline-document-canvas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,6 +40,8 @@ import {
   Upload,
   X,
   ImageIcon,
+  Edit3,
+  Columns,
 } from 'lucide-react';
 
 interface DocumentBuilderProps {
@@ -177,6 +180,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   );
 
   // UI state
+  const [viewMode, setViewMode] = useState<'sheet' | 'split'>('sheet');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -351,6 +355,45 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     });
   };
 
+  // Inline sheet update handlers
+  const handleUpdateSender = (field: string, value: any) => {
+    if (field === 'name') setSenderName(value);
+    else if (field === 'email') setSenderEmail(value);
+    else if (field === 'phone') setSenderPhone(value);
+    else if (field === 'taxId') setSenderTaxId(value);
+  };
+
+  const handleUpdateSenderAddress = (field: string, value: any) => {
+    if (field === 'street1') setSenderStreet(value);
+    else if (field === 'city') setSenderCity(value);
+    else if (field === 'country') setSenderCountry(value);
+  };
+
+  const handleUpdateClient = (field: string, value: any) => {
+    if (field === 'name') setClientName(value);
+    else if (field === 'email') setClientEmail(value);
+    else if (field === 'phone') setClientPhone(value);
+    else if (field === 'taxId') setClientTaxId(value);
+  };
+
+  const handleUpdateClientAddress = (field: string, value: any) => {
+    if (field === 'street1') setClientStreet(value);
+    else if (field === 'city') setClientCity(value);
+    else if (field === 'country') setClientCountry(value);
+  };
+
+  const handleUpdateDoc = (field: string, value: any) => {
+    if (field === 'documentNumber') setDocNumber(value);
+    else if (field === 'referenceNumber') setReferenceNumber(value);
+    else if (field === 'issueDate') setIssueDate(value);
+    else if (field === 'dueDate') setDueDate(value);
+    else if (field === 'currency') setCurrency(value);
+    else if (field === 'templateId') setTemplateId(value);
+    else if (field === 'notes') setNotes(value);
+    else if (field === 'paymentTerms') setPaymentTerms(value);
+    else if (field === 'paymentInstructions') setPaymentInstructions(value);
+  };
+
   // Actions
   const handleDownloadPdf = async () => {
     try {
@@ -484,6 +527,32 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
+          {/* Mode Switcher */}
+          <div className="hidden sm:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 mr-1">
+            <button
+              onClick={() => setViewMode('sheet')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
+                viewMode === 'sheet'
+                  ? 'bg-white text-primary shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              <span>Inline Sheet</span>
+            </button>
+            <button
+              onClick={() => setViewMode('split')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
+                viewMode === 'split'
+                  ? 'bg-white text-primary shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Columns className="h-3.5 w-3.5" />
+              <span>Split Form</span>
+            </button>
+          </div>
+
           {/* Mobile toggle */}
           <div className="lg:hidden flex border border-slate-200 rounded-md overflow-hidden mr-2">
             <button
@@ -562,8 +631,81 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         </div>
       </header>
 
-      {/* Main 2-Column Split Interface */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      {viewMode === 'sheet' ? (
+        <div className="flex-1 flex flex-col overflow-y-auto">
+          {/* Quick Toolbar for Templates and Currency */}
+          <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-2.5 flex flex-wrap items-center justify-between gap-4 no-print shadow-xs sticky top-[57px] z-30">
+            <div className="flex items-center gap-2 overflow-x-auto py-1 max-w-full">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1 flex items-center gap-1 shrink-0">
+                <Palette className="h-3.5 w-3.5 text-primary" /> Template:
+              </span>
+              <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto">
+                {Object.values(TEMPLATES).map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    onClick={() => setTemplateId(tmpl.id)}
+                    className={`px-3 py-1 text-xs rounded-full font-medium transition-all flex items-center gap-1.5 border whitespace-nowrap ${
+                      templateId === tmpl.id
+                        ? 'bg-primary text-white border-primary shadow-xs font-bold ring-2 ring-primary/20'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: tmpl.defaultTokens.primaryColor }}
+                    />
+                    <span>{tmpl.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-medium text-slate-500">Currency:</span>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="text-xs font-bold bg-slate-50 border border-slate-200 rounded px-2.5 py-1 text-slate-800"
+              >
+                {Object.values(CURRENCIES).map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} ({c.symbol})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Centered Canvas Container */}
+          <div className="flex-1 bg-slate-200/60 p-4 md:p-8 flex justify-center items-start">
+            <div className="w-full max-w-4xl">
+              <InlineDocumentCanvas
+                document={documentModel}
+                onUpdateSender={handleUpdateSender}
+                onUpdateSenderAddress={handleUpdateSenderAddress}
+                onUpdateClient={handleUpdateClient}
+                onUpdateClientAddress={handleUpdateClientAddress}
+                onUpdateDoc={handleUpdateDoc}
+                onUpdateItem={handleUpdateItem}
+                onAddItem={handleAddItem}
+                onRemoveItem={handleRemoveItem}
+                onDuplicateItem={handleDuplicateItem}
+                onLogoUpload={(dataUrl) => setSenderLogo(dataUrl)}
+                onRemoveLogo={() => setSenderLogo('')}
+                onUpdateDiscount={(type, val) => {
+                  setDocDiscountType(type);
+                  setDocDiscountValue(val);
+                }}
+                onUpdateShipping={(val) => setShippingFee(val)}
+                onUpdateExtra={(val) => setExtraCharges(val)}
+                onUpdatePaid={(val) => setAmountPaid(val)}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Main 2-Column Split Interface */
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* LEFT COLUMN: Editing Form */}
         <div
           className={`w-full lg:w-1/2 p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-60px)] no-print ${
@@ -1052,6 +1194,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };
