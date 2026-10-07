@@ -36,6 +36,9 @@ import {
   CloudUpload,
   ArrowRight,
   Sparkles,
+  Upload,
+  X,
+  ImageIcon,
 } from 'lucide-react';
 
 interface DocumentBuilderProps {
@@ -67,6 +70,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const [currency, setCurrency] = useState<string>(initialDocument?.currency || 'USD');
 
   // Sender details
+  const [senderLogo, setSenderLogo] = useState<string>(
+    initialDocument?.sender.logoUrl || ''
+  );
   const [senderName, setSenderName] = useState(
     initialDocument?.sender.name || 'Acme Digital Studios'
   );
@@ -218,6 +224,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         email: senderEmail,
         phone: senderPhone,
         taxId: senderTaxId,
+        logoUrl: senderLogo,
         address: {
           street1: senderStreet,
           city: senderCity,
@@ -266,6 +273,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     senderEmail,
     senderPhone,
     senderTaxId,
+    senderLogo,
     senderStreet,
     senderCity,
     senderCountry,
@@ -676,6 +684,84 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {/* Inline Company Logo Uploader */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                    <label className="text-xs font-semibold text-slate-700 block">
+                      Company Logo
+                    </label>
+                    {senderLogo ? (
+                      <div className="flex items-center gap-3">
+                        <div className="relative p-1 bg-white border border-slate-200 rounded-md">
+                          <img
+                            src={senderLogo}
+                            alt="Logo preview"
+                            className="h-10 max-w-[120px] object-contain"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 2 * 1024 * 1024) {
+                                  alert('Logo file must be under 2MB.');
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                  setSenderLogo(ev.target?.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                              }}
+                              className="hidden"
+                            />
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-slate-200 bg-white hover:bg-slate-50 rounded-md text-slate-700">
+                              <Upload className="h-3 w-3" /> Change
+                            </span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setSenderLogo('')}
+                            className="px-2 py-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center p-3 border-2 border-dashed border-slate-300 hover:border-primary rounded-lg cursor-pointer bg-white transition-colors group">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (file.size > 2 * 1024 * 1024) {
+                              alert('Logo file must be under 2MB.');
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              setSenderLogo(ev.target?.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                          className="hidden"
+                        />
+                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 group-hover:text-primary">
+                          <Upload className="h-4 w-4" />
+                          <span>+ Upload Company Logo</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 mt-0.5">
+                          PNG, JPG, SVG, WebP (Max 2MB)
+                        </span>
+                      </label>
+                    )}
+                  </div>
+
                   <Input
                     placeholder="Business Name"
                     value={senderName}
@@ -958,7 +1044,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           }`}
         >
           <div className="w-full max-w-3xl">
-            <DocumentPreview document={documentModel} />
+            <DocumentPreview
+              document={documentModel}
+              onLogoUpload={(dataUrl) => setSenderLogo(dataUrl)}
+              onRemoveLogo={() => setSenderLogo('')}
+            />
           </div>
         </div>
       </div>
