@@ -13,6 +13,8 @@ Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP });
 
 export interface CalculationInput {
   currency?: string;
+  senderState?: string;
+  clientState?: string;
   items: DocumentLineItemInput[];
   documentDiscountType?: DiscountType;
   documentDiscountValue?: number;
@@ -37,6 +39,11 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
   const currency = input.currency || 'USD';
   const currencyConfig = getCurrencyConfig(currency);
   const dp = currencyConfig.decimalPlaces;
+
+  const sState = (input.senderState || '').trim().toLowerCase();
+  const cState = (input.clientState || '').trim().toLowerCase();
+  const isInterState = Boolean(sState && cState && sState !== cState);
+  const gstSupplyType: 'intra' | 'inter' = isInterState ? 'inter' : 'intra';
 
   let totalGross = new Decimal(0);
   let totalLineDiscounts = new Decimal(0);
@@ -103,6 +110,10 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
       taxBuckets.set(rateKey, existing);
     }
 
+    const roundedLineTax = roundToCurrency(lineTax, dp);
+    const halfTax = roundToCurrency(roundedLineTax.dividedBy(2), dp);
+    const otherHalfTax = roundToCurrency(roundedLineTax.minus(halfTax), dp);
+
     calculatedItems.push({
       ...raw,
       id: raw.id || `item_${i + 1}`,
@@ -111,7 +122,13 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
       lineGross: roundToCurrency(gross, dp).toNumber(),
       lineDiscount: roundToCurrency(lineDisc, dp).toNumber(),
       lineNet: roundToCurrency(lineNet, dp).toNumber(),
-      taxAmount: roundToCurrency(lineTax, dp).toNumber(),
+      taxAmount: roundedLineTax.toNumber(),
+      cgstRate: isInterState ? 0 : rateKey / 2,
+      cgstAmount: isInterState ? 0 : halfTax.toNumber(),
+      sgstRate: isInterState ? 0 : rateKey / 2,
+      sgstAmount: isInterState ? 0 : otherHalfTax.toNumber(),
+      igstRate: isInterState ? rateKey : 0,
+      igstAmount: isInterState ? roundedLineTax.toNumber() : 0,
       lineTotal: roundToCurrency(lineTotal, dp).toNumber(),
     });
   }
@@ -128,6 +145,9 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
 
   // If there is document-level discount, reduce taxable base proportionally across tax buckets
   let totalTax = new Decimal(0);
+  let cgstTotal = new Decimal(0);
+  let sgstTotal = new Decimal(0);
+  let igstTotal = new Decimal(0);
   const taxBreakdown: TaxBreakdownItem[] = [];
 
   const discountRatio = rawTaxableSubtotal.greaterThan(0)
@@ -137,13 +157,29 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
   taxBuckets.forEach((bucket, rate) => {
     // Proportional taxable reduction from document discount
     const adjustedTaxable = bucket.taxable.times(new Decimal(1).minus(discountRatio));
-    const adjustedTax = adjustedTaxable.times(new Decimal(rate).dividedBy(100));
+    const adjustedTax = roundToCurrency(adjustedTaxable.times(new Decimal(rate).dividedBy(100)), dp);
     totalTax = totalTax.plus(adjustedTax);
+
+    const halfBucketTax = roundToCurrency(adjustedTax.dividedBy(2), dp);
+    const secondHalfBucketTax = roundToCurrency(adjustedTax.minus(halfBucketTax), dp);
+
+    if (isInterState) {
+      igstTotal = igstTotal.plus(adjustedTax);
+    } else {
+      cgstTotal = cgstTotal.plus(halfBucketTax);
+      sgstTotal = sgstTotal.plus(secondHalfBucketTax);
+    }
 
     taxBreakdown.push({
       rate,
       taxableAmount: roundToCurrency(adjustedTaxable, dp).toNumber(),
-      taxAmount: roundToCurrency(adjustedTax, dp).toNumber(),
+      taxAmount: adjustedTax.toNumber(),
+      cgstRate: isInterState ? 0 : rate / 2,
+      cgstAmount: isInterState ? 0 : halfBucketTax.toNumber(),
+      sgstRate: isInterState ? 0 : rate / 2,
+      sgstAmount: isInterState ? 0 : secondHalfBucketTax.toNumber(),
+      igstRate: isInterState ? rate : 0,
+      igstAmount: isInterState ? adjustedTax.toNumber() : 0,
     });
   });
 
@@ -161,6 +197,10 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
     discountTotal: roundToCurrency(totalDiscount, dp).toNumber(),
     taxableSubtotal: roundToCurrency(taxableSubtotal, dp).toNumber(),
     totalTax: roundToCurrency(totalTax, dp).toNumber(),
+    gstSupplyType,
+    cgstTotal: roundToCurrency(cgstTotal, dp).toNumber(),
+    sgstTotal: roundToCurrency(sgstTotal, dp).toNumber(),
+    igstTotal: roundToCurrency(igstTotal, dp).toNumber(),
     taxBreakdown,
     shippingFee: roundToCurrency(shipping, dp).toNumber(),
     extraCharges: roundToCurrency(extra, dp).toNumber(),

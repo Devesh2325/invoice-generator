@@ -133,6 +133,59 @@ describe('Financial Calculation Engine', () => {
     expect(result.summary.amountPaid).toBe(2000);
     expect(result.summary.balanceDue).toBe(3200);
   });
+
+  it('splits GST into 50/50 CGST and SGST for Intra-State supply (same Indian state)', () => {
+    const result = calculateDocument({
+      currency: 'INR',
+      senderState: '27 - Maharashtra',
+      clientState: '27 - Maharashtra',
+      items: [
+        {
+          description: 'SaaS Platform Subscription',
+          hsnCode: '998314',
+          quantity: 1,
+          unitPrice: 10000,
+          taxRate: 18,
+        },
+      ],
+    });
+
+    expect(result.summary.gstSupplyType).toBe('intra');
+    expect(result.summary.cgstTotal).toBe(900);
+    expect(result.summary.sgstTotal).toBe(900);
+    expect(result.summary.igstTotal).toBe(0);
+    expect(result.summary.totalTax).toBe(1800);
+    expect(result.summary.grandTotal).toBe(11800);
+    expect(result.items[0].cgstRate).toBe(9);
+    expect(result.items[0].sgstRate).toBe(9);
+    expect(result.items[0].igstRate).toBe(0);
+  });
+
+  it('applies full IGST for Inter-State supply (different Indian states)', () => {
+    const result = calculateDocument({
+      currency: 'INR',
+      senderState: '27 - Maharashtra',
+      clientState: '29 - Karnataka',
+      items: [
+        {
+          description: 'Enterprise Consulting',
+          hsnCode: '998311',
+          quantity: 1,
+          unitPrice: 10000,
+          taxRate: 18,
+        },
+      ],
+    });
+
+    expect(result.summary.gstSupplyType).toBe('inter');
+    expect(result.summary.cgstTotal).toBe(0);
+    expect(result.summary.sgstTotal).toBe(0);
+    expect(result.summary.igstTotal).toBe(1800);
+    expect(result.summary.totalTax).toBe(1800);
+    expect(result.summary.grandTotal).toBe(11800);
+    expect(result.items[0].igstRate).toBe(18);
+    expect(result.items[0].igstAmount).toBe(1800);
+  });
 });
 
 describe('Document Lifecycle State Machine', () => {

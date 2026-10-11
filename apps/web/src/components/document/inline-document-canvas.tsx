@@ -5,7 +5,7 @@ import {
   DocumentModel,
   DocumentType,
   formatCurrency,
-  CURRENCIES,
+  INDIAN_STATES,
 } from '@invoice/core';
 import { getTemplate } from '@invoice/theme';
 import {
@@ -14,9 +14,6 @@ import {
   Trash2,
   Copy,
   X,
-  Calendar,
-  DollarSign,
-  FileText,
 } from 'lucide-react';
 
 interface InlineDocumentCanvasProps {
@@ -57,10 +54,21 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   onUpdatePaid,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const templateMeta = getTemplate(document.templateId || 'modern');
-  const tokens = templateMeta.defaultTokens;
-  const currency = document.currency || 'USD';
+  const templateMeta = getTemplate(document.templateId || 'cleartax_gst');
+  const baseTokens = templateMeta.defaultTokens;
+
+  // Dynamic theme tokens (respecting custom overrides)
+  const primaryColor = document.customTheme?.primaryColor || baseTokens.primaryColor;
+  const secondaryColor = document.customTheme?.secondaryColor || baseTokens.secondaryColor;
+  const fontFamily = document.customTheme?.fontFamily || baseTokens.fontFamily;
+  const headerLayout = baseTokens.headerLayout;
+  const isBannerHeader = headerLayout === 'banner';
+  const isTallyGrid = templateMeta.id === 'tally_prime';
+  const isSidebarLayout = headerLayout === 'sidebar';
+
+  const currency = document.currency || 'INR';
   const summary = document.summary;
+  const isInterState = summary.gstSupplyType === 'inter';
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,568 +89,866 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   };
 
   const fontClass =
-    tokens.fontFamily === 'serif'
+    fontFamily === 'serif'
       ? 'font-serif'
-      : tokens.fontFamily === 'mono'
+      : fontFamily === 'mono'
       ? 'font-mono'
       : 'font-sans';
 
-  // Common editable classes: looks like plain typography until hovered/focused
+  // Light vs Dark Banner input styles
   const editableInput =
-    'bg-transparent hover:bg-blue-50/60 focus:bg-white focus:ring-1.5 focus:ring-primary focus:border-primary border border-transparent rounded px-1.5 py-0.5 transition-all outline-none';
+    'bg-transparent hover:bg-blue-50/70 focus:bg-white focus:ring-1 focus:ring-blue-500 border border-dashed border-slate-200 hover:border-blue-300 focus:border-blue-500 rounded px-1.5 py-0.5 transition-all outline-none';
+
+  const bannerEditableInput =
+    'bg-white/10 hover:bg-white/20 focus:bg-white focus:text-slate-900 text-white placeholder-white/60 border border-white/25 rounded px-1.5 py-0.5 transition-all outline-none';
+
+  const activeHeaderInput = isBannerHeader ? bannerEditableInput : editableInput;
 
   return (
     <div
-      id="invoice-document-capture"
-      className={`bg-white text-slate-900 shadow-xl border border-slate-200 rounded-2xl p-6 md:p-12 max-w-4xl mx-auto ${fontClass} relative transition-all print:shadow-none print:border-none print:p-0 print:m-0`}
+      className={`bg-white text-slate-900 shadow-2xl ${
+        isTallyGrid
+          ? 'border-2 border-slate-900 rounded-none'
+          : 'border border-slate-200 rounded-2xl'
+      } overflow-hidden max-w-4xl mx-auto ${fontClass} relative transition-all flex`}
     >
-      {/* Hidden Logo File Input */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileInput}
-        accept="image/*"
-        className="hidden"
-      />
-
-      {/* Decorative top accent for templates */}
-      {templateMeta.id === 'modern' && (
-        <div className="h-2.5 -mt-6 -mx-6 md:-mt-12 md:-mx-12 rounded-t-2xl mb-8 bg-gradient-to-r from-blue-600 via-indigo-600 to-primary" />
-      )}
-      {templateMeta.id === 'service_business' && (
-        <div className="h-3 -mt-6 -mx-6 md:-mt-12 md:-mx-12 rounded-t-2xl mb-8 bg-amber-500" />
-      )}
-      {templateMeta.id === 'consulting' && (
-        <div className="h-3 -mt-6 -mx-6 md:-mt-12 md:-mx-12 rounded-t-2xl mb-8 bg-indigo-700" />
+      {/* Left Sidebar Accent for FreshBooks style */}
+      {isSidebarLayout && (
+        <div className="w-3 shrink-0" style={{ backgroundColor: primaryColor }} />
       )}
 
-      {/* Top Header Row */}
-      <div className="flex flex-col md:flex-row justify-between items-start border-b pb-8 gap-6 border-slate-200">
-        {/* Left: Sender & Logo */}
-        <div className="space-y-3 w-full md:w-1/2">
-          {/* Logo Dropzone / Display */}
-          <div className="inline-block relative group">
-            {document.sender.logoUrl ? (
-              <div className="relative">
-                <img
-                  src={document.sender.logoUrl}
-                  alt="Company Logo"
-                  className="h-16 max-w-[220px] object-contain cursor-pointer rounded hover:opacity-90 transition-opacity"
-                  onClick={triggerUpload}
-                  title="Click to change logo"
-                />
-                <button
-                  type="button"
-                  onClick={onRemoveLogo}
-                  title="Remove Logo"
-                  className="no-print absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={triggerUpload}
-                className="no-print flex items-center gap-2 px-3.5 py-2.5 border-2 border-dashed border-slate-300 hover:border-primary rounded-xl text-xs font-semibold text-slate-500 hover:text-primary transition-all bg-slate-50/50 hover:bg-blue-50/30"
-              >
-                <Upload className="h-4 w-4" />
-                <span>+ Upload Company Logo</span>
-              </button>
-            )}
-          </div>
+      <div className="flex-1">
+        {/* Hidden Logo File Input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileInput}
+          accept="image/*"
+          className="hidden"
+        />
 
-          {/* Business Name */}
-          <div>
-            <input
-              type="text"
-              value={document.sender.name}
-              onChange={(e) => onUpdateSender('name', e.target.value)}
-              placeholder="Your Business Name"
-              className={`${editableInput} text-2xl font-black text-slate-900 w-full`}
-            />
-          </div>
+        {/* Top Accent Strip for non-banner templates */}
+        {!isBannerHeader && !isTallyGrid && !isSidebarLayout && (
+          <div className="h-2.5 w-full" style={{ backgroundColor: primaryColor }} />
+        )}
 
-          {/* Business Details (Email, Phone, Tax ID, Street, City) */}
-          <div className="space-y-1 text-xs text-slate-600">
-            <input
-              type="email"
-              value={document.sender.email || ''}
-              onChange={(e) => onUpdateSender('email', e.target.value)}
-              placeholder="business@email.com"
-              className={`${editableInput} w-full`}
-            />
-            <input
-              type="text"
-              value={document.sender.phone || ''}
-              onChange={(e) => onUpdateSender('phone', e.target.value)}
-              placeholder="+1 (555) 000-0000"
-              className={`${editableInput} w-full`}
-            />
-            <input
-              type="text"
-              value={document.sender.taxId || ''}
-              onChange={(e) => onUpdateSender('taxId', e.target.value)}
-              placeholder="Tax ID / VAT Registration"
-              className={`${editableInput} w-full`}
-            />
-            <input
-              type="text"
-              value={document.sender.address?.street1 || ''}
-              onChange={(e) => onUpdateSenderAddress('street1', e.target.value)}
-              placeholder="Street Address"
-              className={`${editableInput} w-full`}
-            />
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={document.sender.address?.city || ''}
-                onChange={(e) => onUpdateSenderAddress('city', e.target.value)}
-                placeholder="City"
-                className={`${editableInput} w-1/2`}
-              />
-              <input
-                type="text"
-                value={document.sender.address?.country || ''}
-                onChange={(e) => onUpdateSenderAddress('country', e.target.value)}
-                placeholder="Country"
-                className={`${editableInput} w-1/2`}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Document Metadata & Dates */}
-        <div className="w-full md:w-5/12 text-left md:text-right space-y-3">
-          {/* Document Type Selector */}
-          <div className="flex md:justify-end items-center">
-            <select
-              value={document.type}
-              onChange={(e) => onUpdateDoc('type', e.target.value as DocumentType)}
-              className="text-lg md:text-2xl font-black uppercase tracking-wider bg-transparent hover:bg-slate-100 focus:bg-white border border-transparent hover:border-slate-300 rounded px-2 py-1 cursor-pointer text-primary outline-none"
+        {/* ================================================================== */}
+        {/* HEADER SECTION (Reflects Banner / Tally / Centered / Split Theme) */}
+        {/* ================================================================== */}
+        <div
+          className={`p-6 md:p-10 border-b ${
+            isTallyGrid ? 'border-b-2 border-slate-900 bg-slate-50/40' : 'border-slate-200'
+          }`}
+          style={
+            isBannerHeader
+              ? {
+                  background:
+                    templateMeta.id === 'canva_studio'
+                      ? `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`
+                      : primaryColor,
+                  color: '#FFFFFF',
+                }
+              : undefined
+          }
+        >
+          {/* Template Style Pill Indicator */}
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-current/10 text-[11px]">
+            <span className={isBannerHeader ? 'text-white/80 font-medium' : 'text-slate-400 font-medium'}>
+              Active Template: <strong className={isBannerHeader ? 'text-white' : 'text-slate-700'}>{templateMeta.name}</strong> ({templateMeta.competitorStyle})
+            </span>
+            <span
+              className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider ${
+                isBannerHeader
+                  ? 'bg-white/20 text-white'
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              }`}
             >
-              <option value="invoice">Invoice</option>
-              <option value="estimate">Estimate / Quote</option>
-              <option value="purchase_order">Purchase Order</option>
-              <option value="receipt">Receipt</option>
-              <option value="credit_note">Credit Note</option>
-              <option value="debit_note">Debit Note</option>
-              <option value="pro_forma">Pro Forma</option>
-            </select>
+              {isInterState ? '⚡ Inter-State GST (IGST)' : '🇮🇳 Intra-State GST (CGST + SGST)'}
+            </span>
           </div>
 
-          {/* Document Number */}
-          <div className="flex items-center md:justify-end gap-1 text-sm font-bold text-slate-800">
-            <span className="text-slate-400">#</span>
-            <input
-              type="text"
-              value={document.documentNumber}
-              onChange={(e) => onUpdateDoc('documentNumber', e.target.value)}
-              placeholder="INV-2026-00001"
-              className={`${editableInput} font-mono font-bold text-base md:text-right w-44`}
-            />
-          </div>
+          <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+            {/* Left: Company Logo & Full Sender Details */}
+            <div className="space-y-2.5 w-full md:w-7/12">
+              <div className="inline-block relative group">
+                {document.sender.logoUrl ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={document.sender.logoUrl}
+                      alt="Company Logo"
+                      className={`h-16 max-w-[220px] object-contain cursor-pointer rounded ${
+                        isBannerHeader ? 'bg-white p-1.5' : ''
+                      }`}
+                      onClick={triggerUpload}
+                      title="Click to replace logo"
+                    />
+                    <button
+                      type="button"
+                      onClick={onRemoveLogo}
+                      title="Remove Logo"
+                      className="no-print absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={triggerUpload}
+                    className={`no-print flex items-center gap-2 px-3.5 py-2 border-2 border-dashed rounded-xl text-xs font-semibold transition-all ${
+                      isBannerHeader
+                        ? 'border-white/40 text-white hover:border-white bg-white/10'
+                        : 'border-slate-300 text-slate-600 hover:border-blue-600 hover:text-blue-600 bg-slate-50/70'
+                    }`}
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span>+ Upload Company Logo</span>
+                  </button>
+                )}
+              </div>
 
-          {/* Reference PO */}
-          <div className="flex items-center md:justify-end gap-1 text-xs text-slate-500">
-            <span className="text-slate-400">Ref:</span>
-            <input
-              type="text"
-              value={document.referenceNumber || ''}
-              onChange={(e) => onUpdateDoc('referenceNumber', e.target.value)}
-              placeholder="PO / Contract #"
-              className={`${editableInput} text-xs md:text-right w-36`}
-            />
-          </div>
+              {/* Company Name */}
+              <div>
+                <input
+                  type="text"
+                  value={document.sender.name}
+                  onChange={(e) => onUpdateSender('name', e.target.value)}
+                  placeholder="Your Business / Company Name"
+                  className={`${activeHeaderInput} text-xl md:text-2xl font-black w-full`}
+                />
+              </div>
 
-          {/* Dates & Currency */}
-          <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
-            <div className="flex items-center md:justify-end gap-2">
-              <span className="text-slate-400">Issue Date:</span>
-              <input
-                type="date"
-                value={document.issueDate}
-                onChange={(e) => onUpdateDoc('issueDate', e.target.value)}
-                className={`${editableInput} text-xs md:text-right font-medium`}
-              />
+              {/* Sender GSTIN, Email, Phone, Address, State, PIN */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                <div className="flex items-center gap-1">
+                  <span className={`font-bold shrink-0 ${isBannerHeader ? 'text-white/80' : 'text-slate-500'}`}>
+                    GSTIN:
+                  </span>
+                  <input
+                    type="text"
+                    value={document.sender.taxId || ''}
+                    onChange={(e) => onUpdateSender('taxId', e.target.value.toUpperCase())}
+                    placeholder="27AABCU9603R1ZM"
+                    className={`${activeHeaderInput} font-mono font-bold uppercase w-full`}
+                  />
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span className={`font-bold shrink-0 ${isBannerHeader ? 'text-white/80' : 'text-slate-500'}`}>
+                    State:
+                  </span>
+                  <select
+                    value={document.sender.address?.state || '27 - Maharashtra'}
+                    onChange={(e) => onUpdateSenderAddress('state', e.target.value)}
+                    className={`${activeHeaderInput} font-semibold w-full cursor-pointer text-slate-900 bg-white/90`}
+                  >
+                    <option value="">Select GST State</option>
+                    {INDIAN_STATES.map((st) => (
+                      <option key={st.code} value={st.label}>
+                        {st.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <input
+                  type="email"
+                  value={document.sender.email || ''}
+                  onChange={(e) => onUpdateSender('email', e.target.value)}
+                  placeholder="billing@company.in"
+                  className={`${activeHeaderInput} w-full`}
+                />
+
+                <input
+                  type="text"
+                  value={document.sender.phone || ''}
+                  onChange={(e) => onUpdateSender('phone', e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className={`${activeHeaderInput} w-full`}
+                />
+
+                <input
+                  type="text"
+                  value={document.sender.address?.street1 || ''}
+                  onChange={(e) => onUpdateSenderAddress('street1', e.target.value)}
+                  placeholder="Street / Building Address"
+                  className={`${activeHeaderInput} sm:col-span-2 w-full`}
+                />
+
+                <div className="grid grid-cols-3 gap-1.5 sm:col-span-2">
+                  <input
+                    type="text"
+                    value={document.sender.address?.city || ''}
+                    onChange={(e) => onUpdateSenderAddress('city', e.target.value)}
+                    placeholder="City"
+                    className={`${activeHeaderInput} w-full`}
+                  />
+                  <input
+                    type="text"
+                    value={document.sender.address?.postalCode || ''}
+                    onChange={(e) => onUpdateSenderAddress('postalCode', e.target.value)}
+                    placeholder="PIN Code"
+                    className={`${activeHeaderInput} w-full font-mono`}
+                  />
+                  <input
+                    type="text"
+                    value={document.sender.address?.country || ''}
+                    onChange={(e) => onUpdateSenderAddress('country', e.target.value)}
+                    placeholder="Country"
+                    className={`${activeHeaderInput} w-full`}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center md:justify-end gap-2">
-              <span className="text-slate-400">Due Date:</span>
+            {/* Right: Document Type & Metadata */}
+            <div className="w-full md:w-5/12 text-left md:text-right space-y-2">
+              <div className="flex md:justify-end items-center">
+                <select
+                  value={document.type}
+                  onChange={(e) => onUpdateDoc('type', e.target.value as DocumentType)}
+                  className="text-base md:text-xl font-black uppercase tracking-wider rounded px-2.5 py-1 cursor-pointer outline-none border"
+                  style={
+                    isBannerHeader
+                      ? { backgroundColor: '#FFFFFF', color: primaryColor, borderColor: '#FFFFFF' }
+                      : {
+                          backgroundColor: `${primaryColor}12`,
+                          color: primaryColor,
+                          borderColor: `${primaryColor}30`,
+                        }
+                  }
+                >
+                  <option value="invoice">TAX INVOICE</option>
+                  <option value="estimate">ESTIMATE / QUOTATION</option>
+                  <option value="pro_forma">PRO FORMA INVOICE</option>
+                  <option value="purchase_order">PURCHASE ORDER</option>
+                  <option value="receipt">PAYMENT RECEIPT</option>
+                  <option value="credit_note">CREDIT NOTE</option>
+                  <option value="debit_note">DEBIT NOTE</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5 text-xs pt-1">
+                <div className="flex items-center md:justify-end gap-2">
+                  <span className={isBannerHeader ? 'text-white/80 font-semibold' : 'text-slate-500 font-semibold'}>
+                    Invoice No:
+                  </span>
+                  <input
+                    type="text"
+                    value={document.documentNumber}
+                    onChange={(e) => onUpdateDoc('documentNumber', e.target.value)}
+                    placeholder="INV-2026-00001"
+                    className={`${activeHeaderInput} font-mono font-bold text-sm md:text-right w-40`}
+                  />
+                </div>
+
+                <div className="flex items-center md:justify-end gap-2">
+                  <span className={isBannerHeader ? 'text-white/80' : 'text-slate-500'}>
+                    PO / Ref No:
+                  </span>
+                  <input
+                    type="text"
+                    value={document.referenceNumber || ''}
+                    onChange={(e) => onUpdateDoc('referenceNumber', e.target.value)}
+                    placeholder="PO-99201"
+                    className={`${activeHeaderInput} md:text-right w-40`}
+                  />
+                </div>
+
+                <div className="flex items-center md:justify-end gap-2">
+                  <span className={isBannerHeader ? 'text-white/80' : 'text-slate-500'}>
+                    Issue Date:
+                  </span>
+                  <input
+                    type="date"
+                    value={document.issueDate}
+                    onChange={(e) => onUpdateDoc('issueDate', e.target.value)}
+                    className={`${activeHeaderInput} font-medium w-40 text-slate-900 bg-white/90`}
+                  />
+                </div>
+
+                <div className="flex items-center md:justify-end gap-2">
+                  <span className={isBannerHeader ? 'text-white/80' : 'text-slate-500'}>
+                    Due Date:
+                  </span>
+                  <input
+                    type="date"
+                    value={document.dueDate || ''}
+                    onChange={(e) => onUpdateDoc('dueDate', e.target.value)}
+                    className={`${activeHeaderInput} font-medium w-40 text-slate-900 bg-white/90`}
+                  />
+                </div>
+
+                <div className="flex items-center md:justify-end gap-2">
+                  <span className={isBannerHeader ? 'text-white/80' : 'text-slate-500'}>
+                    Payment Terms:
+                  </span>
+                  <input
+                    type="text"
+                    value={document.paymentTerms || ''}
+                    onChange={(e) => onUpdateDoc('paymentTerms', e.target.value)}
+                    placeholder="Net 15 Days"
+                    className={`${activeHeaderInput} md:text-right w-40`}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ================================================================== */}
+        {/* BODY SECTION: CLIENT DETAILS, ITEMS TABLE, GST SUMMARY & FOOTER */}
+        {/* ================================================================== */}
+        <div className="p-6 md:p-10 space-y-6">
+          {/* Bill To & Place of Supply Card */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div className="md:col-span-7 p-4 bg-slate-50/90 rounded-xl border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: primaryColor }}
+                >
+                  Bill To (Customer / Buyer Details)
+                </span>
+              </div>
+
               <input
-                type="date"
-                value={document.dueDate || ''}
-                onChange={(e) => onUpdateDoc('dueDate', e.target.value)}
-                className={`${editableInput} text-xs md:text-right font-medium`}
+                type="text"
+                value={document.client.name}
+                onChange={(e) => onUpdateClient('name', e.target.value)}
+                placeholder="Customer / Company Name"
+                className={`${editableInput} font-bold text-slate-900 text-sm w-full`}
               />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                <div className="flex items-center gap-1">
+                  <span className="font-bold text-slate-500 shrink-0">GSTIN:</span>
+                  <input
+                    type="text"
+                    value={document.client.taxId || ''}
+                    onChange={(e) => onUpdateClient('taxId', e.target.value.toUpperCase())}
+                    placeholder="27AAACR5055K1Z7"
+                    className={`${editableInput} font-mono font-bold uppercase w-full`}
+                  />
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span className="font-bold text-slate-500 shrink-0">State:</span>
+                  <select
+                    value={document.client.billingAddress?.state || '27 - Maharashtra'}
+                    onChange={(e) => onUpdateClientAddress('state', e.target.value)}
+                    className={`${editableInput} font-semibold w-full cursor-pointer bg-white`}
+                  >
+                    <option value="">Select Place of Supply State</option>
+                    {INDIAN_STATES.map((st) => (
+                      <option key={st.code} value={st.label}>
+                        {st.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <input
+                  type="email"
+                  value={document.client.email || ''}
+                  onChange={(e) => onUpdateClient('email', e.target.value)}
+                  placeholder="accounts@client.in"
+                  className={`${editableInput} w-full`}
+                />
+
+                <input
+                  type="text"
+                  value={document.client.phone || ''}
+                  onChange={(e) => onUpdateClient('phone', e.target.value)}
+                  placeholder="+91 22 6767 3800"
+                  className={`${editableInput} w-full`}
+                />
+
+                <input
+                  type="text"
+                  value={document.client.billingAddress?.street1 || ''}
+                  onChange={(e) => onUpdateClientAddress('street1', e.target.value)}
+                  placeholder="Billing Street Address"
+                  className={`${editableInput} sm:col-span-2 w-full`}
+                />
+
+                <div className="grid grid-cols-3 gap-1.5 sm:col-span-2">
+                  <input
+                    type="text"
+                    value={document.client.billingAddress?.city || ''}
+                    onChange={(e) => onUpdateClientAddress('city', e.target.value)}
+                    placeholder="City"
+                    className={`${editableInput} w-full`}
+                  />
+                  <input
+                    type="text"
+                    value={document.client.billingAddress?.postalCode || ''}
+                    onChange={(e) => onUpdateClientAddress('postalCode', e.target.value)}
+                    placeholder="PIN Code"
+                    className={`${editableInput} w-full font-mono`}
+                  />
+                  <input
+                    type="text"
+                    value={document.client.billingAddress?.country || ''}
+                    onChange={(e) => onUpdateClientAddress('country', e.target.value)}
+                    placeholder="Country"
+                    className={`${editableInput} w-full`}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center md:justify-end gap-2">
-              <span className="text-slate-400">Currency:</span>
-              <select
-                value={currency}
-                onChange={(e) => onUpdateDoc('currency', e.target.value)}
-                className="bg-transparent hover:bg-slate-100 rounded px-1.5 py-0.5 text-xs font-semibold text-slate-800 cursor-pointer border border-transparent"
+            {/* Right 5 cols: GST Supply Mode & Quick Balance Callout */}
+            <div className="md:col-span-5 p-4 bg-slate-50/90 rounded-xl border border-slate-200 flex flex-col justify-between space-y-3">
+              <div className="space-y-1.5 text-xs">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  GST Tax Determination
+                </div>
+                <div className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Supplier State:</span>
+                    <span className="font-bold text-slate-800">
+                      {document.sender.address?.state || '27 - Maharashtra'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Place of Supply:</span>
+                    <span className="font-bold text-slate-800">
+                      {document.client.billingAddress?.state || '27 - Maharashtra'}
+                    </span>
+                  </div>
+                  <div className="pt-1 border-t border-slate-100 flex justify-between items-center">
+                    <span className="text-slate-500">Tax Regime:</span>
+                    <span
+                      className="font-bold px-2 py-0.5 rounded text-[11px]"
+                      style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+                    >
+                      {isInterState ? 'IGST (Inter-State)' : 'CGST + SGST (Intra-State)'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="p-3.5 rounded-xl flex justify-between items-center text-white"
+                style={{ backgroundColor: primaryColor }}
               >
-                {Object.values(CURRENCIES).map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} ({c.symbol})
-                  </option>
-                ))}
-              </select>
+                <div>
+                  <div className="text-[10px] uppercase font-bold opacity-80">Balance Due</div>
+                  <div className="text-xs opacity-90">{currency}</div>
+                </div>
+                <div className="text-xl font-black font-mono">
+                  {formatCurrency(summary.balanceDue, currency)}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Bill To / Client Section */}
-      <div className="py-6 border-b border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="p-4 bg-slate-50/70 rounded-xl border border-slate-100 space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-            Bill To (Client / Customer)
-          </span>
-          <input
-            type="text"
-            value={document.client.name}
-            onChange={(e) => onUpdateClient('name', e.target.value)}
-            placeholder="Client or Company Name"
-            className={`${editableInput} font-bold text-slate-900 text-sm w-full`}
-          />
-          <input
-            type="email"
-            value={document.client.email || ''}
-            onChange={(e) => onUpdateClient('email', e.target.value)}
-            placeholder="client@company.com"
-            className={`${editableInput} text-xs text-slate-600 w-full`}
-          />
-          <input
-            type="text"
-            value={document.client.phone || ''}
-            onChange={(e) => onUpdateClient('phone', e.target.value)}
-            placeholder="+1 (555) 000-0000"
-            className={`${editableInput} text-xs text-slate-600 w-full`}
-          />
-          <input
-            type="text"
-            value={document.client.taxId || ''}
-            onChange={(e) => onUpdateClient('taxId', e.target.value)}
-            placeholder="Client Tax ID / VAT"
-            className={`${editableInput} text-xs text-slate-600 w-full`}
-          />
-          <input
-            type="text"
-            value={document.client.billingAddress?.street1 || ''}
-            onChange={(e) => onUpdateClientAddress('street1', e.target.value)}
-            placeholder="Billing Address"
-            className={`${editableInput} text-xs text-slate-600 w-full`}
-          />
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={document.client.billingAddress?.city || ''}
-              onChange={(e) => onUpdateClientAddress('city', e.target.value)}
-              placeholder="City"
-              className={`${editableInput} text-xs text-slate-600 w-1/2`}
-            />
-            <input
-              type="text"
-              value={document.client.billingAddress?.country || ''}
-              onChange={(e) => onUpdateClientAddress('country', e.target.value)}
-              placeholder="Country"
-              className={`${editableInput} text-xs text-slate-600 w-1/2`}
-            />
+          {/* ================================================================ */}
+          {/* INLINE EDITABLE LINE ITEMS TABLE WITH HSN/SAC & CGST/SGST/IGST */}
+          {/* ================================================================ */}
+          <div className="space-y-3">
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr
+                    className="uppercase tracking-wider text-[10px] font-bold"
+                    style={{ backgroundColor: primaryColor, color: '#FFFFFF' }}
+                  >
+                    <th className="py-2.5 px-2 w-7 text-center">#</th>
+                    <th className="py-2.5 px-2.5 min-w-[180px]">Item Description</th>
+                    <th className="py-2.5 px-2 w-24 text-center">HSN/SAC</th>
+                    <th className="py-2.5 px-2 w-16 text-right">Qty</th>
+                    <th className="py-2.5 px-2 w-24 text-right">Rate</th>
+                    <th className="py-2.5 px-2 w-20 text-right">Disc %</th>
+                    <th className="py-2.5 px-2 w-20 text-right">GST %</th>
+                    {isInterState ? (
+                      <th className="py-2.5 px-2 w-24 text-right">IGST Amt</th>
+                    ) : (
+                      <>
+                        <th className="py-2.5 px-2 w-24 text-right">CGST</th>
+                        <th className="py-2.5 px-2 w-24 text-right">SGST</th>
+                      </>
+                    )}
+                    <th className="py-2.5 px-2.5 w-28 text-right">Total</th>
+                    <th className="py-2.5 px-2 w-14 text-center no-print">Act</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {document.items.map((item, idx) => (
+                    <tr key={item.id} className="group hover:bg-blue-50/20 transition-colors">
+                      <td className="py-2.5 px-2 text-center font-mono text-slate-400">
+                        {idx + 1}
+                      </td>
+                      <td className="py-2.5 px-2">
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => onUpdateItem(idx, 'description', e.target.value)}
+                          placeholder="Item or service description..."
+                          className={`${editableInput} w-full font-medium text-slate-900`}
+                        />
+                      </td>
+                      <td className="py-2.5 px-1.5">
+                        <input
+                          type="text"
+                          value={item.hsnCode || ''}
+                          onChange={(e) => onUpdateItem(idx, 'hsnCode', e.target.value)}
+                          placeholder="998314"
+                          className={`${editableInput} w-full text-center font-mono`}
+                        />
+                      </td>
+                      <td className="py-2.5 px-1.5">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={item.quantity}
+                          onChange={(e) => onUpdateItem(idx, 'quantity', Number(e.target.value))}
+                          className={`${editableInput} w-full text-right font-mono`}
+                        />
+                      </td>
+                      <td className="py-2.5 px-1.5">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={item.unitPrice}
+                          onChange={(e) => onUpdateItem(idx, 'unitPrice', Number(e.target.value))}
+                          className={`${editableInput} w-full text-right font-mono`}
+                        />
+                      </td>
+                      <td className="py-2.5 px-1.5">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="any"
+                          value={item.discountValue || 0}
+                          onChange={(e) =>
+                            onUpdateItem(idx, 'discountValue', Number(e.target.value))
+                          }
+                          className={`${editableInput} w-full text-right font-mono`}
+                        />
+                      </td>
+                      <td className="py-2.5 px-1.5">
+                        <select
+                          value={item.taxRate ?? 18}
+                          onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
+                          className={`${editableInput} w-full text-right font-mono bg-white cursor-pointer`}
+                        >
+                          <option value={0}>0%</option>
+                          <option value={5}>5%</option>
+                          <option value={12}>12%</option>
+                          <option value={18}>18%</option>
+                          <option value={28}>28%</option>
+                        </select>
+                      </td>
+                      {isInterState ? (
+                        <td className="py-2.5 px-2 text-right font-mono text-slate-700">
+                          <div>{formatCurrency(item.igstAmount ?? item.taxAmount, currency)}</div>
+                          <div className="text-[10px] text-slate-400">({item.taxRate || 0}%)</div>
+                        </td>
+                      ) : (
+                        <>
+                          <td className="py-2.5 px-2 text-right font-mono text-slate-700">
+                            <div>
+                              {formatCurrency(item.cgstAmount ?? item.taxAmount / 2, currency)}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              ({(item.taxRate || 0) / 2}%)
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2 text-right font-mono text-slate-700">
+                            <div>
+                              {formatCurrency(item.sgstAmount ?? item.taxAmount / 2, currency)}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              ({(item.taxRate || 0) / 2}%)
+                            </div>
+                          </td>
+                        </>
+                      )}
+                      <td className="py-2.5 px-2.5 text-right font-mono font-bold text-slate-900">
+                        {formatCurrency(item.lineTotal, currency)}
+                      </td>
+                      <td className="py-2.5 px-1.5 text-center no-print">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onDuplicateItem(idx)}
+                            title="Duplicate Item"
+                            className="p-1 text-slate-400 hover:text-blue-600 rounded"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onRemoveItem(idx)}
+                            disabled={document.items.length <= 1}
+                            title="Remove Item"
+                            className="p-1 text-slate-400 hover:text-red-600 disabled:opacity-30 rounded"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <button
+              type="button"
+              onClick={onAddItem}
+              className="no-print inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold border-2 border-dashed transition-all hover:shadow-xs"
+              style={{
+                borderColor: `${primaryColor}60`,
+                color: primaryColor,
+                backgroundColor: `${primaryColor}08`,
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              <span>+ Add New Line Item</span>
+            </button>
           </div>
-        </div>
 
-        {/* Payment Terms & Instructions Box */}
-        <div className="p-4 bg-slate-50/70 rounded-xl border border-slate-100 space-y-2 text-xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-            Payment Terms & Notes
-          </span>
-          <div>
-            <label className="text-[10px] text-slate-400 font-semibold block">Terms Deadline</label>
-            <input
-              type="text"
-              value={document.paymentTerms || ''}
-              onChange={(e) => onUpdateDoc('paymentTerms', e.target.value)}
-              placeholder="e.g. Net 14 Days, Due on receipt"
-              className={`${editableInput} text-xs w-full font-medium`}
-            />
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-400 font-semibold block">Bank / Payment Details</label>
-            <textarea
-              rows={3}
-              value={document.paymentInstructions || ''}
-              onChange={(e) => onUpdateDoc('paymentInstructions', e.target.value)}
-              placeholder="Wire Transfer, Bank Name, Account #, Routing..."
-              className={`${editableInput} text-xs w-full resize-none font-mono text-[11px]`}
-            />
-          </div>
-        </div>
-      </div>
+          {/* ================================================================ */}
+          {/* BOTTOM SECTION: NOTES, BANK DETAILS, GST BREAKDOWN & TOTALS */}
+          {/* ================================================================ */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t border-slate-200">
+            {/* Left 7 Cols: GST Tax Table, Bank Instructions & Notes */}
+            <div className="md:col-span-7 space-y-4">
+              {summary.taxBreakdown.length > 0 && (
+                <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/60">
+                  <div className="bg-slate-100 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 flex justify-between">
+                    <span>GST Tax Breakdown</span>
+                    <span>
+                      {isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}
+                    </span>
+                  </div>
+                  <table className="w-full text-[11px] font-mono">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500">
+                        <th className="py-1.5 px-2.5 text-left">Taxable Value</th>
+                        {isInterState ? (
+                          <th className="py-1.5 px-2 text-right">IGST</th>
+                        ) : (
+                          <>
+                            <th className="py-1.5 px-2 text-right">CGST</th>
+                            <th className="py-1.5 px-2 text-right">SGST</th>
+                          </>
+                        )}
+                        <th className="py-1.5 px-2.5 text-right">Total Tax</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {summary.taxBreakdown.map((tb) => (
+                        <tr key={tb.rate}>
+                          <td className="py-1.5 px-2.5">
+                            {formatCurrency(tb.taxableAmount, currency)}
+                          </td>
+                          {isInterState ? (
+                            <td className="py-1.5 px-2 text-right">
+                              {formatCurrency(tb.igstAmount ?? tb.taxAmount, currency)} ({tb.rate}
+                              %)
+                            </td>
+                          ) : (
+                            <>
+                              <td className="py-1.5 px-2 text-right">
+                                {formatCurrency(tb.cgstAmount ?? tb.taxAmount / 2, currency)} (
+                                {tb.rate / 2}%)
+                              </td>
+                              <td className="py-1.5 px-2 text-right">
+                                {formatCurrency(tb.sgstAmount ?? tb.taxAmount / 2, currency)} (
+                                {tb.rate / 2}%)
+                              </td>
+                            </>
+                          )}
+                          <td className="py-1.5 px-2.5 text-right font-bold">
+                            {formatCurrency(tb.taxAmount, currency)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
-      {/* Line Items Table with INLINE Editing & Adding */}
-      <div className="py-6">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                <th className="py-3 px-2 w-5/12">Description / Service</th>
-                <th className="py-3 px-2 text-right w-16">Qty</th>
-                <th className="py-3 px-2 text-right w-24">Rate</th>
-                <th className="py-3 px-2 text-right w-20">Disc %</th>
-                <th className="py-3 px-2 text-right w-20">Tax %</th>
-                <th className="py-3 px-2 text-right w-28">Amount</th>
-                <th className="py-3 px-1 w-14 text-center no-print"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {document.items.map((item, idx) => (
-                <tr key={item.id || idx} className="hover:bg-slate-50/80 group">
-                  {/* Item Description */}
-                  <td className="py-2.5 px-2">
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) => onUpdateItem(idx, 'description', e.target.value)}
-                      placeholder="Item description or service..."
-                      className={`${editableInput} font-semibold text-slate-800 w-full`}
-                    />
-                  </td>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                  Bank / NEFT / UPI Payment Instructions
+                </label>
+                <textarea
+                  rows={3}
+                  value={document.paymentInstructions || ''}
+                  onChange={(e) => onUpdateDoc('paymentInstructions', e.target.value)}
+                  placeholder="Bank Name, Account No, IFSC Code, UPI ID..."
+                  className={`${editableInput} w-full text-xs font-mono text-slate-700 bg-slate-50/70 p-2`}
+                />
+              </div>
 
-                  {/* Quantity */}
-                  <td className="py-2.5 px-2 text-right">
-                    <input
-                      type="number"
-                      step="any"
-                      min="0.01"
-                      value={item.quantity}
-                      onChange={(e) => onUpdateItem(idx, 'quantity', Number(e.target.value))}
-                      className={`${editableInput} text-right tabular-nums w-full font-medium`}
-                    />
-                  </td>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                  Terms & Conditions / Notes
+                </label>
+                <textarea
+                  rows={2}
+                  value={document.notes || ''}
+                  onChange={(e) => onUpdateDoc('notes', e.target.value)}
+                  placeholder="Notes, warranty, or jurisdiction terms..."
+                  className={`${editableInput} w-full text-xs text-slate-600 bg-slate-50/70 p-2`}
+                />
+              </div>
+            </div>
 
-                  {/* Unit Rate */}
-                  <td className="py-2.5 px-2 text-right">
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      value={item.unitPrice}
-                      onChange={(e) => onUpdateItem(idx, 'unitPrice', Number(e.target.value))}
-                      className={`${editableInput} text-right tabular-nums w-full font-medium`}
-                    />
-                  </td>
+            {/* Right 5 Cols: Summary & Inline Adjustments + Signatory */}
+            <div className="md:col-span-5 space-y-4">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2 text-xs">
+                <div className="flex justify-between text-slate-600">
+                  <span>Subtotal (Gross)</span>
+                  <span className="font-mono font-semibold text-slate-900">
+                    {formatCurrency(summary.subtotal, currency)}
+                  </span>
+                </div>
 
-                  {/* Line Discount % */}
-                  <td className="py-2.5 px-2 text-right">
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      max="100"
-                      value={item.discountValue || 0}
-                      onChange={(e) => onUpdateItem(idx, 'discountValue', Number(e.target.value))}
-                      className={`${editableInput} text-right tabular-nums w-full text-slate-500`}
-                    />
-                  </td>
+                {/* Extra Document Discount */}
+                <div className="flex items-center justify-between gap-2 text-slate-600">
+                  <div className="flex items-center gap-1">
+                    <span>Extra Discount</span>
+                    <select
+                      value={document.documentDiscountType || 'percentage'}
+                      onChange={(e) =>
+                        onUpdateDiscount(
+                          e.target.value as 'percentage' | 'fixed',
+                          document.documentDiscountValue || 0
+                        )
+                      }
+                      className="text-[10px] border border-slate-200 rounded px-1 py-0.5 bg-white"
+                    >
+                      <option value="percentage">%</option>
+                      <option value="fixed">Flat</option>
+                    </select>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    value={document.documentDiscountValue || 0}
+                    onChange={(e) =>
+                      onUpdateDiscount(
+                        document.documentDiscountType || 'percentage',
+                        Number(e.target.value)
+                      )
+                    }
+                    className={`${editableInput} w-24 text-right font-mono bg-white`}
+                  />
+                </div>
 
-                  {/* Tax Rate % */}
-                  <td className="py-2.5 px-2 text-right">
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      max="100"
-                      value={item.taxRate || 0}
-                      onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
-                      className={`${editableInput} text-right tabular-nums w-full text-slate-500`}
-                    />
-                  </td>
+                <div className="flex justify-between text-slate-700 border-t border-slate-200 pt-1.5">
+                  <span className="font-semibold">Taxable Amount</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    {formatCurrency(summary.taxableSubtotal, currency)}
+                  </span>
+                </div>
 
-                  {/* Line Total (Live Calculated) */}
-                  <td className="py-2.5 px-2 text-right tabular-nums font-black text-slate-900">
-                    {formatCurrency(item.lineTotal, currency)}
-                  </td>
-
-                  {/* Row Actions (Duplicate & Delete) */}
-                  <td className="py-2.5 px-1 text-center no-print">
-                    <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => onDuplicateItem(idx)}
-                        title="Duplicate line"
-                        className="p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-200"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={document.items.length <= 1}
-                        onClick={() => onRemoveItem(idx)}
-                        title="Delete line"
-                        className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 disabled:opacity-20"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                {isInterState ? (
+                  <div className="flex justify-between text-slate-700">
+                    <span>IGST Total</span>
+                    <span className="font-mono font-semibold text-slate-900">
+                      {formatCurrency(summary.igstTotal ?? summary.totalTax, currency)}
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-slate-700">
+                      <span>CGST Total</span>
+                      <span className="font-mono font-semibold text-slate-900">
+                        {formatCurrency(summary.cgstTotal ?? summary.totalTax / 2, currency)}
+                      </span>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <div className="flex justify-between text-slate-700">
+                      <span>SGST Total</span>
+                      <span className="font-mono font-semibold text-slate-900">
+                        {formatCurrency(summary.sgstTotal ?? summary.totalTax / 2, currency)}
+                      </span>
+                    </div>
+                  </>
+                )}
 
-        {/* Add Line Item Button Directly Below Table */}
-        <div className="pt-4 no-print flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onAddItem}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100/80 text-primary rounded-lg text-xs font-bold transition-colors border border-blue-200 shadow-xs"
-          >
-            <Plus className="h-4 w-4" />
-            <span>+ Add Line Item</span>
-          </button>
-          <span className="text-[11px] text-slate-400">
-            {document.items.length} item(s) on document
-          </span>
-        </div>
-      </div>
+                {/* Shipping */}
+                <div className="flex items-center justify-between gap-2 text-slate-600">
+                  <span>Shipping / Freight</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={document.shippingFee || 0}
+                    onChange={(e) => onUpdateShipping(Number(e.target.value))}
+                    className={`${editableInput} w-24 text-right font-mono bg-white`}
+                  />
+                </div>
 
-      {/* Totals & Notes Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start pt-6 border-t border-slate-200 gap-8">
-        {/* Left Notes */}
-        <div className="w-full md:w-1/2 space-y-3 text-xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-            Client Notes & Terms of Service
-          </span>
-          <textarea
-            rows={4}
-            value={document.notes || ''}
-            onChange={(e) => onUpdateDoc('notes', e.target.value)}
-            placeholder="Enter notes, delivery remarks, or customer warranty instructions..."
-            className={`${editableInput} w-full resize-none`}
-          />
-        </div>
+                {/* Extra Charges */}
+                <div className="flex items-center justify-between gap-2 text-slate-600">
+                  <span>Other Charges</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={document.extraCharges || 0}
+                    onChange={(e) => onUpdateExtra(Number(e.target.value))}
+                    className={`${editableInput} w-24 text-right font-mono bg-white`}
+                  />
+                </div>
 
-        {/* Right Totals with Inline Adjustments */}
-        <div className="w-full md:w-5/12 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 space-y-2 text-xs">
-          {/* Subtotal */}
-          <div className="flex justify-between items-center text-slate-600">
-            <span>Subtotal</span>
-            <span className="tabular-nums font-bold">
-              {formatCurrency(summary.subtotal, currency)}
-            </span>
-          </div>
+                {/* Grand Total */}
+                <div
+                  className="flex justify-between items-center p-3 rounded-lg text-white font-bold text-sm mt-2"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <span>Grand Total</span>
+                  <span className="font-mono text-base">
+                    {formatCurrency(summary.grandTotal, currency)}
+                  </span>
+                </div>
 
-          {/* Document Discount Inline */}
-          <div className="flex justify-between items-center text-emerald-700">
-            <span className="flex items-center gap-1">
-              <span>Doc Discount:</span>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={document.documentDiscountValue || 0}
-                onChange={(e) => onUpdateDiscount('percentage', Number(e.target.value))}
-                className={`${editableInput} w-14 text-right text-xs text-emerald-700 font-bold`}
-              />
-              <span>%</span>
-            </span>
-            <span className="tabular-nums font-bold">
-              -{formatCurrency(summary.discountTotal, currency)}
-            </span>
-          </div>
+                {/* Amount Paid */}
+                <div className="flex items-center justify-between gap-2 text-emerald-700 pt-1">
+                  <span className="font-medium">Advance / Paid</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={summary.amountPaid || 0}
+                    onChange={(e) => onUpdatePaid(Number(e.target.value))}
+                    className={`${editableInput} w-24 text-right font-mono bg-white text-emerald-700 font-bold`}
+                  />
+                </div>
 
-          {/* Tax Breakdown */}
-          {summary.taxBreakdown.map((b) => (
-            <div key={b.rate} className="flex justify-between items-center text-slate-600">
-              <span>Tax ({b.rate}%)</span>
-              <span className="tabular-nums font-semibold">
-                {formatCurrency(b.taxAmount, currency)}
-              </span>
+                <div className="flex justify-between font-black text-slate-900 border-t border-slate-200 pt-2 text-sm">
+                  <span>Balance Due</span>
+                  <span className="font-mono" style={{ color: primaryColor }}>
+                    {formatCurrency(summary.balanceDue, currency)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Authorized Signatory Box */}
+              <div className="border border-slate-200 rounded-xl p-3 text-right bg-slate-50/40 space-y-2">
+                <div className="text-[10px] font-bold text-slate-500 uppercase">
+                  For {document.sender.name || 'Authorized Business'}
+                </div>
+                <input
+                  type="text"
+                  value={document.signatoryName || ''}
+                  onChange={(e) => onUpdateDoc('signatoryName', e.target.value)}
+                  placeholder="Type Signatory Name..."
+                  className={`${editableInput} text-right font-serif italic text-sm text-slate-800 w-full`}
+                />
+                <div className="text-[10px] font-semibold text-slate-400 border-t border-slate-200 pt-1 inline-block px-4">
+                  Authorized Signatory
+                </div>
+              </div>
             </div>
-          ))}
-
-          {/* Shipping Fee Inline */}
-          <div className="flex justify-between items-center text-slate-600">
-            <span className="flex items-center gap-1">
-              <span>Shipping Fee:</span>
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={document.shippingFee || 0}
-                onChange={(e) => onUpdateShipping(Number(e.target.value))}
-                className={`${editableInput} w-16 text-right text-xs`}
-              />
-            </span>
-            <span className="tabular-nums">
-              {formatCurrency(summary.shippingFee, currency)}
-            </span>
           </div>
-
-          {/* Extra Charges Inline */}
-          <div className="flex justify-between items-center text-slate-600">
-            <span className="flex items-center gap-1">
-              <span>Extra Charges:</span>
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={document.extraCharges || 0}
-                onChange={(e) => onUpdateExtra(Number(e.target.value))}
-                className={`${editableInput} w-16 text-right text-xs`}
-              />
-            </span>
-            <span className="tabular-nums">
-              {formatCurrency(summary.extraCharges, currency)}
-            </span>
-          </div>
-
-          {/* Grand Total */}
-          <div
-            className="flex justify-between items-center pt-3 border-t-2 border-slate-900 text-lg font-black"
-            style={{ color: tokens.primaryColor }}
-          >
-            <span>Total</span>
-            <span className="tabular-nums">
-              {formatCurrency(summary.grandTotal, currency)}
-            </span>
-          </div>
-
-          {/* Amount Paid Inline */}
-          <div className="flex justify-between items-center pt-1 text-slate-600">
-            <span className="flex items-center gap-1">
-              <span>Amount Paid:</span>
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={document.summary.amountPaid || 0}
-                onChange={(e) => onUpdatePaid(Number(e.target.value))}
-                className={`${editableInput} w-20 text-right text-xs font-semibold`}
-              />
-            </span>
-            <span className="tabular-nums font-bold">
-              {formatCurrency(summary.amountPaid, currency)}
-            </span>
-          </div>
-
-          {/* Balance Due */}
-          {summary.balanceDue > 0 ? (
-            <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-sm font-black text-red-600">
-              <span>Balance Due</span>
-              <span className="tabular-nums">
-                {formatCurrency(summary.balanceDue, currency)}
-              </span>
-            </div>
-          ) : (
-            <div className="pt-1 text-right text-[11px] font-bold text-emerald-600">
-              ✓ Fully Paid
-            </div>
-          )}
         </div>
       </div>
     </div>

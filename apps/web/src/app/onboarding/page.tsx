@@ -1,31 +1,71 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { TenantApi } from '@invoice/api';
+import { CURRENCIES, INDIAN_STATES } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { CURRENCIES } from '@invoice/core';
 import { Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Building, DollarSign, FileCode } from 'lucide-react';
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [tenantId, setTenantId] = useState<string | null>(null);
 
-  // Form state
-  const [businessName, setBusinessName] = useState('Apex Technologies LLC');
-  const [currency, setCurrency] = useState('USD');
-  const [country, setCountry] = useState('United States');
-  const [taxId, setTaxId] = useState('US-9912048');
-  const [street, setStreet] = useState('100 Innovation Blvd');
-  const [city, setCity] = useState('Austin');
+  // Form state (defaulting to India / INR / GST)
+  const [businessName, setBusinessName] = useState('Sharma Enterprises Pvt Ltd');
+  const [currency, setCurrency] = useState('INR');
+  const [country, setCountry] = useState('India');
+  const [gstState, setGstState] = useState('27 - Maharashtra');
+  const [taxId, setTaxId] = useState('27AABCU9603R1ZM');
+  const [street, setStreet] = useState('Plot 42, MIDC Andheri East');
+  const [city, setCity] = useState('Mumbai');
   const [prefix, setPrefix] = useState('INV');
-  const [paymentTerms, setPaymentTerms] = useState('Net 30 Days');
+  const [paymentTerms, setPaymentTerms] = useState('Net 15 Days');
 
-  const handleNext = () => {
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const activeId = window.localStorage.getItem('billcraft_active_tenant_id');
+      const userRaw = window.localStorage.getItem('billcraft_current_user');
+      if (activeId) setTenantId(activeId);
+      if (userRaw) {
+        try {
+          const parsed = JSON.parse(userRaw);
+          if (parsed.workspaceName) setBusinessName(parsed.workspaceName);
+        } catch {}
+      }
+    }
+  }, []);
+
+  const handleNext = async () => {
     if (step < 3) {
       setStep(step + 1);
     } else {
+      if (tenantId) {
+        await TenantApi.updateTenant(tenantId, {
+          name: businessName,
+          currency,
+          country,
+          gstState,
+          taxId,
+          street,
+          city,
+          invoicePrefix: prefix,
+        });
+        await TenantApi.updateBrandSettings(tenantId, {
+          businessName,
+          currency,
+          country,
+          gstState,
+          taxId,
+          street,
+          city,
+          invoicePrefix: prefix,
+          defaultTerms: paymentTerms,
+        });
+      }
       router.push('/dashboard');
     }
   };
@@ -42,7 +82,7 @@ export default function OnboardingPage() {
             <Sparkles className="h-6 w-6 text-primary" />
             <span>BillCraft Onboarding</span>
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Configure Your New Workspace</h2>
+          <h2 className="text-xl font-bold text-slate-900">Configure Your GST & Business Profile</h2>
           <div className="flex items-center justify-center gap-2 pt-2">
             {[1, 2, 3].map((s) => (
               <div
@@ -67,14 +107,14 @@ export default function OnboardingPage() {
               {step === 3 && <FileCode className="h-4 w-4 text-primary" />}
               <span>
                 {step === 1 && 'Step 1: Business Identity & Currency'}
-                {step === 2 && 'Step 2: Address & Tax Registration'}
-                {step === 3 && 'Step 3: Invoicing Numbering & Terms'}
+                {step === 2 && 'Step 2: GSTIN, State & Registered Address'}
+                {step === 3 && 'Step 3: Invoice Numbering & Payment Terms'}
               </span>
             </CardTitle>
             <CardDescription className="text-xs">
-              {step === 1 && 'Define your default trading name and transaction currency'}
-              {step === 2 && 'Enter legal company address and tax identification numbers'}
-              {step === 3 && 'Set sequential invoice prefixes and standard payment deadlines'}
+              {step === 1 && 'Define your legal trading name and primary billing currency'}
+              {step === 2 && 'Configure your GST State Code for automatic CGST+SGST / IGST calculation'}
+              {step === 3 && 'Set sequential invoice prefixes and standard payment terms'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -121,16 +161,33 @@ export default function OnboardingPage() {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Tax / VAT / GST Number
+                    GSTIN (Goods & Services Tax Identification Number)
                   </label>
                   <Input
                     value={taxId}
-                    onChange={(e) => setTaxId(e.target.value)}
+                    onChange={(e) => setTaxId(e.target.value.toUpperCase())}
+                    placeholder="27AABCU9603R1ZM"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Street Address
+                    State / Union Territory (GST State Code)
+                  </label>
+                  <select
+                    value={gstState}
+                    onChange={(e) => setGstState(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-md p-2 bg-white"
+                  >
+                    {INDIAN_STATES.map((st) => (
+                      <option key={st.code} value={st.label}>
+                        {st.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Registered Street Address
                   </label>
                   <Input
                     value={street}
@@ -157,7 +214,7 @@ export default function OnboardingPage() {
                   </label>
                   <Input
                     value={prefix}
-                    onChange={(e) => setPrefix(e.target.value)}
+                    onChange={(e) => setPrefix(e.target.value.toUpperCase())}
                     placeholder="INV"
                   />
                   <span className="text-[11px] text-slate-400 mt-0.5 block">
@@ -171,7 +228,7 @@ export default function OnboardingPage() {
                   <Input
                     value={paymentTerms}
                     onChange={(e) => setPaymentTerms(e.target.value)}
-                    placeholder="Net 30 Days"
+                    placeholder="Net 15 Days"
                   />
                 </div>
               </div>

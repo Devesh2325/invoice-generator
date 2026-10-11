@@ -3,11 +3,13 @@
 import React, { useRef } from 'react';
 import { DocumentModel, formatCurrency } from '@invoice/core';
 import { getTemplate } from '@invoice/theme';
-import { Upload, Image as ImageIcon, X } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 
 interface DocumentPreviewProps {
   document: DocumentModel;
   className?: string;
+  captureId?: string;
+  isPrintOnly?: boolean;
   onLogoUpload?: (dataUrl: string) => void;
   onRemoveLogo?: () => void;
 }
@@ -15,14 +17,25 @@ interface DocumentPreviewProps {
 export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   document,
   className = '',
+  captureId = 'invoice-document-capture',
+  isPrintOnly = false,
   onLogoUpload,
   onRemoveLogo,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const templateMeta = getTemplate(document.templateId || 'modern');
-  const tokens = templateMeta.defaultTokens;
-  const currency = document.currency || 'USD';
+  const templateMeta = getTemplate(document.templateId || 'cleartax_gst');
+  const baseTokens = templateMeta.defaultTokens;
+
+  // Merge template tokens with any user custom theme overrides
+  const primaryColor = document.customTheme?.primaryColor || baseTokens.primaryColor;
+  const secondaryColor = document.customTheme?.secondaryColor || baseTokens.secondaryColor;
+  const fontFamily = document.customTheme?.fontFamily || baseTokens.fontFamily;
+
+  const currency = document.currency || 'INR';
   const summary = document.summary;
+  const isInterState = summary.gstSupplyType === 'inter';
+  const senderState = document.sender.address?.state || '';
+  const clientState = document.client.billingAddress?.state || document.placeOfSupply || '';
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -33,45 +46,57 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     }
     const reader = new FileReader();
     reader.onload = (event) => {
-      const result = event.target?.result as string;
-      onLogoUpload(result);
+      onLogoUpload(event.target?.result as string);
     };
     reader.readAsDataURL(file);
   };
 
   const triggerUpload = () => {
-    if (fileInputRef.current) {
+    if (onLogoUpload && fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
   const fontClass =
-    tokens.fontFamily === 'serif'
+    fontFamily === 'serif'
       ? 'font-serif'
-      : tokens.fontFamily === 'mono'
+      : fontFamily === 'mono'
       ? 'font-mono'
       : 'font-sans';
 
-  // Common Logo Render Component
-  const renderLogo = (customClass = 'h-14 max-w-[200px]') => (
+  const docTitle =
+    document.type === 'invoice'
+      ? 'TAX INVOICE'
+      : document.type === 'estimate'
+      ? 'ESTIMATE / QUOTATION'
+      : document.type === 'pro_forma'
+      ? 'PRO FORMA INVOICE'
+      : document.type.replace('_', ' ').toUpperCase();
+
+  // Common Logo Render
+  const renderLogo = (customClass = 'h-14 max-w-[200px]', invertBg = false) => (
     <div className="relative group inline-block">
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileInput}
-        accept="image/*"
-        className="hidden"
-      />
+      {!isPrintOnly && onLogoUpload && (
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileInput}
+          accept="image/*"
+          className="hidden"
+        />
+      )}
       {document.sender.logoUrl ? (
-        <div className="relative">
+        <div className="relative inline-block">
           <img
             src={document.sender.logoUrl}
             alt="Business Logo"
-            className={`${customClass} object-contain cursor-pointer transition-opacity group-hover:opacity-90`}
+            className={`${customClass} object-contain ${
+              onLogoUpload ? 'cursor-pointer' : ''
+            } ${invertBg ? 'bg-white p-1.5 rounded' : ''}`}
             onClick={triggerUpload}
-            title="Click to replace logo"
+            title={onLogoUpload ? 'Click to replace logo' : undefined}
           />
-          {onRemoveLogo && (
+          {!isPrintOnly && onRemoveLogo && (
             <button
               type="button"
               onClick={(e) => {
@@ -85,761 +110,808 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             </button>
           )}
         </div>
-      ) : (
+      ) : !isPrintOnly && onLogoUpload ? (
         <button
           type="button"
           onClick={triggerUpload}
-          className="no-print flex items-center gap-1.5 px-3 py-2 border-2 border-dashed border-slate-300 hover:border-primary rounded-lg text-xs font-semibold text-slate-500 hover:text-primary transition-colors bg-slate-50/50"
+          className={`no-print flex items-center gap-1.5 px-3 py-2 border-2 border-dashed rounded-lg text-xs font-semibold transition-colors ${
+            invertBg
+              ? 'border-white/40 text-white/90 hover:border-white bg-white/10'
+              : 'border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600 bg-slate-50/60'
+          }`}
         >
           <Upload className="h-3.5 w-3.5" />
           <span>+ Add Company Logo</span>
         </button>
+      ) : null}
+    </div>
+  );
+
+  // Shared Full Sender Address Block
+  const renderSenderDetails = (textColorClass = 'text-slate-600', strongClass = 'text-slate-800') => (
+    <div className={`text-xs space-y-0.5 leading-relaxed ${textColorClass}`}>
+      {document.sender.address?.street1 && <div>{document.sender.address.street1}</div>}
+      {(document.sender.address?.city ||
+        document.sender.address?.state ||
+        document.sender.address?.postalCode) && (
+        <div>
+          {[
+            document.sender.address?.city,
+            document.sender.address?.state,
+            document.sender.address?.postalCode,
+          ]
+            .filter(Boolean)
+            .join(', ')}
+        </div>
+      )}
+      {document.sender.address?.country && <div>{document.sender.address.country}</div>}
+      <div className="pt-1 flex flex-wrap gap-x-4 gap-y-0.5">
+        {document.sender.email && (
+          <span>
+            <strong className={strongClass}>Email:</strong> {document.sender.email}
+          </span>
+        )}
+        {document.sender.phone && (
+          <span>
+            <strong className={strongClass}>Phone:</strong> {document.sender.phone}
+          </span>
+        )}
+      </div>
+      {document.sender.taxId && (
+        <div className="pt-0.5">
+          <span className={`font-bold ${strongClass}`}>GSTIN: </span>
+          <span className="font-mono font-bold tracking-wide">{document.sender.taxId}</span>
+        </div>
+      )}
+      {senderState && (
+        <div>
+          <span className={`font-semibold ${strongClass}`}>State: </span>
+          <span>{senderState}</span>
+        </div>
       )}
     </div>
   );
 
-  // --------------------------------------------------------------------------
-  // TEMPLATE 1: MODERN FINTECH
-  // --------------------------------------------------------------------------
-  if (templateMeta.id === 'modern') {
-    return (
-      <div
-        id="invoice-document-capture"
-        className={`bg-white text-slate-900 shadow-xl border border-slate-200 rounded-2xl p-8 md:p-12 max-w-4xl mx-auto ${fontClass} ${className} print:shadow-none print:border-none print:p-0 print:m-0`}
-      >
-        <div className="h-2 -mt-8 -mx-8 md:-mt-12 md:-mx-12 rounded-t-2xl mb-8 bg-gradient-to-r from-blue-600 to-indigo-600" />
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start border-b pb-8 gap-6 border-slate-100">
-          <div className="space-y-3">
-            {renderLogo()}
-            <div className="text-2xl font-black tracking-tight text-slate-900">
-              {document.sender.name || 'YOUR BUSINESS'}
-            </div>
-            <div className="text-xs text-slate-500 space-y-0.5">
-              {document.sender.email && <div>{document.sender.email}</div>}
-              {document.sender.phone && <div>{document.sender.phone}</div>}
-              {document.sender.taxId && <div>Tax ID: {document.sender.taxId}</div>}
-              {document.sender.address && (
-                <div>
-                  {document.sender.address.street1}, {document.sender.address.city}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="text-left md:text-right space-y-2">
-            <div className="inline-block px-3 py-1 bg-blue-50 text-blue-700 font-bold uppercase tracking-wider text-xs rounded-full">
-              {document.type.replace('_', ' ')}
-            </div>
-            <div className="text-2xl font-black text-slate-900">
-              #{document.documentNumber}
-            </div>
-            <div className="text-xs text-slate-500 space-y-0.5">
-              <div>Issue Date: <span className="font-semibold text-slate-700">{document.issueDate}</span></div>
-              {document.dueDate && <div>Due Date: <span className="font-semibold text-slate-700">{document.dueDate}</span></div>}
-              {document.referenceNumber && <div>Ref: {document.referenceNumber}</div>}
-            </div>
-          </div>
+  // Shared Full Client Address Block
+  const renderClientDetails = () => (
+    <div className="text-xs text-slate-600 space-y-0.5 leading-relaxed">
+      <div className="font-bold text-slate-900 text-sm">{document.client.name || 'Client Name'}</div>
+      {document.client.billingAddress?.street1 && (
+        <div>{document.client.billingAddress.street1}</div>
+      )}
+      {(document.client.billingAddress?.city ||
+        document.client.billingAddress?.state ||
+        document.client.billingAddress?.postalCode) && (
+        <div>
+          {[
+            document.client.billingAddress?.city,
+            document.client.billingAddress?.state,
+            document.client.billingAddress?.postalCode,
+          ]
+            .filter(Boolean)
+            .join(', ')}
         </div>
-
-        {/* Client Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
-          <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-100 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Bill To</span>
-            <div className="font-bold text-slate-900 text-sm">{document.client.name}</div>
-            <div className="text-xs text-slate-600 space-y-0.5">
-              {document.client.email && <div>{document.client.email}</div>}
-              {document.client.phone && <div>{document.client.phone}</div>}
-              {document.client.taxId && <div>Tax ID: {document.client.taxId}</div>}
-              {document.client.billingAddress?.street1 && (
-                <div>{document.client.billingAddress.street1}, {document.client.billingAddress.city}</div>
-              )}
-            </div>
-          </div>
-
-          {document.client.shippingAddress?.street1 ? (
-            <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-100 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ship To</span>
-              <div className="text-xs text-slate-600 space-y-0.5">
-                <div>{document.client.shippingAddress.street1}</div>
-                <div>{document.client.shippingAddress.city}, {document.client.shippingAddress.country}</div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-100 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Payment Status</span>
-              <div className="text-sm font-bold text-slate-900 capitalize">{document.status}</div>
-              <div className="text-xs text-slate-500">Terms: {document.paymentTerms || 'Standard'}</div>
-            </div>
-          )}
-        </div>
-
-        {/* Items Table */}
-        <div className="py-4">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-100/80 text-slate-600 font-semibold uppercase tracking-wider">
-                <th className="py-3 px-3 rounded-l-lg">Description</th>
-                <th className="py-3 px-2 text-right">Qty</th>
-                <th className="py-3 px-2 text-right">Rate</th>
-                <th className="py-3 px-2 text-right">Disc</th>
-                <th className="py-3 px-2 text-right">Tax</th>
-                <th className="py-3 px-3 text-right rounded-r-lg">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {document.items.map((item, idx) => (
-                <tr key={item.id || idx} className="hover:bg-slate-50/60">
-                  <td className="py-3 px-3 font-medium text-slate-800">{item.description}</td>
-                  <td className="py-3 px-2 text-right tabular-nums text-slate-600">{item.quantity}</td>
-                  <td className="py-3 px-2 text-right tabular-nums text-slate-600">{formatCurrency(item.unitPrice, currency)}</td>
-                  <td className="py-3 px-2 text-right tabular-nums text-slate-500">{item.lineDiscount > 0 ? `-${formatCurrency(item.lineDiscount, currency)}` : '—'}</td>
-                  <td className="py-3 px-2 text-right tabular-nums text-slate-500">{item.taxRate ? `${item.taxRate}%` : '—'}</td>
-                  <td className="py-3 px-3 text-right tabular-nums font-bold text-slate-900">{formatCurrency(item.lineTotal, currency)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Totals & Notes */}
-        <div className="flex flex-col md:flex-row justify-between items-start pt-6 border-t border-slate-100 gap-8">
-          <div className="w-full md:w-1/2 space-y-4 text-xs text-slate-600">
-            {document.notes && (
-              <div>
-                <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400 block mb-1">Notes</span>
-                <p className="whitespace-pre-line">{document.notes}</p>
-              </div>
-            )}
-            {document.paymentInstructions && (
-              <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100">
-                <span className="font-bold uppercase tracking-wider text-[10px] text-blue-800 block mb-1">Payment Instructions</span>
-                <p className="whitespace-pre-line text-blue-900">{document.paymentInstructions}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="w-full md:w-5/12 bg-slate-50 p-5 rounded-xl border border-slate-100 space-y-2 text-xs">
-            <div className="flex justify-between text-slate-600">
-              <span>Subtotal</span>
-              <span className="tabular-nums font-medium">{formatCurrency(summary.subtotal, currency)}</span>
-            </div>
-            {summary.discountTotal > 0 && (
-              <div className="flex justify-between text-emerald-600">
-                <span>Discount</span>
-                <span className="tabular-nums font-medium">-{formatCurrency(summary.discountTotal, currency)}</span>
-              </div>
-            )}
-            {summary.taxBreakdown.map((b) => (
-              <div key={b.rate} className="flex justify-between text-slate-600">
-                <span>Tax ({b.rate}%)</span>
-                <span className="tabular-nums font-medium">{formatCurrency(b.taxAmount, currency)}</span>
-              </div>
-            ))}
-            {summary.shippingFee > 0 && (
-              <div className="flex justify-between text-slate-600">
-                <span>Shipping</span>
-                <span className="tabular-nums font-medium">{formatCurrency(summary.shippingFee, currency)}</span>
-              </div>
-            )}
-            <div className="flex justify-between pt-2 border-t border-slate-200 text-base font-black text-blue-600">
-              <span>Grand Total</span>
-              <span className="tabular-nums">{formatCurrency(summary.grandTotal, currency)}</span>
-            </div>
-            {summary.amountPaid > 0 && (
-              <>
-                <div className="flex justify-between text-slate-600 pt-1">
-                  <span>Amount Paid</span>
-                  <span className="tabular-nums font-medium">{formatCurrency(summary.amountPaid, currency)}</span>
-                </div>
-                <div className="flex justify-between pt-1 border-t border-slate-200 text-sm font-bold text-red-600">
-                  <span>Balance Due</span>
-                  <span className="tabular-nums">{formatCurrency(summary.balanceDue, currency)}</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+      )}
+      {document.client.billingAddress?.country && (
+        <div>{document.client.billingAddress.country}</div>
+      )}
+      <div className="pt-1 flex flex-wrap gap-x-4 gap-y-0.5">
+        {document.client.email && (
+          <span>
+            <strong className="text-slate-700">Email:</strong> {document.client.email}
+          </span>
+        )}
+        {document.client.phone && (
+          <span>
+            <strong className="text-slate-700">Phone:</strong> {document.client.phone}
+          </span>
+        )}
       </div>
-    );
-  }
+      {document.client.taxId && (
+        <div className="pt-0.5">
+          <span className="font-bold text-slate-800">GSTIN: </span>
+          <span className="font-mono font-bold text-slate-900">{document.client.taxId}</span>
+        </div>
+      )}
+      {clientState && (
+        <div>
+          <span className="font-semibold text-slate-800">Place of Supply / State: </span>
+          <span className="font-semibold text-slate-900">{clientState}</span>
+        </div>
+      )}
+    </div>
+  );
 
-  // --------------------------------------------------------------------------
-  // TEMPLATE 2: MINIMAL MONOCHROME
-  // --------------------------------------------------------------------------
-  if (templateMeta.id === 'minimal') {
+  // Shared Line Items Table with HSN/SAC & CGST/SGST or IGST columns
+  const renderItemsTable = (headerStyle: 'solid' | 'tinted' | 'bordered' | 'minimal' = 'solid') => {
+    const thStyle =
+      headerStyle === 'solid'
+        ? { backgroundColor: primaryColor, color: '#FFFFFF' }
+        : headerStyle === 'tinted'
+        ? {
+            backgroundColor: `${primaryColor}14`,
+            color: primaryColor,
+            borderBottom: `2px solid ${primaryColor}`,
+          }
+        : headerStyle === 'bordered'
+        ? {
+            backgroundColor: '#F8FAFC',
+            color: '#0F172A',
+            borderTop: '2px solid #0F172A',
+            borderBottom: '2px solid #0F172A',
+          }
+        : {
+            backgroundColor: 'transparent',
+            color: primaryColor,
+            borderBottom: `2px solid ${primaryColor}`,
+          };
+
     return (
-      <div
-        id="invoice-document-capture"
-        className={`bg-white text-zinc-900 shadow-lg border border-zinc-200 p-8 md:p-14 max-w-4xl mx-auto font-sans ${className} print:shadow-none print:border-none print:p-0 print:m-0`}
-      >
-        <div className="flex justify-between items-start pb-12 border-b border-zinc-900">
-          <div>
-            {renderLogo()}
-            <div className="text-xl font-bold tracking-tight text-zinc-900 mt-3">
-              {document.sender.name || 'COMPANY NAME'}
-            </div>
-            <div className="text-xs text-zinc-500 mt-1 space-y-0.5">
-              {document.sender.email && <div>{document.sender.email}</div>}
-              {document.sender.address?.street1 && <div>{document.sender.address.street1}, {document.sender.address.city}</div>}
-            </div>
-          </div>
-
-          <div className="text-right">
-            <div className="text-3xl font-light tracking-tight uppercase text-zinc-900">
-              {document.type.replace('_', ' ')}
-            </div>
-            <div className="text-sm font-mono mt-1 text-zinc-600">
-              #{document.documentNumber}
-            </div>
-            <div className="text-xs text-zinc-400 mt-2">
-              Date: {document.issueDate}
-              {document.dueDate && <div>Due: {document.dueDate}</div>}
-            </div>
-          </div>
-        </div>
-
-        <div className="py-8 grid grid-cols-2 gap-8 text-xs">
-          <div>
-            <span className="text-[10px] uppercase font-mono tracking-widest text-zinc-400 block mb-1">To</span>
-            <div className="font-semibold text-zinc-900 text-sm">{document.client.name}</div>
-            <div className="text-zinc-500 mt-1">
-              {document.client.email && <div>{document.client.email}</div>}
-              {document.client.billingAddress?.street1 && <div>{document.client.billingAddress.street1}</div>}
-            </div>
-          </div>
-          <div className="text-right">
-            {document.referenceNumber && (
-              <div>
-                <span className="text-[10px] uppercase font-mono tracking-widest text-zinc-400 block mb-1">Ref</span>
-                <div className="font-mono text-zinc-800">{document.referenceNumber}</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <table className="w-full text-left text-xs mb-8">
+      <div className="my-6 overflow-x-auto">
+        <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr className="border-b border-zinc-200 text-zinc-400 font-mono text-[10px] uppercase tracking-wider">
-              <th className="py-2.5">Item</th>
-              <th className="py-2.5 text-right">Qty</th>
-              <th className="py-2.5 text-right">Price</th>
-              <th className="py-2.5 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {document.items.map((item, idx) => (
-              <tr key={item.id || idx}>
-                <td className="py-3 font-medium text-zinc-800">{item.description}</td>
-                <td className="py-3 text-right tabular-nums text-zinc-500">{item.quantity}</td>
-                <td className="py-3 text-right tabular-nums text-zinc-500">{formatCurrency(item.unitPrice, currency)}</td>
-                <td className="py-3 text-right tabular-nums font-semibold text-zinc-900">{formatCurrency(item.lineTotal, currency)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="flex justify-between items-start pt-6 border-t border-zinc-900">
-          <div className="text-xs text-zinc-500 max-w-sm space-y-2">
-            {document.notes && <p className="italic">{document.notes}</p>}
-            {document.paymentInstructions && <p className="font-mono text-[11px]">{document.paymentInstructions}</p>}
-          </div>
-
-          <div className="w-64 space-y-1.5 text-xs text-right">
-            <div className="flex justify-between text-zinc-500">
-              <span>Subtotal</span>
-              <span className="tabular-nums font-mono">{formatCurrency(summary.subtotal, currency)}</span>
-            </div>
-            {summary.discountTotal > 0 && (
-              <div className="flex justify-between text-zinc-500">
-                <span>Discount</span>
-                <span className="tabular-nums font-mono">-{formatCurrency(summary.discountTotal, currency)}</span>
-              </div>
-            )}
-            {summary.totalTax > 0 && (
-              <div className="flex justify-between text-zinc-500">
-                <span>Tax</span>
-                <span className="tabular-nums font-mono">{formatCurrency(summary.totalTax, currency)}</span>
-              </div>
-            )}
-            <div className="flex justify-between pt-2 border-t-2 border-zinc-900 font-bold text-base text-zinc-900">
-              <span>Total</span>
-              <span className="tabular-nums font-mono">{formatCurrency(summary.grandTotal, currency)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // TEMPLATE 3: PROFESSIONAL NAVY
-  // --------------------------------------------------------------------------
-  if (templateMeta.id === 'professional') {
-    return (
-      <div
-        id="invoice-document-capture"
-        className={`bg-white text-slate-900 shadow-xl border border-slate-200 overflow-hidden max-w-4xl mx-auto ${fontClass} ${className} print:shadow-none print:border-none print:p-0 print:m-0`}
-      >
-        {/* Full-width Navy Banner */}
-        <div className="bg-slate-900 text-white p-8 md:p-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="space-y-2">
-            {renderLogo('h-12 max-w-[180px] brightness-0 invert')}
-            <h2 className="text-2xl font-black tracking-tight text-white">
-              {document.sender.name || 'ENTERPRISE SOLUTIONS'}
-            </h2>
-            <div className="text-xs text-slate-300">
-              {document.sender.email} • {document.sender.phone}
-            </div>
-          </div>
-
-          <div className="bg-slate-800/80 p-4 rounded-lg border border-slate-700 text-right min-w-[220px]">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-blue-400 block">
-              {document.type.replace('_', ' ')}
-            </span>
-            <div className="text-xl font-bold text-white">#{document.documentNumber}</div>
-            <div className="text-[11px] text-slate-400 mt-1">
-              Issue Date: {document.issueDate}
-              {document.dueDate && <div>Due Date: {document.dueDate}</div>}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-8 md:p-10 space-y-6">
-          {/* Bill To */}
-          <div className="bg-slate-50 border-l-4 border-slate-900 p-4 rounded-r-lg">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Invoiced Client</span>
-            <div className="text-sm font-bold text-slate-900">{document.client.name}</div>
-            <div className="text-xs text-slate-600 mt-1">
-              {document.client.email && <span>{document.client.email} • </span>}
-              {document.client.billingAddress?.street1 && <span>{document.client.billingAddress.street1}, {document.client.billingAddress.city}</span>}
-            </div>
-          </div>
-
-          {/* Table */}
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-900 text-white text-[10px] uppercase tracking-wider font-semibold">
-                <th className="py-3 px-3">Service / Item</th>
-                <th className="py-3 px-2 text-right">Qty</th>
-                <th className="py-3 px-2 text-right">Unit Rate</th>
-                <th className="py-3 px-2 text-right">Tax</th>
-                <th className="py-3 px-3 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {document.items.map((item, idx) => (
-                <tr key={item.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                  <td className="py-3 px-3 font-semibold text-slate-800">{item.description}</td>
-                  <td className="py-3 px-2 text-right tabular-nums text-slate-600">{item.quantity}</td>
-                  <td className="py-3 px-2 text-right tabular-nums text-slate-600">{formatCurrency(item.unitPrice, currency)}</td>
-                  <td className="py-3 px-2 text-right tabular-nums text-slate-500">{item.taxRate ? `${item.taxRate}%` : '—'}</td>
-                  <td className="py-3 px-3 text-right tabular-nums font-bold text-slate-900">{formatCurrency(item.lineTotal, currency)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Summary & Signatory */}
-          <div className="flex flex-col md:flex-row justify-between items-end pt-4 border-t border-slate-200 gap-8">
-            <div className="space-y-4 text-xs text-slate-600 max-w-sm">
-              {document.paymentInstructions && (
-                <div>
-                  <span className="font-bold uppercase tracking-wider text-[10px] text-slate-500 block mb-1">Remittance Details</span>
-                  <p className="whitespace-pre-line bg-slate-50 p-2.5 rounded border border-slate-200 font-mono text-[11px]">{document.paymentInstructions}</p>
-                </div>
+            <tr style={thStyle} className="uppercase tracking-wider font-bold text-[10px]">
+              <th className="py-2.5 px-2.5 w-8 text-center">#</th>
+              <th className="py-2.5 px-3">Item Description</th>
+              <th className="py-2.5 px-2 text-center">HSN/SAC</th>
+              <th className="py-2.5 px-2 text-right">Qty</th>
+              <th className="py-2.5 px-2.5 text-right">Rate</th>
+              <th className="py-2.5 px-2 text-right">Disc</th>
+              <th className="py-2.5 px-2 text-right">Taxable</th>
+              {isInterState ? (
+                <th className="py-2.5 px-2.5 text-right">IGST</th>
+              ) : (
+                <>
+                  <th className="py-2.5 px-2 text-right">CGST</th>
+                  <th className="py-2.5 px-2 text-right">SGST</th>
+                </>
               )}
-              <div className="pt-4 border-t border-dashed border-slate-300 w-48 text-center text-[10px] text-slate-400">
-                Authorized Signatory
-              </div>
-            </div>
-
-            <div className="w-64 space-y-1.5 text-xs">
-              <div className="flex justify-between text-slate-600">
-                <span>Subtotal</span>
-                <span className="tabular-nums font-bold">{formatCurrency(summary.subtotal, currency)}</span>
-              </div>
-              {summary.totalTax > 0 && (
-                <div className="flex justify-between text-slate-600">
-                  <span>Total Tax</span>
-                  <span className="tabular-nums">{formatCurrency(summary.totalTax, currency)}</span>
-                </div>
-              )}
-              <div className="flex justify-between py-2 border-t-2 border-slate-900 font-black text-lg text-slate-900">
-                <span>Total Due</span>
-                <span className="tabular-nums">{formatCurrency(summary.grandTotal, currency)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // TEMPLATE 4: CLASSIC SERIF
-  // --------------------------------------------------------------------------
-  if (templateMeta.id === 'classic') {
-    return (
-      <div
-        id="invoice-document-capture"
-        className={`bg-[#FAFAF9] text-stone-900 shadow-lg border border-stone-300 p-8 md:p-14 max-w-4xl mx-auto font-serif ${className} print:shadow-none print:border-none print:p-0 print:m-0`}
-      >
-        <div className="text-center pb-6 border-b-2 border-stone-800">
-          <div className="flex justify-center mb-3">{renderLogo()}</div>
-          <h1 className="text-2xl font-bold tracking-wide uppercase text-stone-900">
-            {document.sender.name || 'ESTABLISHED COMMERCE'}
-          </h1>
-          <div className="text-xs text-stone-600 mt-1">
-            {document.sender.address?.street1 && <span>{document.sender.address.street1}, {document.sender.address.city} • </span>}
-            {document.sender.email}
-          </div>
-          <div className="mt-4 pt-3 border-t border-stone-300 inline-block px-8 text-xs font-bold uppercase tracking-widest text-stone-700">
-            {document.type.replace('_', ' ')} № {document.documentNumber}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-8 py-6 text-xs border-b border-stone-200">
-          <div>
-            <span className="font-bold text-stone-500 uppercase tracking-wider block mb-1">Billed To</span>
-            <div className="font-bold text-stone-900 text-sm">{document.client.name}</div>
-            <div className="text-stone-600 mt-1">{document.client.billingAddress?.street1}</div>
-          </div>
-          <div className="text-right">
-            <div><span className="text-stone-500">Date of Issue: </span>{document.issueDate}</div>
-            {document.dueDate && <div><span className="text-stone-500">Payment Due: </span>{document.dueDate}</div>}
-          </div>
-        </div>
-
-        <div className="py-6">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b-2 border-stone-800 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-2">Description</th>
-                <th className="py-2 text-right">Quantity</th>
-                <th className="py-2 text-right">Price</th>
-                <th className="py-2 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-200">
-              {document.items.map((item, idx) => (
-                <tr key={item.id || idx}>
-                  <td className="py-3 font-medium text-stone-900">{item.description}</td>
-                  <td className="py-3 text-right tabular-nums text-stone-700">{item.quantity}</td>
-                  <td className="py-3 text-right tabular-nums text-stone-700">{formatCurrency(item.unitPrice, currency)}</td>
-                  <td className="py-3 text-right tabular-nums font-bold text-stone-900">{formatCurrency(item.lineTotal, currency)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex justify-between items-start pt-4 border-t-2 border-stone-800">
-          <div className="text-xs text-stone-600 max-w-sm space-y-2 italic">
-            {document.notes && <p>{document.notes}</p>}
-            <p className="not-italic text-[10px] text-stone-500 pt-4">Thank you for your business and patronage.</p>
-          </div>
-
-          <div className="w-64 space-y-1.5 text-xs text-right">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span className="font-bold tabular-nums">{formatCurrency(summary.subtotal, currency)}</span>
-            </div>
-            {summary.totalTax > 0 && (
-              <div className="flex justify-between">
-                <span>Tax:</span>
-                <span className="tabular-nums">{formatCurrency(summary.totalTax, currency)}</span>
-              </div>
-            )}
-            <div className="flex justify-between pt-2 border-t border-stone-800 font-bold text-base text-stone-900">
-              <span>Total Payable:</span>
-              <span className="tabular-nums">{formatCurrency(summary.grandTotal, currency)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // TEMPLATE 5: EXECUTIVE CORPORATE
-  // --------------------------------------------------------------------------
-  if (templateMeta.id === 'corporate') {
-    return (
-      <div
-        id="invoice-document-capture"
-        className={`bg-white text-slate-900 shadow-xl border-2 border-teal-800 p-8 md:p-12 max-w-4xl mx-auto font-sans ${className} print:shadow-none print:border-none print:p-0 print:m-0`}
-      >
-        <div className="flex justify-between items-start pb-6 border-b border-slate-200">
-          <div>
-            {renderLogo()}
-            <div className="text-xl font-black text-teal-800 mt-2">{document.sender.name || 'CORPORATE CORP'}</div>
-            <div className="text-xs text-slate-500 mt-1">{document.sender.email} • {document.sender.phone}</div>
-          </div>
-
-          <div className="bg-slate-100 p-4 rounded border border-slate-300 text-xs text-right space-y-1">
-            <div className="text-lg font-black text-teal-900 uppercase">{document.type.replace('_', ' ')}</div>
-            <div className="font-mono font-bold">Doc #: {document.documentNumber}</div>
-            <div>Date: {document.issueDate}</div>
-            {document.dueDate && <div>Due: {document.dueDate}</div>}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 py-6 text-xs">
-          <div className="border border-slate-200 rounded p-3 bg-slate-50">
-            <div className="font-bold text-teal-800 uppercase text-[10px] mb-1">Billing Details</div>
-            <div className="font-bold text-slate-900">{document.client.name}</div>
-            <div className="text-slate-600 mt-0.5">{document.client.email}</div>
-          </div>
-          <div className="border border-slate-200 rounded p-3 bg-slate-50">
-            <div className="font-bold text-teal-800 uppercase text-[10px] mb-1">Corporate Tax Compliance</div>
-            <div>Tax ID: {document.client.taxId || 'N/A'}</div>
-            <div>Currency: {currency}</div>
-          </div>
-        </div>
-
-        <table className="w-full text-left text-xs border border-slate-200 mb-6">
-          <thead className="bg-teal-800 text-white font-bold uppercase text-[10px]">
-            <tr>
-              <th className="py-2.5 px-3">Description</th>
-              <th className="py-2.5 px-2 text-right">Quantity</th>
-              <th className="py-2.5 px-2 text-right">Unit Price</th>
-              <th className="py-2.5 px-3 text-right">Line Total</th>
+              <th className="py-2.5 px-3 text-right">Total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
             {document.items.map((item, idx) => (
-              <tr key={item.id || idx}>
-                <td className="py-3 px-3 font-semibold">{item.description}</td>
-                <td className="py-3 px-2 text-right tabular-nums">{item.quantity}</td>
-                <td className="py-3 px-2 text-right tabular-nums">{formatCurrency(item.unitPrice, currency)}</td>
-                <td className="py-3 px-3 text-right tabular-nums font-bold">{formatCurrency(item.lineTotal, currency)}</td>
+              <tr
+                key={item.id}
+                className={idx % 2 === 1 && headerStyle === 'solid' ? 'bg-slate-50/60' : ''}
+              >
+                <td className="py-3 px-2.5 text-center text-slate-400 font-mono">{idx + 1}</td>
+                <td className="py-3 px-3 font-medium text-slate-900">{item.description}</td>
+                <td className="py-3 px-2 text-center font-mono text-slate-600">
+                  {item.hsnCode || '—'}
+                </td>
+                <td className="py-3 px-2 text-right font-mono text-slate-800">{item.quantity}</td>
+                <td className="py-3 px-2.5 text-right font-mono text-slate-800">
+                  {formatCurrency(item.unitPrice, currency)}
+                </td>
+                <td className="py-3 px-2 text-right font-mono text-slate-600">
+                  {item.lineDiscount > 0 ? formatCurrency(item.lineDiscount, currency) : '—'}
+                </td>
+                <td className="py-3 px-2 text-right font-mono text-slate-800">
+                  {formatCurrency(item.lineNet, currency)}
+                </td>
+                {isInterState ? (
+                  <td className="py-3 px-2.5 text-right font-mono text-slate-700">
+                    <div>{formatCurrency(item.igstAmount || item.taxAmount, currency)}</div>
+                    <div className="text-[10px] text-slate-400">({item.taxRate || 0}%)</div>
+                  </td>
+                ) : (
+                  <>
+                    <td className="py-3 px-2 text-right font-mono text-slate-700">
+                      <div>{formatCurrency(item.cgstAmount || item.taxAmount / 2, currency)}</div>
+                      <div className="text-[10px] text-slate-400">
+                        ({(item.taxRate || 0) / 2}%)
+                      </div>
+                    </td>
+                    <td className="py-3 px-2 text-right font-mono text-slate-700">
+                      <div>{formatCurrency(item.sgstAmount || item.taxAmount / 2, currency)}</div>
+                      <div className="text-[10px] text-slate-400">
+                        ({(item.taxRate || 0) / 2}%)
+                      </div>
+                    </td>
+                  </>
+                )}
+                <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
+                  {formatCurrency(item.lineTotal, currency)}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+    );
+  };
 
-        <div className="flex justify-between items-start pt-4 border-t border-slate-200">
-          <div className="text-xs text-slate-500 max-w-sm space-y-2">
-            <div className="border border-slate-200 p-3 rounded bg-slate-50">
-              <span className="font-bold text-teal-900 block mb-1">Remittance Instructions</span>
-              <p className="font-mono text-[11px]">{document.paymentInstructions || 'Direct wire or ACH'}</p>
+  // Shared Totals, GST Breakdown, Notes & Signatory Footer
+  const renderSummaryAndFooter = () => (
+    <div className="space-y-6 pt-2">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        {/* Left 7 cols: Payment Instructions, Terms & GST Tax Breakdown Table */}
+        <div className="md:col-span-7 space-y-4">
+          {/* GST Rate-wise Tax Summary Box */}
+          {summary.taxBreakdown.length > 0 && (
+            <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
+              <div className="bg-slate-100 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 flex justify-between">
+                <span>GST Tax Summary Breakdown</span>
+                <span>
+                  Supply Type:{' '}
+                  <strong className="text-slate-900">
+                    {isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}
+                  </strong>
+                </span>
+              </div>
+              <table className="w-full text-[11px] font-mono">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500">
+                    <th className="py-1.5 px-2.5 text-left">Taxable Value</th>
+                    {isInterState ? (
+                      <>
+                        <th className="py-1.5 px-2 text-right">IGST %</th>
+                        <th className="py-1.5 px-2.5 text-right">IGST Amt</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="py-1.5 px-2 text-right">CGST</th>
+                        <th className="py-1.5 px-2 text-right">SGST</th>
+                      </>
+                    )}
+                    <th className="py-1.5 px-2.5 text-right">Total Tax</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {summary.taxBreakdown.map((tb) => (
+                    <tr key={tb.rate}>
+                      <td className="py-1.5 px-2.5">
+                        {formatCurrency(tb.taxableAmount, currency)}
+                      </td>
+                      {isInterState ? (
+                        <>
+                          <td className="py-1.5 px-2 text-right">{tb.rate}%</td>
+                          <td className="py-1.5 px-2.5 text-right">
+                            {formatCurrency(tb.igstAmount ?? tb.taxAmount, currency)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="py-1.5 px-2 text-right">
+                            {formatCurrency(tb.cgstAmount ?? tb.taxAmount / 2, currency)} (
+                            {tb.rate / 2}%)
+                          </td>
+                          <td className="py-1.5 px-2 text-right">
+                            {formatCurrency(tb.sgstAmount ?? tb.taxAmount / 2, currency)} (
+                            {tb.rate / 2}%)
+                          </td>
+                        </>
+                      )}
+                      <td className="py-1.5 px-2.5 text-right font-bold">
+                        {formatCurrency(tb.taxAmount, currency)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {document.paymentInstructions && (
+            <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/70 space-y-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Bank & Payment Details
+              </div>
+              <div className="text-xs text-slate-700 whitespace-pre-line font-mono leading-relaxed">
+                {document.paymentInstructions}
+              </div>
+            </div>
+          )}
+
+          {document.notes && (
+            <div className="space-y-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Terms & Conditions / Notes
+              </div>
+              <div className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">
+                {document.notes}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right 5 cols: Totals & Signatory */}
+        <div className="md:col-span-5 space-y-4">
+          <div className="border border-slate-200 rounded-xl p-4 bg-white space-y-2 text-xs">
+            <div className="flex justify-between text-slate-600">
+              <span>Subtotal (Gross)</span>
+              <span className="font-mono font-medium text-slate-900">
+                {formatCurrency(summary.subtotal, currency)}
+              </span>
+            </div>
+
+            {summary.discountTotal > 0 && (
+              <div className="flex justify-between text-emerald-700">
+                <span>Total Discount</span>
+                <span className="font-mono font-medium">
+                  -{formatCurrency(summary.discountTotal, currency)}
+                </span>
+              </div>
+            )}
+
+            <div className="flex justify-between text-slate-600 border-t border-slate-100 pt-1.5">
+              <span>Taxable Amount</span>
+              <span className="font-mono font-semibold text-slate-900">
+                {formatCurrency(summary.taxableSubtotal, currency)}
+              </span>
+            </div>
+
+            {isInterState ? (
+              <div className="flex justify-between text-slate-700">
+                <span>IGST Total</span>
+                <span className="font-mono font-medium text-slate-900">
+                  {formatCurrency(summary.igstTotal ?? summary.totalTax, currency)}
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between text-slate-700">
+                  <span>CGST Total</span>
+                  <span className="font-mono font-medium text-slate-900">
+                    {formatCurrency(summary.cgstTotal ?? summary.totalTax / 2, currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-700">
+                  <span>SGST Total</span>
+                  <span className="font-mono font-medium text-slate-900">
+                    {formatCurrency(summary.sgstTotal ?? summary.totalTax / 2, currency)}
+                  </span>
+                </div>
+              </>
+            )}
+
+            {summary.shippingFee > 0 && (
+              <div className="flex justify-between text-slate-600">
+                <span>Shipping & Handling</span>
+                <span className="font-mono">{formatCurrency(summary.shippingFee, currency)}</span>
+              </div>
+            )}
+
+            {summary.extraCharges > 0 && (
+              <div className="flex justify-between text-slate-600">
+                <span>Extra Charges</span>
+                <span className="font-mono">{formatCurrency(summary.extraCharges, currency)}</span>
+              </div>
+            )}
+
+            <div
+              className="flex justify-between items-center p-3 rounded-lg text-white font-bold text-sm mt-2"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <span>Grand Total</span>
+              <span className="font-mono text-base">
+                {formatCurrency(summary.grandTotal, currency)}
+              </span>
+            </div>
+
+            {summary.amountPaid > 0 && (
+              <>
+                <div className="flex justify-between text-emerald-700 pt-1">
+                  <span>Amount Paid</span>
+                  <span className="font-mono">
+                    -{formatCurrency(summary.amountPaid, currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-2 text-sm">
+                  <span>Balance Due</span>
+                  <span className="font-mono" style={{ color: primaryColor }}>
+                    {formatCurrency(summary.balanceDue, currency)}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Authorized Signatory Box */}
+          <div className="border border-slate-200 rounded-lg p-3 text-right bg-slate-50/40">
+            <div className="text-[10px] font-bold text-slate-500 uppercase">
+              For {document.sender.name || 'Authorized Business'}
+            </div>
+            <div className="h-10 flex items-end justify-end">
+              {document.signatoryName && (
+                <span className="font-serif italic text-sm text-slate-800">
+                  {document.signatoryName}
+                </span>
+              )}
+            </div>
+            <div className="text-[10px] font-semibold text-slate-400 border-t border-slate-200 pt-1 inline-block px-4">
+              Authorized Signatory
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ============================================================================
+  // LAYOUT GROUP A: TALLY / BORDERED TAX GRID ('tally_prime')
+  // ============================================================================
+  if (templateMeta.id === 'tally_prime') {
+    return (
+      <div
+        id={captureId}
+        className={`bg-white text-slate-900 border-2 border-slate-900 p-6 md:p-8 max-w-4xl mx-auto ${fontClass} ${className} print:shadow-none print:m-0`}
+      >
+        <div className="text-center border-b-2 border-slate-900 pb-3 mb-4">
+          <div className="text-xs font-bold uppercase tracking-widest text-slate-600">
+            {docTitle}
+          </div>
+          <div className="text-2xl font-black uppercase text-slate-900 mt-0.5">
+            {document.sender.name}
+          </div>
+          <div className="text-xs text-slate-700">
+            {[
+              document.sender.address?.street1,
+              document.sender.address?.city,
+              document.sender.address?.state,
+              document.sender.address?.postalCode,
+            ]
+              .filter(Boolean)
+              .join(', ')}
+          </div>
+          <div className="text-xs font-mono font-bold mt-1">
+            {document.sender.taxId && <span>GSTIN: {document.sender.taxId}</span>}
+            {document.sender.phone && <span className="ml-4">Tel: {document.sender.phone}</span>}
+            {document.sender.email && <span className="ml-4">Email: {document.sender.email}</span>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 border-2 border-slate-900 mb-4">
+          <div className="p-3 border-b-2 md:border-b-0 md:border-r-2 border-slate-900">
+            <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">
+              Buyer (Bill To):
+            </div>
+            {renderClientDetails()}
+          </div>
+          <div className="grid grid-cols-2 text-xs divide-y divide-x divide-slate-900">
+            <div className="p-2.5">
+              <div className="text-[10px] text-slate-500 uppercase font-bold">Invoice No.</div>
+              <div className="font-mono font-bold text-slate-900">{document.documentNumber}</div>
+            </div>
+            <div className="p-2.5">
+              <div className="text-[10px] text-slate-500 uppercase font-bold">Dated</div>
+              <div className="font-bold text-slate-900">{document.issueDate}</div>
+            </div>
+            <div className="p-2.5">
+              <div className="text-[10px] text-slate-500 uppercase font-bold">Due Date</div>
+              <div className="font-semibold text-slate-900">{document.dueDate || '—'}</div>
+            </div>
+            <div className="p-2.5">
+              <div className="text-[10px] text-slate-500 uppercase font-bold">Terms / Ref</div>
+              <div className="font-semibold text-slate-900">
+                {document.paymentTerms || document.referenceNumber || 'Immediate'}
+              </div>
+            </div>
+            <div className="p-2.5 col-span-2">
+              <div className="text-[10px] text-slate-500 uppercase font-bold">Place of Supply</div>
+              <div className="font-bold text-slate-900">
+                {clientState || senderState || 'India'} (
+                {isInterState ? 'Inter-State IGST' : 'Intra-State CGST+SGST'})
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {renderItemsTable('bordered')}
+        {renderSummaryAndFooter()}
+      </div>
+    );
+  }
+
+  // ============================================================================
+  // LAYOUT GROUP B: FULL-BLEED COLORED BANNER HEADER
+  // ('cleartax_gst', 'vyapar_classic', 'professional', 'corporate', 'canva_studio', 'agency_retainer')
+  // ============================================================================
+  if (baseTokens.headerLayout === 'banner') {
+    return (
+      <div
+        id={captureId}
+        className={`bg-white text-slate-900 shadow-xl border border-slate-200 rounded-xl overflow-hidden max-w-4xl mx-auto ${fontClass} ${className} print:shadow-none print:border-none print:rounded-none`}
+      >
+        {/* Full-bleed Colored Header Banner */}
+        <div
+          className="p-6 md:p-10 text-white flex flex-col md:flex-row justify-between items-start gap-6"
+          style={{
+            background:
+              templateMeta.id === 'canva_studio'
+                ? `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`
+                : primaryColor,
+          }}
+        >
+          <div className="space-y-2.5">
+            {renderLogo('h-14 max-w-[200px]', true)}
+            <div className="text-2xl font-black tracking-tight">
+              {document.sender.name || 'Your Business Name'}
+            </div>
+            {renderSenderDetails('text-white/85', 'text-white')}
+          </div>
+
+          <div className="text-left md:text-right space-y-2 shrink-0">
+            <div className="inline-block px-3 py-1 rounded bg-white/20 backdrop-blur-xs text-white text-xs font-black tracking-widest uppercase">
+              {docTitle}
+            </div>
+            <div className="text-2xl font-mono font-black">#{document.documentNumber}</div>
+            <div className="text-xs text-white/90 space-y-0.5">
+              <div>
+                Issue Date: <strong>{document.issueDate}</strong>
+              </div>
+              {document.dueDate && (
+                <div>
+                  Due Date: <strong>{document.dueDate}</strong>
+                </div>
+              )}
+              {document.referenceNumber && (
+                <div>
+                  PO / Ref: <strong>{document.referenceNumber}</strong>
+                </div>
+              )}
+              {document.paymentTerms && (
+                <div>
+                  Terms: <strong>{document.paymentTerms}</strong>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 md:p-10 space-y-6">
+          {/* Bill To + Supply Metadata */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div>
+              <div
+                className="text-[10px] font-bold uppercase tracking-wider mb-1"
+                style={{ color: primaryColor }}
+              >
+                Billed To (Customer Details)
+              </div>
+              {renderClientDetails()}
+            </div>
+            <div className="flex flex-col justify-between md:text-right space-y-2">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  GST Supply Classification
+                </div>
+                <div className="text-xs font-bold text-slate-800 mt-0.5">
+                  {isInterState
+                    ? 'Inter-State Supply (IGST Applicable)'
+                    : 'Intra-State Supply (CGST + SGST Applicable)'}
+                </div>
+                {(clientState || senderState) && (
+                  <div className="text-xs text-slate-600">
+                    Place of Supply: <strong>{clientState || senderState}</strong>
+                  </div>
+                )}
+              </div>
+              <div className="p-3 rounded-lg bg-white border border-slate-200 inline-block md:ml-auto">
+                <div className="text-[10px] uppercase font-bold text-slate-400">Amount Due</div>
+                <div className="text-xl font-black font-mono" style={{ color: primaryColor }}>
+                  {formatCurrency(summary.balanceDue, currency)}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="w-64 bg-slate-50 border border-slate-200 p-4 rounded text-xs space-y-2">
-            <div className="flex justify-between"><span>Subtotal:</span><span className="font-bold">{formatCurrency(summary.subtotal, currency)}</span></div>
-            {summary.totalTax > 0 && <div className="flex justify-between"><span>Taxes:</span><span>{formatCurrency(summary.totalTax, currency)}</span></div>}
-            <div className="flex justify-between pt-2 border-t border-teal-800 font-black text-base text-teal-900">
-              <span>Total:</span><span>{formatCurrency(summary.grandTotal, currency)}</span>
-            </div>
-          </div>
+          {renderItemsTable('solid')}
+          {renderSummaryAndFooter()}
         </div>
       </div>
     );
   }
 
-  // --------------------------------------------------------------------------
-  // TEMPLATE 6: SERVICE BUSINESS & TRADES
-  // --------------------------------------------------------------------------
-  if (templateMeta.id === 'service_business') {
+  // ============================================================================
+  // LAYOUT GROUP C: LEFT ACCENT SIDEBAR ('freshbooks_cloud')
+  // ============================================================================
+  if (baseTokens.headerLayout === 'sidebar') {
     return (
       <div
-        id="invoice-document-capture"
-        className={`bg-white text-slate-900 shadow-xl border-t-8 border-amber-500 p-8 md:p-12 max-w-4xl mx-auto font-sans ${className} print:shadow-none print:border-none print:p-0 print:m-0`}
+        id={captureId}
+        className={`bg-white text-slate-900 shadow-xl border border-slate-200 rounded-xl overflow-hidden max-w-4xl mx-auto flex ${fontClass} ${className} print:shadow-none print:border-none`}
       >
-        <div className="flex justify-between items-start pb-6 border-b border-amber-200">
-          <div className="space-y-2">
-            {renderLogo()}
-            <div className="text-xl font-bold text-amber-900">{document.sender.name || 'SERVICE CONTRACTOR'}</div>
-            <div className="text-xs text-slate-600">{document.sender.phone} • {document.sender.email}</div>
-          </div>
-
-          <div className="text-right">
-            <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded text-xs font-bold uppercase tracking-wider">
-              {document.type.replace('_', ' ')}
-            </span>
-            <div className="text-xl font-black text-slate-900 mt-2">#{document.documentNumber}</div>
-            <div className="text-xs text-slate-500">Job Date: {document.issueDate}</div>
-          </div>
-        </div>
-
-        {/* Project Scope Banner */}
-        <div className="my-6 p-4 bg-amber-50/60 border border-amber-200 rounded-lg text-xs">
-          <span className="font-bold text-amber-900 uppercase tracking-wider block mb-1">Client & Location</span>
-          <div className="font-bold text-slate-900 text-sm">{document.client.name}</div>
-          <div className="text-slate-600">{document.client.billingAddress?.street1}, {document.client.billingAddress?.city}</div>
-        </div>
-
-        {/* Task Items */}
-        <table className="w-full text-left text-xs mb-6">
-          <thead className="bg-slate-900 text-white font-bold text-[10px] uppercase">
-            <tr>
-              <th className="py-2.5 px-3">Service / Labor / Material</th>
-              <th className="py-2.5 px-2 text-right">Hours/Qty</th>
-              <th className="py-2.5 px-2 text-right">Rate</th>
-              <th className="py-2.5 px-3 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {document.items.map((item, idx) => (
-              <tr key={item.id || idx} className="hover:bg-slate-50">
-                <td className="py-3 px-3 font-semibold text-slate-800">{item.description}</td>
-                <td className="py-3 px-2 text-right tabular-nums">{item.quantity}</td>
-                <td className="py-3 px-2 text-right tabular-nums">{formatCurrency(item.unitPrice, currency)}</td>
-                <td className="py-3 px-3 text-right tabular-nums font-bold text-slate-900">{formatCurrency(item.lineTotal, currency)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="flex justify-between items-start pt-4 border-t border-slate-200">
-          <div className="text-xs text-slate-600 max-w-sm space-y-2">
-            <span className="font-bold text-slate-700 block">Terms of Service</span>
-            <p className="text-[11px]">{document.notes || 'Labor guaranteed. Payment due upon completion.'}</p>
-          </div>
-
-          <div className="w-64 p-4 bg-amber-50 rounded-lg border border-amber-200 space-y-1.5 text-xs text-right">
-            <div className="flex justify-between text-slate-700"><span>Subtotal:</span><span className="font-bold">{formatCurrency(summary.subtotal, currency)}</span></div>
-            {summary.totalTax > 0 && <div className="flex justify-between text-slate-700"><span>Tax:</span><span>{formatCurrency(summary.totalTax, currency)}</span></div>}
-            <div className="flex justify-between pt-2 border-t border-amber-300 font-black text-base text-amber-900">
-              <span>Total:</span><span>{formatCurrency(summary.grandTotal, currency)}</span>
+        <div className="w-3 shrink-0" style={{ backgroundColor: primaryColor }} />
+        <div className="flex-1 p-6 md:p-10 space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start border-b border-slate-200 pb-6 gap-6">
+            <div className="space-y-2">
+              {renderLogo()}
+              <div className="text-2xl font-black" style={{ color: primaryColor }}>
+                {document.sender.name}
+              </div>
+              {renderSenderDetails()}
+            </div>
+            <div className="text-left md:text-right space-y-2">
+              <div
+                className="text-2xl font-black uppercase tracking-tight"
+                style={{ color: primaryColor }}
+              >
+                {docTitle}
+              </div>
+              <div className="font-mono font-bold text-base text-slate-800">
+                #{document.documentNumber}
+              </div>
+              <div className="text-xs text-slate-600 space-y-0.5">
+                <div>Issued: {document.issueDate}</div>
+                {document.dueDate && <div>Due: {document.dueDate}</div>}
+                {document.referenceNumber && <div>Ref: {document.referenceNumber}</div>}
+              </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                Bill To
+              </div>
+              {renderClientDetails()}
+            </div>
+            <div
+              className="p-4 rounded-lg flex flex-col justify-center items-start md:items-end"
+              style={{ backgroundColor: `${primaryColor}10`, border: `1px solid ${primaryColor}30` }}
+            >
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Total Balance Due
+              </span>
+              <span className="text-3xl font-black font-mono mt-1" style={{ color: primaryColor }}>
+                {formatCurrency(summary.balanceDue, currency)}
+              </span>
+              <span className="text-[11px] text-slate-500 mt-1">
+                {isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}
+              </span>
+            </div>
+          </div>
+
+          {renderItemsTable('tinted')}
+          {renderSummaryAndFooter()}
         </div>
       </div>
     );
   }
 
-  // --------------------------------------------------------------------------
-  // TEMPLATE 7: CONSULTING ADVISORY
-  // --------------------------------------------------------------------------
-  if (templateMeta.id === 'consulting') {
+  // ============================================================================
+  // LAYOUT GROUP D: CENTERED CLASSIC SERIF ('classic')
+  // ============================================================================
+  if (baseTokens.headerLayout === 'centered') {
     return (
       <div
-        id="invoice-document-capture"
-        className={`bg-white text-slate-900 shadow-xl border-t-8 border-indigo-600 p-8 md:p-14 max-w-4xl mx-auto font-sans ${className} print:shadow-none print:border-none print:p-0 print:m-0`}
+        id={captureId}
+        className={`bg-white text-slate-900 shadow-xl border border-slate-300 p-8 md:p-12 max-w-4xl mx-auto ${fontClass} ${className} print:shadow-none print:border-none`}
       >
-        <div className="flex justify-between items-start pb-8 border-b border-indigo-100">
+        <div className="text-center border-b-4 border-double border-slate-800 pb-6 mb-6 space-y-2">
+          {renderLogo('h-14 mx-auto')}
+          <div className="text-3xl font-bold tracking-wide uppercase text-slate-900">
+            {document.sender.name}
+          </div>
+          {renderSenderDetails('text-slate-600 flex flex-col items-center')}
+        </div>
+
+        <div className="flex flex-col md:flex-row justify-between items-start border-b border-slate-300 pb-6 mb-6 gap-6">
           <div>
-            {renderLogo()}
-            <div className="text-xl font-extrabold text-indigo-900 mt-2">{document.sender.name || 'ADVISORY PARTNERS'}</div>
-            <div className="text-xs text-slate-500 mt-1">Strategic Advisory & Consulting Group</div>
-          </div>
-
-          <div className="text-right space-y-1 text-xs">
-            <span className="text-indigo-600 font-extrabold uppercase tracking-widest text-xs block">
-              {document.type.replace('_', ' ')}
-            </span>
-            <div className="text-xl font-bold text-slate-900">№ {document.documentNumber}</div>
-            <div className="text-slate-400">Date: {document.issueDate}</div>
-          </div>
-        </div>
-
-        {/* Engagement Callout */}
-        <div className="my-6 p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 text-xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 block mb-1">Engagement Partner</span>
-          <div className="text-sm font-bold text-slate-900">{document.client.name}</div>
-          <div className="text-slate-600 mt-0.5">{document.client.email}</div>
-        </div>
-
-        {/* Deliverables Table */}
-        <table className="w-full text-left text-xs mb-8">
-          <thead>
-            <tr className="border-b-2 border-indigo-600 text-indigo-900 font-bold uppercase text-[10px] tracking-wider">
-              <th className="py-2.5">Milestone / Deliverable</th>
-              <th className="py-2.5 text-right">Units</th>
-              <th className="py-2.5 text-right">Rate</th>
-              <th className="py-2.5 text-right">Fee</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {document.items.map((item, idx) => (
-              <tr key={item.id || idx}>
-                <td className="py-3 font-semibold text-slate-800">{item.description}</td>
-                <td className="py-3 text-right tabular-nums text-slate-600">{item.quantity}</td>
-                <td className="py-3 text-right tabular-nums text-slate-600">{formatCurrency(item.unitPrice, currency)}</td>
-                <td className="py-3 text-right tabular-nums font-bold text-indigo-950">{formatCurrency(item.lineTotal, currency)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="flex justify-between items-start pt-6 border-t border-slate-200">
-          <div className="text-xs text-slate-500 max-w-sm space-y-2">
-            <span className="font-bold text-slate-800 block text-xs">Payment Terms & Wire Instructions</span>
-            <p className="whitespace-pre-line text-[11px]">{document.paymentInstructions || 'Direct wire remittance'}</p>
-          </div>
-
-          <div className="w-64 space-y-2 text-xs text-right">
-            <div className="flex justify-between text-slate-600"><span>Advisory Subtotal:</span><span className="font-bold">{formatCurrency(summary.subtotal, currency)}</span></div>
-            {summary.totalTax > 0 && <div className="flex justify-between text-slate-600"><span>Tax:</span><span>{formatCurrency(summary.totalTax, currency)}</span></div>}
-            <div className="flex justify-between pt-2 border-t-2 border-indigo-600 font-black text-base text-indigo-900">
-              <span>Total Investment:</span><span>{formatCurrency(summary.grandTotal, currency)}</span>
+            <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
+              Prepared For:
             </div>
+            {renderClientDetails()}
+          </div>
+          <div className="text-left md:text-right space-y-1 text-xs">
+            <div className="text-lg font-bold uppercase tracking-widest text-slate-900">
+              {docTitle}
+            </div>
+            <div className="font-mono font-bold text-sm">No: #{document.documentNumber}</div>
+            <div>Date: {document.issueDate}</div>
+            {document.dueDate && <div>Due Date: {document.dueDate}</div>}
+            {document.referenceNumber && <div>Ref: {document.referenceNumber}</div>}
+            {document.paymentTerms && <div>Payment Terms: {document.paymentTerms}</div>}
           </div>
         </div>
+
+        {renderItemsTable('bordered')}
+        {renderSummaryAndFooter()}
       </div>
     );
   }
 
-  // --------------------------------------------------------------------------
-  // TEMPLATE 8: RETAIL & POS RECEIPT
-  // --------------------------------------------------------------------------
+  // ============================================================================
+  // LAYOUT GROUP E: SPLIT MODERN / SAAS / ENTERPRISE
+  // ('modern', 'stripe_clean', 'zoho_standard', 'quickbooks_premier', 'consulting', 'minimal', 'service_business', 'retail')
+  // ============================================================================
   return (
     <div
-      id="invoice-document-capture"
-      className={`bg-white text-slate-900 shadow-md border-2 border-dashed border-sky-400 p-6 md:p-10 max-w-3xl mx-auto font-mono ${className} print:shadow-none print:border-none print:p-0 print:m-0`}
+      id={captureId}
+      className={`bg-white text-slate-900 shadow-xl border border-slate-200 rounded-2xl p-6 md:p-10 max-w-4xl mx-auto ${fontClass} ${className} print:shadow-none print:border-none print:p-0`}
     >
-      <div className="text-center pb-4 border-b-2 border-dashed border-slate-300 space-y-1">
-        <div className="flex justify-center mb-2">{renderLogo('h-10 max-w-[150px]')}</div>
-        <div className="font-black text-lg uppercase tracking-wider">{document.sender.name || 'COMMERCIAL RETAIL'}</div>
-        <div className="text-xs text-slate-500">STORE RECEIPT & INVOICE</div>
-        <div className="text-[11px] text-slate-500">#{document.documentNumber} • {document.issueDate}</div>
-      </div>
+      {/* Top Accent Strip */}
+      <div
+        className="h-2.5 -mt-6 -mx-6 md:-mt-10 md:-mx-10 rounded-t-2xl mb-8"
+        style={{ backgroundColor: primaryColor }}
+      />
 
-      <div className="py-4 text-xs space-y-1 border-b border-dashed border-slate-300">
-        <div>CUSTOMER: <span className="font-bold">{document.client.name}</span></div>
-        {document.client.email && <div className="text-[11px] text-slate-500">{document.client.email}</div>}
-      </div>
+      {/* Split Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start border-b border-slate-200 pb-6 gap-6">
+        <div className="space-y-2.5">
+          {renderLogo()}
+          <div className="text-2xl font-black tracking-tight text-slate-900">
+            {document.sender.name || 'Your Business Name'}
+          </div>
+          {renderSenderDetails()}
+        </div>
 
-      <div className="py-4">
-        <table className="w-full text-left text-xs border-collapse">
-          <thead>
-            <tr className="border-b border-dashed border-slate-400 text-[10px] uppercase">
-              <th className="py-1">ITEM</th>
-              <th className="py-1 text-center">QTY</th>
-              <th className="py-1 text-right">PRICE</th>
-              <th className="py-1 text-right">TOTAL</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-dashed divide-slate-200">
-            {document.items.map((item, idx) => (
-              <tr key={item.id || idx}>
-                <td className="py-2 font-bold">{item.description}</td>
-                <td className="py-2 text-center tabular-nums">{item.quantity}</td>
-                <td className="py-2 text-right tabular-nums">{formatCurrency(item.unitPrice, currency)}</td>
-                <td className="py-2 text-right tabular-nums font-bold">{formatCurrency(item.lineTotal, currency)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="pt-2 border-t-2 border-dashed border-slate-300 space-y-1 text-xs text-right">
-        <div className="flex justify-between"><span>SUBTOTAL</span><span>{formatCurrency(summary.subtotal, currency)}</span></div>
-        {summary.discountTotal > 0 && <div className="flex justify-between text-emerald-600"><span>DISCOUNT SAVINGS</span><span>-{formatCurrency(summary.discountTotal, currency)}</span></div>}
-        {summary.totalTax > 0 && <div className="flex justify-between"><span>TAX</span><span>{formatCurrency(summary.totalTax, currency)}</span></div>}
-        <div className="flex justify-between pt-2 border-t border-slate-900 font-black text-base">
-          <span>GRAND TOTAL</span><span>{formatCurrency(summary.grandTotal, currency)}</span>
+        <div className="text-left md:text-right space-y-2 shrink-0">
+          <div
+            className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+            style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+          >
+            {docTitle}
+          </div>
+          <div className="text-2xl font-black font-mono text-slate-900">
+            #{document.documentNumber}
+          </div>
+          <div className="text-xs text-slate-600 space-y-0.5">
+            <div>
+              Issue Date: <strong className="text-slate-900">{document.issueDate}</strong>
+            </div>
+            {document.dueDate && (
+              <div>
+                Due Date: <strong className="text-slate-900">{document.dueDate}</strong>
+              </div>
+            )}
+            {document.referenceNumber && (
+              <div>
+                Ref / PO: <strong className="text-slate-900">{document.referenceNumber}</strong>
+              </div>
+            )}
+            {document.paymentTerms && (
+              <div>
+                Terms: <strong className="text-slate-900">{document.paymentTerms}</strong>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="text-center pt-8 text-[11px] text-slate-500 space-y-2">
-        <div className="tracking-widest font-mono text-slate-400">||| | |||| ||||| || |||| |||</div>
-        <div>THANK YOU FOR SHOPPING WITH US!</div>
+      {/* Bill To & Supply Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
+        <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider block mb-1"
+            style={{ color: primaryColor }}
+          >
+            Bill To (Customer)
+          </span>
+          {renderClientDetails()}
+        </div>
+
+        <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Tax & Supply Details
+            </span>
+            <div className="text-xs font-bold text-slate-800">
+              {isInterState
+                ? 'Inter-State Supply (IGST Applicable)'
+                : 'Intra-State Supply (CGST + SGST Applicable)'}
+            </div>
+            <div className="text-xs text-slate-600">
+              Supplier State: <strong>{senderState || 'Not Specified'}</strong>
+            </div>
+            <div className="text-xs text-slate-600">
+              Place of Supply: <strong>{clientState || senderState || 'Same State'}</strong>
+            </div>
+          </div>
+
+          <div className="pt-3 mt-3 border-t border-slate-200 flex justify-between items-baseline">
+            <span className="text-xs font-bold uppercase text-slate-500">Balance Due</span>
+            <span className="text-xl font-black font-mono" style={{ color: primaryColor }}>
+              {formatCurrency(summary.balanceDue, currency)}
+            </span>
+          </div>
+        </div>
       </div>
+
+      {renderItemsTable(templateMeta.id === 'minimal' ? 'minimal' : 'solid')}
+      {renderSummaryAndFooter()}
     </div>
   );
 };

@@ -44,6 +44,19 @@ function isIndexedDBAvailable(): boolean {
   return typeof window !== 'undefined' && 'indexedDB' in window;
 }
 
+export function getCurrentOwnerUserId(): string {
+  if (typeof window === 'undefined') return 'anon_session';
+  const loggedInId = window.localStorage.getItem('billcraft_current_user_id');
+  if (loggedInId) return loggedInId;
+
+  let anonId = window.sessionStorage.getItem('billcraft_anon_session_id');
+  if (!anonId) {
+    anonId = `anon_${Date.now()}`;
+    window.sessionStorage.setItem('billcraft_anon_session_id', anonId);
+  }
+  return anonId;
+}
+
 export async function getDB(): Promise<IDBPDatabase<InvoiceDB> | null> {
   if (!isIndexedDBAvailable()) return null;
 
@@ -72,18 +85,17 @@ export async function getDB(): Promise<IDBPDatabase<InvoiceDB> | null> {
   return dbPromise;
 }
 
-// Document operations
-export async function getAllDocuments(): Promise<DocumentModel[]> {
+// Document operations scoped strictly per user
+export async function getAllDocuments(userId?: string): Promise<DocumentModel[]> {
+  const targetUser = userId || getCurrentOwnerUserId();
   const db = await getDB();
-  if (!db) {
-    return Array.from(memoryStore.documents.values()).sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
-  }
-  const all = await db.getAll('documents' as any);
-  return all.sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  );
+  const rawList: DocumentModel[] = db
+    ? await db.getAll('documents' as any)
+    : Array.from(memoryStore.documents.values());
+
+  return rawList
+    .filter((doc) => !doc.ownerUserId || doc.ownerUserId === targetUser)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
 export async function getDocumentById(id: string): Promise<DocumentModel | null> {
@@ -93,9 +105,11 @@ export async function getDocumentById(id: string): Promise<DocumentModel | null>
   return doc || null;
 }
 
-export async function saveDocument(document: DocumentModel): Promise<DocumentModel> {
+export async function saveDocument(document: DocumentModel, userId?: string): Promise<DocumentModel> {
+  const ownerUserId = userId || document.ownerUserId || getCurrentOwnerUserId();
   const updatedDoc: DocumentModel = {
     ...document,
+    ownerUserId,
     updatedAt: new Date().toISOString(),
   };
 
@@ -118,7 +132,7 @@ export async function deleteDocument(id: string): Promise<void> {
   await db.delete('documents' as any, id);
 }
 
-// Bulk export & import
+// Bulk export & import (scoped to current user)
 export async function exportLocalDataJson(): Promise<string> {
   const docs = await getAllDocuments();
   return JSON.stringify(
@@ -142,10 +156,11 @@ export async function importLocalDataJson(jsonString: string): Promise<{
       return { importedCount: 0, error: 'Invalid document backup format.' };
     }
 
+    const ownerUserId = getCurrentOwnerUserId();
     let count = 0;
     for (const doc of data.documents) {
       if (doc.id && doc.type && doc.items) {
-        await saveDocument(doc);
+        await saveDocument({ ...doc, ownerUserId }, ownerUserId);
         count++;
       }
     }

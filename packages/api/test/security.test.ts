@@ -27,8 +27,8 @@ describe('Multi-Tenant Access Control & Isolation', () => {
     const parties1 = await TenantApi.getParties(tenantId1);
     const parties2 = await TenantApi.getParties(tenantId2);
 
-    expect(parties1.some((p) => p.name === 'Globex Corporation')).toBe(true);
-    expect(parties2.some((p) => p.name === 'Globex Corporation')).toBe(false);
+    expect(parties1.some((p) => p.name === 'Reliance Retail Ventures Ltd')).toBe(true);
+    expect(parties2.some((p) => p.name === 'Reliance Retail Ventures Ltd')).toBe(false);
     expect(parties2.some((p) => p.name === 'Vandelay Industries')).toBe(true);
   });
 });

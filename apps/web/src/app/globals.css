@@ -73,21 +73,38 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
 }
 
+@page {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
 @media print {
+  html,
   body {
-    background: transparent !important;
-    color: black !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   .no-print {
     display: none !important;
   }
-  .print-only {
+  .print-only-sheet {
     display: block !important;
+    position: static !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    visibility: visible !important;
   }
 }

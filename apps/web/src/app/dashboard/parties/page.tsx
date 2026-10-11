@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TenantApi } from '@invoice/api';
-import { Party } from '@invoice/core';
+import { Party, INDIAN_STATES } from '@invoice/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,9 +34,10 @@ export default function TenantPartiesPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [taxId, setTaxId] = useState('');
+  const [gstState, setGstState] = useState('27 - Maharashtra');
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
-  const [country, setCountry] = useState('United States');
+  const [country, setCountry] = useState('India');
   const [notes, setNotes] = useState('');
 
   const loadParties = async () => {
@@ -81,7 +82,8 @@ export default function TenantPartiesPage() {
       billingAddress: {
         street1: street,
         city,
-        postalCode: '10001',
+        state: gstState,
+        postalCode: '400001',
         country,
       },
       notes,
@@ -243,14 +245,20 @@ export default function TenantPartiesPage() {
                     {p.taxId && (
                       <div className="flex items-center gap-2">
                         <Building className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                        <span>Tax ID: {p.taxId}</span>
+                        <span>GSTIN: {p.taxId}</span>
                       </div>
                     )}
                     {p.billingAddress?.street1 && (
                       <div className="flex items-start gap-2 pt-1 border-t border-slate-100">
                         <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
                         <span>
-                          {p.billingAddress.street1}, {p.billingAddress.city}
+                          {[
+                            p.billingAddress.street1,
+                            p.billingAddress.city,
+                            p.billingAddress.state,
+                          ]
+                            .filter(Boolean)
+                            .join(', ')}
                         </span>
                       </div>
                     )}
@@ -289,7 +297,7 @@ export default function TenantPartiesPage() {
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="e.g. Wayne Enterprises"
+                        placeholder="e.g. Reliance Retail Ventures Ltd"
                       />
                     </div>
                     <div>
@@ -300,7 +308,7 @@ export default function TenantPartiesPage() {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="billing@company.com"
+                        placeholder="accounts@company.in"
                       />
                     </div>
                     <div>
@@ -310,18 +318,36 @@ export default function TenantPartiesPage() {
                       <Input
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+1 (555) 000-0000"
+                        placeholder="+91 98765 43210"
                       />
                     </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-700 block mb-1">
-                        Tax ID / VAT Registration
-                      </label>
-                      <Input
-                        value={taxId}
-                        onChange={(e) => setTaxId(e.target.value)}
-                        placeholder="VAT-982141"
-                      />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">
+                          GSTIN Number
+                        </label>
+                        <Input
+                          value={taxId}
+                          onChange={(e) => setTaxId(e.target.value.toUpperCase())}
+                          placeholder="27AAACR5055K1Z7"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">
+                          GST State
+                        </label>
+                        <select
+                          value={gstState}
+                          onChange={(e) => setGstState(e.target.value)}
+                          className="w-full h-10 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium"
+                        >
+                          {INDIAN_STATES.map((st) => (
+                            <option key={st.code} value={st.label}>
+                              {st.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -331,7 +357,7 @@ export default function TenantPartiesPage() {
                         <Input
                           value={street}
                           onChange={(e) => setStreet(e.target.value)}
-                          placeholder="100 Main St"
+                          placeholder="Plot 42, MIDC"
                         />
                       </div>
                       <div>
@@ -341,7 +367,7 @@ export default function TenantPartiesPage() {
                         <Input
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          placeholder="New York"
+                          placeholder="Mumbai"
                         />
                       </div>
                     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   DocumentModel,
   DocumentType,
@@ -8,10 +8,12 @@ import {
   calculateDocument,
   DEFAULT_NUMBERING_RULES,
   formatDocumentNumber,
+  formatCurrency,
   CURRENCIES,
+  INDIAN_STATES,
   isValidStatusTransition,
 } from '@invoice/core';
-import { TEMPLATES } from '@invoice/theme';
+import { getTemplate, getTemplatesByCategory } from '@invoice/theme';
 import { saveDocument } from '@/lib/storage/indexed-db';
 import { exportDocumentToPdf, triggerPrint } from '@/lib/pdf/export-pdf';
 import { DocumentPreview } from './document-preview';
@@ -25,7 +27,6 @@ import {
   Printer,
   Download,
   Copy,
-  Save,
   CheckCircle2,
   AlertCircle,
   Plus,
@@ -33,15 +34,13 @@ import {
   FileText,
   Palette,
   Eye,
-  SlidersHorizontal,
-  CloudUpload,
   ArrowRight,
   Sparkles,
   Upload,
   X,
-  ImageIcon,
   Edit3,
   Columns,
+  RotateCcw,
 } from 'lucide-react';
 
 interface DocumentBuilderProps {
@@ -49,10 +48,23 @@ interface DocumentBuilderProps {
   onSaved?: (doc: DocumentModel) => void;
 }
 
+const THEME_COLOR_SWATCHES = [
+  { name: 'Royal Blue', hex: '#1D4ED8' },
+  { name: 'Fintech Indigo', hex: '#4F46E5' },
+  { name: 'Executive Slate', hex: '#0F172A' },
+  { name: 'Corporate Emerald', hex: '#0F766E' },
+  { name: 'QuickBooks Green', hex: '#15803D' },
+  { name: 'Vyapar Orange', hex: '#EA580C' },
+  { name: 'Studio Purple', hex: '#9333EA' },
+  { name: 'Crimson Red', hex: '#DC2626' },
+];
+
 export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   initialDocument,
   onSaved,
 }) => {
+  const categorizedTemplates = useMemo(() => getTemplatesByCategory(), []);
+
   // Document state
   const [docType, setDocType] = useState<DocumentType>(initialDocument?.type || 'invoice');
   const [status, setStatus] = useState<DocumentStatus>(initialDocument?.status || 'draft');
@@ -61,85 +73,99 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       formatDocumentNumber(DEFAULT_NUMBERING_RULES['invoice'], 1, new Date())
   );
   const [referenceNumber, setReferenceNumber] = useState<string>(
-    initialDocument?.referenceNumber || ''
+    initialDocument?.referenceNumber || 'PO-2026-8841'
   );
   const [issueDate, setIssueDate] = useState<string>(
     initialDocument?.issueDate || new Date().toISOString().split('T')[0]
   );
   const [dueDate, setDueDate] = useState<string>(
     initialDocument?.dueDate ||
-      new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
-  const [currency, setCurrency] = useState<string>(initialDocument?.currency || 'USD');
+  const [currency, setCurrency] = useState<string>(initialDocument?.currency || 'INR');
 
-  // Sender details
+  // Sender details (India GST defaults)
   const [senderLogo, setSenderLogo] = useState<string>(
     initialDocument?.sender.logoUrl || ''
   );
   const [senderName, setSenderName] = useState(
-    initialDocument?.sender.name || 'Acme Digital Studios'
+    initialDocument?.sender.name || 'Apex Digital Solutions Pvt Ltd'
   );
   const [senderEmail, setSenderEmail] = useState(
-    initialDocument?.sender.email || 'billing@acmedigital.io'
+    initialDocument?.sender.email || 'billing@apexdigital.in'
   );
   const [senderPhone, setSenderPhone] = useState(
-    initialDocument?.sender.phone || '+1 (555) 019-2834'
+    initialDocument?.sender.phone || '+91 22 4890 2100'
   );
   const [senderTaxId, setSenderTaxId] = useState(
-    initialDocument?.sender.taxId || 'US-948123910'
+    initialDocument?.sender.taxId || '27AABCA9603R1ZM'
   );
   const [senderStreet, setSenderStreet] = useState(
-    initialDocument?.sender.address?.street1 || '100 Innovation Way, Suite 400'
+    initialDocument?.sender.address?.street1 || 'Level 9, Platina Tower, BKC'
   );
   const [senderCity, setSenderCity] = useState(
-    initialDocument?.sender.address?.city || 'San Francisco'
+    initialDocument?.sender.address?.city || 'Mumbai'
+  );
+  const [senderState, setSenderState] = useState(
+    initialDocument?.sender.address?.state || '27 - Maharashtra'
+  );
+  const [senderPostalCode, setSenderPostalCode] = useState(
+    initialDocument?.sender.address?.postalCode || '400051'
   );
   const [senderCountry, setSenderCountry] = useState(
-    initialDocument?.sender.address?.country || 'United States'
+    initialDocument?.sender.address?.country || 'India'
   );
 
-  // Client details
+  // Client details (India GST defaults)
   const [clientName, setClientName] = useState(
-    initialDocument?.client.name || 'Globex Corporation'
+    initialDocument?.client.name || 'Reliance Retail Ventures Ltd'
   );
   const [clientEmail, setClientEmail] = useState(
-    initialDocument?.client.email || 'accounts@globexcorp.com'
+    initialDocument?.client.email || 'accounts@relianceretail.in'
   );
   const [clientPhone, setClientPhone] = useState(
-    initialDocument?.client.phone || '+1 (555) 482-9901'
+    initialDocument?.client.phone || '+91 22 6767 3800'
   );
   const [clientTaxId, setClientTaxId] = useState(
-    initialDocument?.client.taxId || 'VAT-8827391'
+    initialDocument?.client.taxId || '27AAACR5055K1Z7'
   );
   const [clientStreet, setClientStreet] = useState(
-    initialDocument?.client.billingAddress?.street1 || '742 Evergreen Terrace'
+    initialDocument?.client.billingAddress?.street1 || '4th Floor, Court House, L.T. Marg'
   );
   const [clientCity, setClientCity] = useState(
-    initialDocument?.client.billingAddress?.city || 'Springfield'
+    initialDocument?.client.billingAddress?.city || 'Mumbai'
+  );
+  const [clientState, setClientState] = useState(
+    initialDocument?.client.billingAddress?.state || '27 - Maharashtra'
+  );
+  const [clientPostalCode, setClientPostalCode] = useState(
+    initialDocument?.client.billingAddress?.postalCode || '400002'
   );
   const [clientCountry, setClientCountry] = useState(
-    initialDocument?.client.billingAddress?.country || 'United States'
+    initialDocument?.client.billingAddress?.country || 'India'
   );
 
-  // Items
+  // Line Items with HSN/SAC & GST %
   const [items, setItems] = useState<any[]>(
     initialDocument?.items || [
       {
         id: '1',
-        description: 'Cloud Infrastructure & API Architecture',
+        description: 'Cloud Infrastructure & Enterprise API Architecture',
+        hsnCode: '998315',
         quantity: 1,
-        unitPrice: 3500,
-        taxRate: 10,
+        unitPrice: 45000,
+        taxRate: 18,
         taxInclusive: false,
         discountType: 'percentage',
         discountValue: 0,
       },
       {
         id: '2',
-        description: 'Next.js Frontend & UI Engineering',
-        quantity: 40,
-        unitPrice: 125,
-        taxRate: 10,
+        description: 'Next.js Full-Stack Web Application Engineering',
+        hsnCode: '998314',
+        quantity: 10,
+        unitPrice: 3500,
+        taxRate: 18,
         taxInclusive: false,
         discountType: 'percentage',
         discountValue: 5,
@@ -164,32 +190,51 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.summary?.amountPaid || 0
   );
 
-  // Styling & Template
+  // Template & Custom Theme Overrides
   const [templateId, setTemplateId] = useState<string>(
-    initialDocument?.templateId || 'modern'
+    initialDocument?.templateId || 'cleartax_gst'
   );
+  const [customPrimaryColor, setCustomPrimaryColor] = useState<string | undefined>(
+    initialDocument?.customTheme?.primaryColor
+  );
+  const [customFontFamily, setCustomFontFamily] = useState<'sans' | 'serif' | 'mono' | undefined>(
+    initialDocument?.customTheme?.fontFamily
+  );
+
   const [notes, setNotes] = useState<string>(
-    initialDocument?.notes || 'Payment is due within 14 days of issue. Thank you for your business!'
+    initialDocument?.notes ||
+      '1. Payment is due within 15 days of invoice date.\n2. Goods/services once billed are subject to Mumbai jurisdiction.'
   );
   const [paymentTerms, setPaymentTerms] = useState<string>(
-    initialDocument?.paymentTerms || 'Net 14 Days'
+    initialDocument?.paymentTerms || 'Net 15 Days'
   );
   const [paymentInstructions, setPaymentInstructions] = useState<string>(
     initialDocument?.paymentInstructions ||
-      'Wire Transfer:\nBank: Silicon Valley Bank\nAccount: 987654321\nRouting: 121000358'
+      'Bank: HDFC Bank Ltd\nA/C No: 50200049182731\nIFSC: HDFC0000124\nUPI ID: apexdigital@hdfcbank'
+  );
+  const [signatoryName, setSignatoryName] = useState<string>(
+    initialDocument?.signatoryName || 'Authorized Director'
   );
 
   // UI state
-  const [viewMode, setViewMode] = useState<'sheet' | 'split'>('sheet');
+  const [viewMode, setViewMode] = useState<'sheet' | 'split' | 'pdf_preview'>('sheet');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  // Recalculate document model reactively using core engine
+  const activeTemplateMeta = useMemo(() => getTemplate(templateId), [templateId]);
+  const effectivePrimaryColor =
+    customPrimaryColor || activeTemplateMeta.defaultTokens.primaryColor;
+  const effectiveFontFamily =
+    customFontFamily || activeTemplateMeta.defaultTokens.fontFamily;
+
+  // Recalculate document model reactively using core financial & GST engine
   const calculated = useMemo(() => {
     return calculateDocument({
       currency,
+      senderState,
+      clientState,
       items: items.map((i) => ({
         ...i,
         quantity: Number(i.quantity) || 0,
@@ -205,6 +250,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     });
   }, [
     currency,
+    senderState,
+    clientState,
     items,
     docDiscountType,
     docDiscountValue,
@@ -223,6 +270,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       issueDate,
       dueDate,
       currency,
+      placeOfSupply: clientState,
       sender: {
         name: senderName,
         email: senderEmail,
@@ -232,7 +280,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         address: {
           street1: senderStreet,
           city: senderCity,
-          postalCode: '10001',
+          state: senderState,
+          postalCode: senderPostalCode,
           country: senderCountry,
         },
       },
@@ -246,7 +295,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         billingAddress: {
           street1: clientStreet,
           city: clientCity,
-          postalCode: '90210',
+          state: clientState,
+          postalCode: clientPostalCode,
           country: clientCountry,
         },
       },
@@ -257,9 +307,14 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       extraCharges,
       summary: calculated.summary,
       templateId,
+      customTheme: {
+        primaryColor: customPrimaryColor,
+        fontFamily: customFontFamily,
+      },
       notes,
       paymentTerms,
       paymentInstructions,
+      signatoryName,
       payments: initialDocument?.payments || [],
       createdAt: initialDocument?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -280,6 +335,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     senderLogo,
     senderStreet,
     senderCity,
+    senderState,
+    senderPostalCode,
     senderCountry,
     clientName,
     clientEmail,
@@ -287,6 +344,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     clientTaxId,
     clientStreet,
     clientCity,
+    clientState,
+    clientPostalCode,
     clientCountry,
     calculated,
     docDiscountType,
@@ -294,12 +353,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     shippingFee,
     extraCharges,
     templateId,
+    customPrimaryColor,
+    customFontFamily,
     notes,
     paymentTerms,
     paymentInstructions,
+    signatoryName,
   ]);
 
-  // Autosave to IndexedDB with debounce
+  // Autosave to user-scoped IndexedDB with debounce
   useEffect(() => {
     setSaveStatus('unsaved');
     const timer = setTimeout(async () => {
@@ -311,7 +373,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       } catch (e) {
         console.error('Failed to autosave document:', e);
       }
-    }, 1200);
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [documentModel]);
@@ -322,10 +384,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       ...prev,
       {
         id: `item_${Date.now()}`,
-        description: 'New service item',
+        description: 'New Product / Service Line Item',
+        hsnCode: '9983',
         quantity: 1,
-        unitPrice: 100,
-        taxRate: 0,
+        unitPrice: 1000,
+        taxRate: 18,
         taxInclusive: false,
         discountType: 'percentage',
         discountValue: 0,
@@ -366,6 +429,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const handleUpdateSenderAddress = (field: string, value: any) => {
     if (field === 'street1') setSenderStreet(value);
     else if (field === 'city') setSenderCity(value);
+    else if (field === 'state') setSenderState(value);
+    else if (field === 'postalCode') setSenderPostalCode(value);
     else if (field === 'country') setSenderCountry(value);
   };
 
@@ -379,11 +444,17 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const handleUpdateClientAddress = (field: string, value: any) => {
     if (field === 'street1') setClientStreet(value);
     else if (field === 'city') setClientCity(value);
+    else if (field === 'state') setClientState(value);
+    else if (field === 'postalCode') setClientPostalCode(value);
     else if (field === 'country') setClientCountry(value);
   };
 
   const handleUpdateDoc = (field: string, value: any) => {
-    if (field === 'documentNumber') setDocNumber(value);
+    if (field === 'type') {
+      const newType = value as DocumentType;
+      setDocType(newType);
+      setDocNumber(formatDocumentNumber(DEFAULT_NUMBERING_RULES[newType], 1, new Date()));
+    } else if (field === 'documentNumber') setDocNumber(value);
     else if (field === 'referenceNumber') setReferenceNumber(value);
     else if (field === 'issueDate') setIssueDate(value);
     else if (field === 'dueDate') setDueDate(value);
@@ -392,6 +463,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     else if (field === 'notes') setNotes(value);
     else if (field === 'paymentTerms') setPaymentTerms(value);
     else if (field === 'paymentInstructions') setPaymentInstructions(value);
+    else if (field === 'signatoryName') setSignatoryName(value);
   };
 
   // Actions
@@ -399,12 +471,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     try {
       setIsExportingPdf(true);
       await exportDocumentToPdf(
-        'invoice-document-capture',
-        `${docNumber || 'document'}`
+        'invoice-pdf-export-sheet',
+        `${docNumber || 'tax-invoice'}`
       );
     } catch (err) {
       console.error('PDF export error:', err);
-      alert('Unable to generate PDF. You can also use browser Print to save as PDF.');
+      alert('Unable to generate PDF. You can also use Print to save as PDF.');
     } finally {
       setIsExportingPdf(false);
     }
@@ -435,14 +507,14 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-100 flex flex-col">
       {/* Top Notice Banner */}
       {!bannerDismissed && (
         <div className="bg-blue-50 border-b border-blue-200 text-blue-900 px-4 py-2 text-xs flex justify-between items-center no-print">
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
             <span>
-              <strong>Private Anonymous Mode:</strong> Your documents are safely stored in your browser's IndexedDB. Never uploaded without your explicit approval.
+              <strong>GST & Multi-Currency Invoice Studio:</strong> Automatic CGST + SGST (Intra-State) & IGST (Inter-State) calculation based on State selection.
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -450,7 +522,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               href="/signup"
               className="font-semibold underline hover:text-blue-700 flex items-center gap-1"
             >
-              Sign up for Cloud Sync <ArrowRight className="h-3 w-3" />
+              Create Workspace <ArrowRight className="h-3 w-3" />
             </a>
             <button
               onClick={() => setBannerDismissed(true)}
@@ -463,9 +535,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       )}
 
       {/* Main Top Header Controls */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 md:px-8 py-3 flex flex-wrap items-center justify-between gap-4 no-print shadow-xs">
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 no-print shadow-xs">
         <div className="flex items-center gap-3">
-          <a href="/" className="font-black text-xl text-primary tracking-tight flex items-center gap-2">
+          <a href="/" className="font-black text-lg text-primary tracking-tight flex items-center gap-1.5">
             <Sparkles className="h-5 w-5 text-primary" />
             <span>BillCraft</span>
           </a>
@@ -481,13 +553,13 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             }}
             className="text-xs uppercase font-bold tracking-wider bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded px-2.5 py-1.5 cursor-pointer text-slate-800"
           >
-            <option value="invoice">Invoice</option>
+            <option value="invoice">Tax Invoice</option>
             <option value="estimate">Estimate / Quote</option>
+            <option value="pro_forma">Pro Forma Invoice</option>
             <option value="purchase_order">Purchase Order</option>
-            <option value="receipt">Receipt</option>
+            <option value="receipt">Payment Receipt</option>
             <option value="credit_note">Credit Note</option>
             <option value="debit_note">Debit Note</option>
-            <option value="pro_forma">Pro Forma</option>
           </select>
 
           <Badge
@@ -503,11 +575,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           </Badge>
 
           {/* Autosave Status */}
-          <div className="hidden sm:flex items-center gap-1 text-xs text-slate-500">
+          <div className="hidden md:flex items-center gap-1 text-xs text-slate-500">
             {saveStatus === 'saved' && (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Saved locally</span>
+                <span>Saved</span>
               </>
             )}
             {saveStatus === 'saving' && (
@@ -519,30 +591,30 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             {saveStatus === 'unsaved' && (
               <>
                 <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-                <span>Unsaved changes</span>
+                <span>Editing</span>
               </>
             )}
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons & Mode Switcher */}
         <div className="flex items-center gap-2">
-          {/* Mode Switcher */}
+          {/* 3-Way View Switcher */}
           <div className="hidden sm:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 mr-1">
             <button
               onClick={() => setViewMode('sheet')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
                 viewMode === 'sheet'
                   ? 'bg-white text-primary shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Edit3 className="h-3.5 w-3.5" />
-              <span>Inline Sheet</span>
+              <span>Inline Editor</span>
             </button>
             <button
               onClick={() => setViewMode('split')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
                 viewMode === 'split'
                   ? 'bg-white text-primary shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -551,29 +623,16 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               <Columns className="h-3.5 w-3.5" />
               <span>Split Form</span>
             </button>
-          </div>
-
-          {/* Mobile toggle */}
-          <div className="lg:hidden flex border border-slate-200 rounded-md overflow-hidden mr-2">
             <button
-              onClick={() => setMobileTab('editor')}
-              className={`px-3 py-1 text-xs font-medium ${
-                mobileTab === 'editor'
-                  ? 'bg-primary text-white'
-                  : 'bg-white text-slate-700'
+              onClick={() => setViewMode('pdf_preview')}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
+                viewMode === 'pdf_preview'
+                  ? 'bg-white text-primary shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Edit
-            </button>
-            <button
-              onClick={() => setMobileTab('preview')}
-              className={`px-3 py-1 text-xs font-medium ${
-                mobileTab === 'preview'
-                  ? 'bg-primary text-white'
-                  : 'bg-white text-slate-700'
-              }`}
-            >
-              Preview
+              <Eye className="h-3.5 w-3.5" />
+              <span>Print / PDF View</span>
             </button>
           </div>
 
@@ -581,28 +640,27 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             variant="outline"
             size="sm"
             onClick={triggerPrint}
-            className="flex items-center gap-1.5"
+            className="flex items-center gap-1.5 font-semibold"
           >
             <Printer className="h-4 w-4" />
-            <span className="hidden sm:inline">Print</span>
+            <span className="hidden sm:inline">Print A4</span>
           </Button>
 
           <Button
-            variant="outline"
             size="sm"
             onClick={handleDownloadPdf}
             disabled={isExportingPdf}
-            className="flex items-center gap-1.5"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 font-semibold shadow-xs"
           >
             <Download className="h-4 w-4" />
-            <span>{isExportingPdf ? 'Generating...' : 'PDF'}</span>
+            <span>{isExportingPdf ? 'Exporting PDF...' : 'Download PDF'}</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={handleDuplicateDoc}
-            className="hidden md:flex items-center gap-1.5"
+            className="hidden lg:flex items-center gap-1.5"
           >
             <Copy className="h-4 w-4" />
             <span>Duplicate</span>
@@ -612,7 +670,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             <Button
               size="sm"
               onClick={handleFinalize}
-              className="bg-primary hover:bg-primary-hover text-white flex items-center gap-1.5 shadow-sm"
+              className="bg-primary hover:bg-primary-hover text-white flex items-center gap-1.5 shadow-xs"
             >
               <CheckCircle2 className="h-4 w-4" />
               <span>Finalize</span>
@@ -631,561 +689,162 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         </div>
       </header>
 
-      {viewMode === 'sheet' ? (
-        <div className="flex-1 flex flex-col overflow-y-auto">
-          {/* Quick Toolbar for Templates and Currency */}
-          <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-2.5 flex flex-wrap items-center justify-between gap-4 no-print shadow-xs sticky top-[57px] z-30">
-            <div className="flex items-center gap-2 overflow-x-auto py-1 max-w-full">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1 flex items-center gap-1 shrink-0">
-                <Palette className="h-3.5 w-3.5 text-primary" /> Template:
-              </span>
-              <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto">
-                {Object.values(TEMPLATES).map((tmpl) => (
-                  <button
-                    key={tmpl.id}
-                    onClick={() => setTemplateId(tmpl.id)}
-                    className={`px-3 py-1 text-xs rounded-full font-medium transition-all flex items-center gap-1.5 border whitespace-nowrap ${
-                      templateId === tmpl.id
-                        ? 'bg-primary text-white border-primary shadow-xs font-bold ring-2 ring-primary/20'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: tmpl.defaultTokens.primaryColor }}
-                    />
-                    <span>{tmpl.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-medium text-slate-500">Currency:</span>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="text-xs font-bold bg-slate-50 border border-slate-200 rounded px-2.5 py-1 text-slate-800"
-              >
-                {Object.values(CURRENCIES).map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} ({c.symbol})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Centered Canvas Container */}
-          <div className="flex-1 bg-slate-200/60 p-4 md:p-8 flex justify-center items-start">
-            <div className="w-full max-w-4xl">
-              <InlineDocumentCanvas
-                document={documentModel}
-                onUpdateSender={handleUpdateSender}
-                onUpdateSenderAddress={handleUpdateSenderAddress}
-                onUpdateClient={handleUpdateClient}
-                onUpdateClientAddress={handleUpdateClientAddress}
-                onUpdateDoc={handleUpdateDoc}
-                onUpdateItem={handleUpdateItem}
-                onAddItem={handleAddItem}
-                onRemoveItem={handleRemoveItem}
-                onDuplicateItem={handleDuplicateItem}
-                onLogoUpload={(dataUrl) => setSenderLogo(dataUrl)}
-                onRemoveLogo={() => setSenderLogo('')}
-                onUpdateDiscount={(type, val) => {
-                  setDocDiscountType(type);
-                  setDocDiscountValue(val);
-                }}
-                onUpdateShipping={(val) => setShippingFee(val)}
-                onUpdateExtra={(val) => setExtraCharges(val)}
-                onUpdatePaid={(val) => setAmountPaid(val)}
-              />
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Main 2-Column Split Interface */
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* LEFT COLUMN: Editing Form */}
-        <div
-          className={`w-full lg:w-1/2 p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-60px)] no-print ${
-            mobileTab === 'preview' ? 'hidden lg:block' : 'block'
-          }`}
-        >
-          <div className="max-w-2xl mx-auto space-y-6">
-            {/* Document Header Details */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" /> Document Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Document Number
-                  </label>
-                  <Input
-                    value={docNumber}
-                    onChange={(e) => setDocNumber(e.target.value)}
-                    placeholder="INV-2026-00001"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Reference / PO Number
-                  </label>
-                  <Input
-                    value={referenceNumber}
-                    onChange={(e) => setReferenceNumber(e.target.value)}
-                    placeholder="PO-88421"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Issue Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={issueDate}
-                    onChange={(e) => setIssueDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Payment Due Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Currency
-                  </label>
-                  <select
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full text-sm border border-slate-300 rounded-md p-2 bg-white"
-                  >
-                    {Object.values(CURRENCIES).map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.code} - {c.name} ({c.symbol})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Template Selector */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <Palette className="h-4 w-4 text-primary" /> Template Style
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {Object.values(TEMPLATES).map((tmpl) => (
-                    <button
-                      key={tmpl.id}
-                      type="button"
-                      onClick={() => setTemplateId(tmpl.id)}
-                      className={`p-3 rounded-lg border text-left transition-all ${
-                        templateId === tmpl.id
-                          ? 'border-primary ring-2 ring-primary/20 bg-blue-50/50'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
-                      }`}
-                    >
-                      <div
-                        className="w-full h-2 rounded mb-2"
-                        style={{ backgroundColor: tmpl.defaultTokens.primaryColor }}
-                      />
-                      <div className="text-xs font-bold text-slate-800 truncate">
-                        {tmpl.name}
-                      </div>
-                      <div className="text-[10px] text-slate-500 capitalize">
-                        {tmpl.category}
-                      </div>
-                    </button>
+      {/* ==================================================================== */}
+      {/* DESIGN & TEMPLATE STUDIO BAR (Category Dropdown + Live Theme Picker) */}
+      {/* ==================================================================== */}
+      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 no-print shadow-xs sticky top-[53px] z-30">
+        {/* Left: Category-Wise Template Dropdown */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+              <Palette className="h-3.5 w-3.5 text-primary" /> Template:
+            </label>
+            <select
+              value={templateId}
+              onChange={(e) => {
+                setTemplateId(e.target.value);
+                setCustomPrimaryColor(undefined);
+              }}
+              className="text-xs font-bold bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-slate-900 cursor-pointer min-w-[240px] shadow-2xs"
+            >
+              {categorizedTemplates.map((group) => (
+                <optgroup key={group.category} label={group.label}>
+                  {group.templates.map((tmpl) => (
+                    <option key={tmpl.id} value={tmpl.id}>
+                      {tmpl.name} — ({tmpl.competitorStyle})
+                    </option>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
+                </optgroup>
+              ))}
+            </select>
+          </div>
 
-            {/* Sender & Client Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Sender Details */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-bold text-slate-800">
-                    Your Business (Sender)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Inline Company Logo Uploader */}
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 block">
-                      Company Logo
-                    </label>
-                    {senderLogo ? (
-                      <div className="flex items-center gap-3">
-                        <div className="relative p-1 bg-white border border-slate-200 rounded-md">
-                          <img
-                            src={senderLogo}
-                            alt="Logo preview"
-                            className="h-10 max-w-[120px] object-contain"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <label className="cursor-pointer">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                if (file.size > 2 * 1024 * 1024) {
-                                  alert('Logo file must be under 2MB.');
-                                  return;
-                                }
-                                const reader = new FileReader();
-                                reader.onload = (ev) => {
-                                  setSenderLogo(ev.target?.result as string);
-                                };
-                                reader.readAsDataURL(file);
-                              }}
-                              className="hidden"
-                            />
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-slate-200 bg-white hover:bg-slate-50 rounded-md text-slate-700">
-                              <Upload className="h-3 w-3" /> Change
-                            </span>
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => setSenderLogo('')}
-                            className="px-2 py-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors font-medium"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center p-3 border-2 border-dashed border-slate-300 hover:border-primary rounded-lg cursor-pointer bg-white transition-colors group">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            if (file.size > 2 * 1024 * 1024) {
-                              alert('Logo file must be under 2MB.');
-                              return;
-                            }
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              setSenderLogo(ev.target?.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                          className="hidden"
-                        />
-                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 group-hover:text-primary">
-                          <Upload className="h-4 w-4" />
-                          <span>+ Upload Company Logo</span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 mt-0.5">
-                          PNG, JPG, SVG, WebP (Max 2MB)
-                        </span>
-                      </label>
-                    )}
-                  </div>
+          {/* Theme Color Picker & Swatches */}
+          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+            <span className="text-[11px] font-semibold text-slate-500 mr-1">Theme Color:</span>
+            {THEME_COLOR_SWATCHES.map((swatch) => (
+              <button
+                key={swatch.hex}
+                type="button"
+                onClick={() => setCustomPrimaryColor(swatch.hex)}
+                title={swatch.name}
+                className={`w-5 h-5 rounded-full border transition-transform ${
+                  effectivePrimaryColor.toLowerCase() === swatch.hex.toLowerCase()
+                    ? 'scale-125 ring-2 ring-offset-1 ring-slate-900 border-white'
+                    : 'border-slate-300 hover:scale-110'
+                }`}
+                style={{ backgroundColor: swatch.hex }}
+              />
+            ))}
+            <input
+              type="color"
+              value={effectivePrimaryColor}
+              onChange={(e) => setCustomPrimaryColor(e.target.value)}
+              title="Custom Brand Color"
+              className="w-6 h-6 rounded cursor-pointer border border-slate-300 p-0 bg-transparent ml-1"
+            />
+            {(customPrimaryColor || customFontFamily) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomPrimaryColor(undefined);
+                  setCustomFontFamily(undefined);
+                }}
+                title="Reset to template default theme"
+                className="text-[11px] text-slate-500 hover:text-slate-900 flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded bg-slate-100"
+              >
+                <RotateCcw className="h-3 w-3" /> Reset
+              </button>
+            )}
+          </div>
 
-                  <Input
-                    placeholder="Business Name"
-                    value={senderName}
-                    onChange={(e) => setSenderName(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Email"
-                    value={senderEmail}
-                    onChange={(e) => setSenderEmail(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Phone"
-                    value={senderPhone}
-                    onChange={(e) => setSenderPhone(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Tax ID / VAT"
-                    value={senderTaxId}
-                    onChange={(e) => setSenderTaxId(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Street Address"
-                    value={senderStreet}
-                    onChange={(e) => setSenderStreet(e.target.value)}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      placeholder="City"
-                      value={senderCity}
-                      onChange={(e) => setSenderCity(e.target.value)}
-                    />
-                    <Input
-                      placeholder="Country"
-                      value={senderCountry}
-                      onChange={(e) => setSenderCountry(e.target.value)}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Client Details */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-bold text-slate-800">
-                    Client (Bill To)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Input
-                    placeholder="Client or Company Name"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Email"
-                    value={clientEmail}
-                    onChange={(e) => setClientEmail(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Phone"
-                    value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Tax ID / VAT"
-                    value={clientTaxId}
-                    onChange={(e) => setClientTaxId(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Billing Street"
-                    value={clientStreet}
-                    onChange={(e) => setClientStreet(e.target.value)}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      placeholder="City"
-                      value={clientCity}
-                      onChange={(e) => setClientCity(e.target.value)}
-                    />
-                    <Input
-                      placeholder="Country"
-                      value={clientCountry}
-                      onChange={(e) => setClientCountry(e.target.value)}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Line Items Manager */}
-            <Card>
-              <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <SlidersHorizontal className="h-4 w-4 text-primary" /> Line Items
-                </CardTitle>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleAddItem}
-                  className="flex items-center gap-1 text-xs"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Add Item
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {items.map((item, idx) => (
-                  <div
-                    key={item.id || idx}
-                    className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-3 relative group"
-                  >
-                    <div className="flex justify-between items-center gap-2">
-                      <Input
-                        className="font-medium bg-white"
-                        placeholder="Item description / service"
-                        value={item.description}
-                        onChange={(e) =>
-                          handleUpdateItem(idx, 'description', e.target.value)
-                        }
-                      />
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleDuplicateItem(idx)}
-                          title="Duplicate item"
-                          className="p-1.5 text-slate-400 hover:text-slate-700 rounded"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={items.length <= 1}
-                          onClick={() => handleRemoveItem(idx)}
-                          title="Remove item"
-                          className="p-1.5 text-slate-400 hover:text-red-600 rounded disabled:opacity-30"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                      <div>
-                        <label className="text-slate-500 block mb-1">Quantity</label>
-                        <Input
-                          type="number"
-                          min="0.01"
-                          step="any"
-                          className="bg-white"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleUpdateItem(idx, 'quantity', e.target.value)
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="text-slate-500 block mb-1">Unit Price</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="any"
-                          className="bg-white"
-                          value={item.unitPrice}
-                          onChange={(e) =>
-                            handleUpdateItem(idx, 'unitPrice', e.target.value)
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="text-slate-500 block mb-1">Tax Rate (%)</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          className="bg-white"
-                          value={item.taxRate}
-                          onChange={(e) =>
-                            handleUpdateItem(idx, 'taxRate', e.target.value)
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="text-slate-500 block mb-1">Discount (%)</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          className="bg-white"
-                          value={item.discountValue}
-                          onChange={(e) =>
-                            handleUpdateItem(idx, 'discountValue', e.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Additional Charges & Discounts */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold">
-                  Document Discounts & Charges
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">
-                    Document Discount (%)
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={docDiscountValue}
-                    onChange={(e) => setDocDiscountValue(Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">
-                    Shipping Fee
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={shippingFee}
-                    onChange={(e) => setShippingFee(Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">
-                    Additional Charges
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={extraCharges}
-                    onChange={(e) => setExtraCharges(Number(e.target.value))}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Notes and Instructions */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold">Notes & Payment Terms</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Payment Instructions / Bank Details
-                  </label>
-                  <Textarea
-                    rows={3}
-                    value={paymentInstructions}
-                    onChange={(e) => setPaymentInstructions(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Notes & Terms
-                  </label>
-                  <Textarea
-                    rows={2}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+          {/* Typography Selector */}
+          <div className="hidden xl:flex items-center gap-1.5 pl-2 border-l border-slate-200">
+            <span className="text-[11px] font-semibold text-slate-500">Font:</span>
+            <select
+              value={effectiveFontFamily}
+              onChange={(e) => setCustomFontFamily(e.target.value as 'sans' | 'serif' | 'mono')}
+              className="text-xs font-semibold bg-slate-50 border border-slate-300 rounded px-2 py-1 text-slate-800"
+            >
+              <option value="sans">Modern Sans</option>
+              <option value="serif">Executive Serif</option>
+              <option value="mono">Technical Mono</option>
+            </select>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Live Realtime Document Preview */}
-        <div
-          className={`w-full lg:w-1/2 bg-slate-200/60 p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-60px)] flex justify-center items-start ${
-            mobileTab === 'editor' ? 'hidden lg:flex' : 'flex'
-          }`}
-        >
-          <div className="w-full max-w-3xl">
+        {/* Right: Currency & GST Supply Status */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-slate-500">Currency:</span>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="text-xs font-bold bg-slate-50 border border-slate-300 rounded-md px-2.5 py-1 text-slate-900 cursor-pointer"
+            >
+              {Object.values(CURRENCIES).map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} ({c.symbol})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* ==================================================================== */}
+      {/* VIEW MODE 1: INLINE SHEET EDITOR (Default) */}
+      {/* ==================================================================== */}
+      {viewMode === 'sheet' && (
+        <div className="flex-1 bg-slate-200/70 p-4 md:p-8 flex justify-center items-start overflow-y-auto no-print">
+          <div className="w-full max-w-4xl">
+            <InlineDocumentCanvas
+              document={documentModel}
+              onUpdateSender={handleUpdateSender}
+              onUpdateSenderAddress={handleUpdateSenderAddress}
+              onUpdateClient={handleUpdateClient}
+              onUpdateClientAddress={handleUpdateClientAddress}
+              onUpdateDoc={handleUpdateDoc}
+              onUpdateItem={handleUpdateItem}
+              onAddItem={handleAddItem}
+              onRemoveItem={handleRemoveItem}
+              onDuplicateItem={handleDuplicateItem}
+              onLogoUpload={(dataUrl) => setSenderLogo(dataUrl)}
+              onRemoveLogo={() => setSenderLogo('')}
+              onUpdateDiscount={(type, val) => {
+                setDocDiscountType(type);
+                setDocDiscountValue(val);
+              }}
+              onUpdateShipping={(val) => setShippingFee(val)}
+              onUpdateExtra={(val) => setExtraCharges(val)}
+              onUpdatePaid={(val) => setAmountPaid(val)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* VIEW MODE 2: PRINT / PDF CLEAN PREVIEW */}
+      {/* ==================================================================== */}
+      {viewMode === 'pdf_preview' && (
+        <div className="flex-1 bg-slate-300/70 p-4 md:p-8 flex flex-col items-center overflow-y-auto no-print">
+          <div className="mb-4 flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 text-xs">
+            <span className="font-semibold text-slate-700">
+              A4 Print & PDF Output Preview ({activeTemplateMeta.name})
+            </span>
+            <Button
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={isExportingPdf}
+              className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <Download className="h-3.5 w-3.5 mr-1" /> Download PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={triggerPrint} className="h-7 text-xs">
+              <Printer className="h-3.5 w-3.5 mr-1" /> Print Now
+            </Button>
+          </div>
+          <div className="w-full max-w-4xl">
             <DocumentPreview
               document={documentModel}
               onLogoUpload={(dataUrl) => setSenderLogo(dataUrl)}
@@ -1193,8 +852,496 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             />
           </div>
         </div>
-      </div>
       )}
+
+      {/* ==================================================================== */}
+      {/* VIEW MODE 3: 2-COLUMN SPLIT FORM & LIVE PREVIEW */}
+      {/* ==================================================================== */}
+      {viewMode === 'split' && (
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden no-print">
+          {/* LEFT COLUMN: Structured Editing Form */}
+          <div
+            className={`w-full lg:w-1/2 p-4 md:p-6 overflow-y-auto max-h-[calc(100vh-110px)] ${
+              mobileTab === 'preview' ? 'hidden lg:block' : 'block'
+            }`}
+          >
+            <div className="max-w-2xl mx-auto space-y-5">
+              {/* Document Metadata Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" /> Document & Date Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Invoice / Document No.
+                    </label>
+                    <Input
+                      value={docNumber}
+                      onChange={(e) => setDocNumber(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      PO / Reference No.
+                    </label>
+                    <Input
+                      value={referenceNumber}
+                      onChange={(e) => setReferenceNumber(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Payment Terms
+                    </label>
+                    <Input
+                      value={paymentTerms}
+                      onChange={(e) => setPaymentTerms(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Issue Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={issueDate}
+                      onChange={(e) => setIssueDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Due Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Authorized Signatory
+                    </label>
+                    <Input
+                      value={signatoryName}
+                      onChange={(e) => setSignatoryName(e.target.value)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Sender & Client Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Sender Card */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-bold">
+                      From (Your Business & GSTIN)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    <div className="p-2.5 rounded-lg border border-dashed border-slate-300 bg-slate-50/70 flex items-center justify-between gap-2">
+                      {senderLogo ? (
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={senderLogo}
+                            alt="Logo"
+                            className="h-9 max-w-[100px] object-contain bg-white p-1 rounded border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSenderLogo('')}
+                            className="text-xs text-red-600 font-semibold hover:underline"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-500">Company Logo</span>
+                      )}
+                      <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                        <Upload className="h-3 w-3" /> Upload
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) =>
+                              setSenderLogo(ev.target?.result as string);
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    <Input
+                      placeholder="Business Name"
+                      value={senderName}
+                      onChange={(e) => setSenderName(e.target.value)}
+                    />
+                    <Input
+                      placeholder="GSTIN (e.g. 27AABCU9603R1ZM)"
+                      value={senderTaxId}
+                      onChange={(e) => setSenderTaxId(e.target.value.toUpperCase())}
+                    />
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">
+                        Supplier GST State
+                      </label>
+                      <select
+                        value={senderState}
+                        onChange={(e) => setSenderState(e.target.value)}
+                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-semibold"
+                      >
+                        {INDIAN_STATES.map((st) => (
+                          <option key={st.code} value={st.label}>
+                            {st.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <Input
+                      placeholder="Email"
+                      value={senderEmail}
+                      onChange={(e) => setSenderEmail(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Phone"
+                      value={senderPhone}
+                      onChange={(e) => setSenderPhone(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Street Address"
+                      value={senderStreet}
+                      onChange={(e) => setSenderStreet(e.target.value)}
+                    />
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input
+                        placeholder="City"
+                        value={senderCity}
+                        onChange={(e) => setSenderCity(e.target.value)}
+                      />
+                      <Input
+                        placeholder="PIN Code"
+                        value={senderPostalCode}
+                        onChange={(e) => setSenderPostalCode(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Country"
+                        value={senderCountry}
+                        onChange={(e) => setSenderCountry(e.target.value)}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Client Card */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-bold">
+                      Bill To (Customer & Place of Supply)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    <Input
+                      placeholder="Customer / Company Name"
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Customer GSTIN (e.g. 27AAACR5055K1Z7)"
+                      value={clientTaxId}
+                      onChange={(e) => setClientTaxId(e.target.value.toUpperCase())}
+                    />
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">
+                        Place of Supply (Customer State)
+                      </label>
+                      <select
+                        value={clientState}
+                        onChange={(e) => setClientState(e.target.value)}
+                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-semibold"
+                      >
+                        {INDIAN_STATES.map((st) => (
+                          <option key={st.code} value={st.label}>
+                            {st.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <Input
+                      placeholder="Client Email"
+                      value={clientEmail}
+                      onChange={(e) => setClientEmail(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Client Phone"
+                      value={clientPhone}
+                      onChange={(e) => setClientPhone(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Billing Street"
+                      value={clientStreet}
+                      onChange={(e) => setClientStreet(e.target.value)}
+                    />
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input
+                        placeholder="City"
+                        value={clientCity}
+                        onChange={(e) => setClientCity(e.target.value)}
+                      />
+                      <Input
+                        placeholder="PIN Code"
+                        value={clientPostalCode}
+                        onChange={(e) => setClientPostalCode(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Country"
+                        value={clientCountry}
+                        onChange={(e) => setClientCountry(e.target.value)}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Line Items Card */}
+              <Card>
+                <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-bold">
+                    Line Items (HSN/SAC & GST)
+                  </CardTitle>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleAddItem}
+                    className="h-8 text-xs font-semibold"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Item
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {items.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-lg border border-slate-200 bg-slate-50/60 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-500">
+                          Item #{index + 1}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateItem(index)}
+                            className="text-xs text-slate-500 hover:text-primary px-1.5 py-0.5"
+                          >
+                            Duplicate
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(index)}
+                            disabled={items.length <= 1}
+                            className="text-xs text-red-500 hover:text-red-700 disabled:opacity-30 px-1.5 py-0.5"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <div className="md:col-span-3">
+                          <label className="text-[10px] font-semibold text-slate-500 block">
+                            Description
+                          </label>
+                          <Input
+                            value={item.description}
+                            onChange={(e) =>
+                              handleUpdateItem(index, 'description', e.target.value)
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-500 block">
+                            HSN / SAC
+                          </label>
+                          <Input
+                            value={item.hsnCode || ''}
+                            onChange={(e) =>
+                              handleUpdateItem(index, 'hsnCode', e.target.value)
+                            }
+                            placeholder="998314"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-500 block">
+                            Qty
+                          </label>
+                          <Input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) =>
+                              handleUpdateItem(index, 'quantity', Number(e.target.value))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-500 block">
+                            Rate ({currency})
+                          </label>
+                          <Input
+                            type="number"
+                            value={item.unitPrice}
+                            onChange={(e) =>
+                              handleUpdateItem(index, 'unitPrice', Number(e.target.value))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-500 block">
+                            Discount (%)
+                          </label>
+                          <Input
+                            type="number"
+                            value={item.discountValue}
+                            onChange={(e) =>
+                              handleUpdateItem(
+                                index,
+                                'discountValue',
+                                Number(e.target.value)
+                              )
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-500 block">
+                            GST Rate (%)
+                          </label>
+                          <select
+                            value={item.taxRate}
+                            onChange={(e) =>
+                              handleUpdateItem(index, 'taxRate', Number(e.target.value))
+                            }
+                            className="w-full h-9 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold"
+                          >
+                            <option value={0}>0% (Exempt)</option>
+                            <option value={5}>5% GST</option>
+                            <option value={12}>12% GST</option>
+                            <option value={18}>18% GST</option>
+                            <option value={28}>28% GST</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Notes & Bank Details */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-bold">
+                    Bank Details, Notes & Adjustments
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">
+                        Shipping Fee
+                      </label>
+                      <Input
+                        type="number"
+                        value={shippingFee}
+                        onChange={(e) => setShippingFee(Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">
+                        Extra Charges
+                      </label>
+                      <Input
+                        type="number"
+                        value={extraCharges}
+                        onChange={(e) => setExtraCharges(Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">
+                        Advance / Paid
+                      </label>
+                      <Input
+                        type="number"
+                        value={amountPaid}
+                        onChange={(e) => setAmountPaid(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Bank / NEFT / UPI Payment Instructions
+                    </label>
+                    <Textarea
+                      rows={3}
+                      value={paymentInstructions}
+                      onChange={(e) => setPaymentInstructions(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Terms & Conditions / Notes
+                    </label>
+                    <Textarea
+                      rows={2}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Live Realtime Document Preview */}
+          <div
+            className={`w-full lg:w-1/2 bg-slate-200/70 p-4 md:p-6 overflow-y-auto max-h-[calc(100vh-110px)] flex justify-center items-start ${
+              mobileTab === 'editor' ? 'hidden lg:flex' : 'flex'
+            }`}
+          >
+            <div className="w-full max-w-3xl">
+              <DocumentPreview
+                document={documentModel}
+                onLogoUpload={(dataUrl) => setSenderLogo(dataUrl)}
+                onRemoveLogo={() => setSenderLogo('')}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* DEDICATED CLEAN A4 PRINT & PDF CAPTURE SHEET (Always Rendered Cleanly) */}
+      {/* ==================================================================== */}
+      <div
+        className="print-only-sheet fixed -left-[9999px] top-0 w-[860px] bg-white z-[-1]"
+        aria-hidden="true"
+      >
+        <DocumentPreview
+          document={documentModel}
+          captureId="invoice-pdf-export-sheet"
+          isPrintOnly
+        />
+      </div>
     </div>
   );
 };

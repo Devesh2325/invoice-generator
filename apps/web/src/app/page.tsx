@@ -41,21 +41,18 @@ export default function LandingPage() {
             <Link href="#pricing" className="hover:text-primary transition-colors">
               Pricing
             </Link>
-            <Link href="/history" className="hover:text-primary transition-colors flex items-center gap-1.5">
-              <Clock className="h-4 w-4" /> Local History
-            </Link>
           </nav>
         </div>
 
         <div className="flex items-center gap-3">
-          <Link href="/history">
-            <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
-              Saved Documents
+          <Link href="/login">
+            <Button variant="ghost" size="sm">
+              Sign In
             </Button>
           </Link>
-          <Link href="/login">
-            <Button variant="outline" size="sm">
-              Sign In
+          <Link href="/signup">
+            <Button variant="outline" size="sm" className="hidden sm:inline-flex font-semibold">
+              Sign Up
             </Button>
           </Link>
           <Link href="/create">
@@ -69,18 +66,18 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="pt-20 pb-16 px-6 lg:px-12 max-w-7xl mx-auto text-center space-y-6">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-primary text-xs font-semibold">
-          <Zap className="h-3.5 w-3.5" /> 100% Free & Private Anonymous Mode — No Account Required
+          <Zap className="h-3.5 w-3.5" /> India GST Ready (CGST, SGST, IGST) & Multi-Currency Billing
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-slate-900 max-w-4xl mx-auto leading-[1.15]">
-          Generate Professional Invoices in Seconds,{' '}
+          Generate Professional GST & Business Invoices{' '}
           <span className="text-primary underline decoration-primary/30 decoration-wavy">
-            Without Any Friction
+            In Seconds
           </span>
         </h1>
 
         <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto font-normal">
-          Create, customize, preview, and download high-precision financial invoices, estimates, purchase orders, and receipts with zero signup required.
+          Create, customize, preview, and download high-precision GST tax invoices, estimates, purchase orders, and receipts with automatic CGST/SGST & IGST calculation.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
@@ -91,7 +88,7 @@ export default function LandingPage() {
           </Link>
           <Link href="#templates">
             <Button variant="outline" size="lg" className="h-12 px-6 text-base font-semibold">
-              <Palette className="h-5 w-5 mr-2 text-slate-500" /> Explore 8 Templates
+              <Palette className="h-5 w-5 mr-2 text-slate-500" /> Explore 17 Templates
             </Button>
           </Link>
         </div>

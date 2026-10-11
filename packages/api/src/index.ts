@@ -5,9 +5,17 @@ export interface Tenant {
   id: string;
   name: string;
   slug: string;
+  ownerUserId?: string;
   custom_domain?: string | null;
   is_domain_verified: boolean;
   role: 'owner' | 'admin' | 'accountant' | 'staff' | 'viewer';
+  currency?: string;
+  country?: string;
+  gstState?: string;
+  taxId?: string;
+  street?: string;
+  city?: string;
+  invoicePrefix?: string;
 }
 
 export interface ProductCatalogItem {
@@ -15,6 +23,7 @@ export interface ProductCatalogItem {
   tenantId: string;
   name: string;
   sku: string;
+  hsnCode?: string;
   description: string;
   unitPrice: number;
   unit: string;
@@ -31,6 +40,14 @@ export interface TenantBrandSettings {
   defaultTerms?: string;
   defaultInstructions?: string;
   footerText?: string;
+  businessName?: string;
+  currency?: string;
+  country?: string;
+  gstState?: string;
+  taxId?: string;
+  street?: string;
+  city?: string;
+  invoicePrefix?: string;
 }
 
 // 1. Client initialization
@@ -50,23 +67,51 @@ export function getSupabase(): SupabaseClient | null {
   return supabaseClient;
 }
 
-// 2. Demo In-Memory State for Instant Local Prototyping
+// Helper for browser storage persistence per user/tenant
+function getLocalStore<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function setLocalStore<T>(key: string, value: T): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.error('localStorage write error:', e);
+  }
+}
+
+// 2. Demo Seed Data (Scoped strictly to Demo User 'usr_demo_01')
 const DEMO_TENANTS: Tenant[] = [
   {
     id: 'a0000000-0000-0000-0000-000000000001',
     name: 'Acme Design Agency',
     slug: 'acme-design',
+    ownerUserId: 'usr_demo_01',
     custom_domain: 'billing.acmedesign.io',
     is_domain_verified: true,
     role: 'owner',
+    currency: 'INR',
+    country: 'India',
+    gstState: '27 - Maharashtra',
+    taxId: '27AABCU9603R1ZM',
   },
   {
     id: 'a0000000-0000-0000-0000-000000000002',
     name: 'Nexus Cloud Solutions',
     slug: 'nexus-cloud',
+    ownerUserId: 'usr_demo_01',
     custom_domain: null,
     is_domain_verified: false,
     role: 'admin',
+    currency: 'USD',
+    country: 'United States',
   },
 ];
 
@@ -75,33 +120,35 @@ const DEMO_PARTIES: Record<string, Party[]> = {
     {
       id: 'c0000000-0000-0000-0000-000000000001',
       type: 'customer',
-      name: 'Globex Corporation',
-      email: 'accounts@globex.com',
-      phone: '+1 (555) 019-2831',
-      taxId: 'VAT-99281',
+      name: 'Reliance Retail Ventures Ltd',
+      email: 'accounts@relianceretail.in',
+      phone: '+91 22 6767 3800',
+      taxId: '27AAACR5055K1Z7',
       billingAddress: {
-        street1: '742 Evergreen Terrace',
-        city: 'Springfield',
-        postalCode: '90210',
-        country: 'United States',
+        street1: '4th Floor, Court House, Lokmanya Tilak Marg',
+        city: 'Mumbai',
+        state: '27 - Maharashtra',
+        postalCode: '400002',
+        country: 'India',
       },
-      notes: 'Key client, net 30 payment terms',
+      notes: 'Enterprise GST client, net 15 payment terms',
       isArchived: false,
     },
     {
       id: 'c0000000-0000-0000-0000-000000000002',
       type: 'customer',
-      name: 'Initech LLC',
-      email: 'finance@initech.com',
-      phone: '+1 (555) 849-1122',
-      taxId: 'US-102948',
+      name: 'Infosys Finacle Technologies',
+      email: 'finance@infosys.com',
+      phone: '+91 80 2852 0261',
+      taxId: '29AAACI1681G1Z0',
       billingAddress: {
-        street1: '4120 Freemont Blvd',
-        city: 'Austin',
-        postalCode: '78701',
-        country: 'United States',
+        street1: 'Electronics City, Hosur Road',
+        city: 'Bengaluru',
+        state: '29 - Karnataka',
+        postalCode: '560100',
+        country: 'India',
       },
-      notes: 'Enterprise account',
+      notes: 'Inter-state IGST billing account',
       isArchived: false,
     },
   ],
@@ -112,7 +159,7 @@ const DEMO_PARTIES: Record<string, Party[]> = {
       name: 'Vandelay Industries',
       email: 'george@vandelay.com',
       phone: '+1 (555) 777-8899',
-      taxId: 'VAT-88491',
+      taxId: 'GSTIN-88491',
       billingAddress: {
         street1: '129 W 81st St',
         city: 'New York',
@@ -129,23 +176,25 @@ const DEMO_PRODUCTS: Record<string, ProductCatalogItem[]> = {
     {
       id: 'p0000000-0000-0000-0000-000000000001',
       tenantId: 'a0000000-0000-0000-0000-000000000001',
-      name: 'UI/UX Design Sprint',
-      sku: 'SRV-DSGN-01',
-      description: '5-day interactive product design sprint',
-      unitPrice: 4500,
+      name: 'UI/UX Design & Brand System Sprint',
+      sku: 'SAC-998314',
+      hsnCode: '998314',
+      description: '5-day interactive product design & component architecture',
+      unitPrice: 85000,
       unit: 'sprint',
-      taxRate: 10,
+      taxRate: 18,
       isArchived: false,
     },
     {
       id: 'p0000000-0000-0000-0000-000000000002',
       tenantId: 'a0000000-0000-0000-0000-000000000001',
-      name: 'Full-Stack Engineering Hour',
-      sku: 'SRV-ENG-01',
-      description: 'Senior React/Node software development',
-      unitPrice: 150,
+      name: 'Full-Stack Next.js Cloud Engineering',
+      sku: 'SAC-998313',
+      hsnCode: '998313',
+      description: 'Senior software architecture and implementation',
+      unitPrice: 4500,
       unit: 'hour',
-      taxRate: 10,
+      taxRate: 18,
       isArchived: false,
     },
   ],
@@ -156,71 +205,86 @@ const DEMO_DOCUMENTS: Record<string, DocumentModel[]> = {
     {
       id: 'doc_demo_01',
       tenantId: 'a0000000-0000-0000-0000-000000000001',
+      ownerUserId: 'usr_demo_01',
       type: 'invoice',
       status: 'finalized',
       documentNumber: 'INV-2026-00101',
       issueDate: '2026-10-01',
       dueDate: '2026-10-15',
-      currency: 'USD',
+      currency: 'INR',
+      placeOfSupply: '27 - Maharashtra',
       sender: {
-        name: 'Acme Design Agency',
+        name: 'Acme Design Agency Pvt Ltd',
         email: 'billing@acmedesign.io',
-        taxId: 'US-849201948',
+        phone: '+91 22 4001 9200',
+        taxId: '27AABCU9603R1ZM',
         address: {
-          street1: '100 Market St',
-          city: 'San Francisco',
-          postalCode: '94105',
-          country: 'United States',
+          street1: 'Level 8, One BKC, Bandra Kurla Complex',
+          city: 'Mumbai',
+          state: '27 - Maharashtra',
+          postalCode: '400051',
+          country: 'India',
         },
       },
       client: DEMO_PARTIES['a0000000-0000-0000-0000-000000000001'][0],
       items: [
         {
           id: 'item_1',
-          description: 'UI/UX Design Sprint',
+          description: 'UI/UX Design & Brand System Sprint',
+          hsnCode: '998314',
           quantity: 1,
-          unitPrice: 4500,
-          lineGross: 4500,
+          unitPrice: 85000,
+          lineGross: 85000,
           lineDiscount: 0,
-          lineNet: 4500,
-          taxAmount: 450,
-          taxRate: 10,
-          lineTotal: 4950,
-        },
-        {
-          id: 'item_2',
-          description: 'Frontend Implementation',
-          quantity: 20,
-          unitPrice: 150,
-          lineGross: 3000,
-          lineDiscount: 0,
-          lineNet: 3000,
-          taxAmount: 300,
-          taxRate: 10,
-          lineTotal: 3300,
+          lineNet: 85000,
+          taxAmount: 15300,
+          taxRate: 18,
+          cgstRate: 9,
+          cgstAmount: 7650,
+          sgstRate: 9,
+          sgstAmount: 7650,
+          igstRate: 0,
+          igstAmount: 0,
+          lineTotal: 100300,
         },
       ],
       summary: {
-        subtotal: 7500,
+        subtotal: 85000,
         discountTotal: 0,
-        taxableSubtotal: 7500,
-        totalTax: 750,
-        taxBreakdown: [{ rate: 10, taxableAmount: 7500, taxAmount: 750 }],
+        taxableSubtotal: 85000,
+        totalTax: 15300,
+        gstSupplyType: 'intra',
+        cgstTotal: 7650,
+        sgstTotal: 7650,
+        igstTotal: 0,
+        taxBreakdown: [
+          {
+            rate: 18,
+            taxableAmount: 85000,
+            taxAmount: 15300,
+            cgstRate: 9,
+            cgstAmount: 7650,
+            sgstRate: 9,
+            sgstAmount: 7650,
+            igstRate: 0,
+            igstAmount: 0,
+          },
+        ],
         shippingFee: 0,
         extraCharges: 0,
-        grandTotal: 8250,
-        amountPaid: 3000,
-        balanceDue: 5250,
+        grandTotal: 100300,
+        amountPaid: 50000,
+        balanceDue: 50300,
       },
-      templateId: 'modern',
+      templateId: 'cleartax_gst',
       payments: [
         {
           id: 'pay_1',
           documentId: 'doc_demo_01',
-          amount: 3000,
+          amount: 50000,
           paymentDate: '2026-10-03',
           paymentMethod: 'bank_transfer',
-          reference: 'WIRE-894102',
+          reference: 'NEFT-894102',
           createdAt: '2026-10-03T10:00:00Z',
         },
       ],
@@ -237,17 +301,25 @@ const DEMO_BRAND_SETTINGS: Record<string, TenantBrandSettings> = {
     primaryColor: '#3157D5',
     secondaryColor: '#0F172A',
     fontFamily: 'sans',
-    defaultTerms: 'Net 30 days',
-    defaultInstructions: 'Bank: J.P. Morgan Chase | Acct: 123456789 | Routing: 987654321',
-    footerText: 'Thank you for partnering with Acme Design Agency.',
+    defaultTerms: 'Payment due within 15 days. Subject to Mumbai Jurisdiction.',
+    defaultInstructions: 'Bank: HDFC Bank | A/C: 50200049182731 | IFSC: HDFC0000124',
+    footerText: 'Thank you for your business!',
   },
 };
 
-// 3. Typed Data Access Service
+// 3. Typed Data Access Service (Strictly User & Tenant Isolated)
 export const TenantApi = {
-  async getTenants(): Promise<Tenant[]> {
+  async getTenants(userId?: string): Promise<Tenant[]> {
     const supabase = getSupabase();
-    if (!supabase) return DEMO_TENANTS;
+    if (!supabase) {
+      const customTenants = getLocalStore<Tenant[]>('billcraft_custom_tenants', []);
+      const all = [...customTenants, ...DEMO_TENANTS];
+      if (userId) {
+        const userTenants = all.filter((t) => t.ownerUserId === userId);
+        if (userTenants.length > 0) return userTenants;
+      }
+      return DEMO_TENANTS;
+    }
 
     const { data, error } = await supabase
       .from('tenant_members')
@@ -260,9 +332,33 @@ export const TenantApi = {
     }));
   },
 
+  async createTenant(tenant: Tenant): Promise<Tenant> {
+    const customTenants = getLocalStore<Tenant[]>('billcraft_custom_tenants', []);
+    const updated = [tenant, ...customTenants.filter((t) => t.id !== tenant.id)];
+    setLocalStore('billcraft_custom_tenants', updated);
+    return tenant;
+  },
+
+  async updateTenant(tenantId: string, patch: Partial<Tenant>): Promise<Tenant | null> {
+    const customTenants = getLocalStore<Tenant[]>('billcraft_custom_tenants', []);
+    const idx = customTenants.findIndex((t) => t.id === tenantId);
+    if (idx >= 0) {
+      customTenants[idx] = { ...customTenants[idx], ...patch };
+      setLocalStore('billcraft_custom_tenants', customTenants);
+      return customTenants[idx];
+    }
+    return null;
+  },
+
   async getDocuments(tenantId: string): Promise<DocumentModel[]> {
     const supabase = getSupabase();
-    if (!supabase) return DEMO_DOCUMENTS[tenantId] || [];
+    if (!supabase) {
+      const storeDocs = getLocalStore<Record<string, DocumentModel[]>>(
+        'billcraft_tenant_documents',
+        DEMO_DOCUMENTS
+      );
+      return storeDocs[tenantId] || [];
+    }
 
     const { data, error } = await supabase
       .from('documents')
@@ -277,17 +373,22 @@ export const TenantApi = {
   async saveDocument(tenantId: string, doc: DocumentModel): Promise<DocumentModel> {
     const supabase = getSupabase();
     if (!supabase) {
-      if (!DEMO_DOCUMENTS[tenantId]) DEMO_DOCUMENTS[tenantId] = [];
-      const idx = DEMO_DOCUMENTS[tenantId].findIndex((d) => d.id === doc.id);
+      const storeDocs = getLocalStore<Record<string, DocumentModel[]>>(
+        'billcraft_tenant_documents',
+        DEMO_DOCUMENTS
+      );
+      if (!storeDocs[tenantId]) storeDocs[tenantId] = [];
+      const idx = storeDocs[tenantId].findIndex((d) => d.id === doc.id);
       if (idx >= 0) {
-        DEMO_DOCUMENTS[tenantId][idx] = doc;
+        storeDocs[tenantId][idx] = doc;
       } else {
-        DEMO_DOCUMENTS[tenantId].unshift(doc);
+        storeDocs[tenantId].unshift(doc);
       }
+      setLocalStore('billcraft_tenant_documents', storeDocs);
       return doc;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('documents')
       .upsert({
         id: doc.id,
@@ -316,7 +417,13 @@ export const TenantApi = {
 
   async getParties(tenantId: string): Promise<Party[]> {
     const supabase = getSupabase();
-    if (!supabase) return DEMO_PARTIES[tenantId] || [];
+    if (!supabase) {
+      const storeParties = getLocalStore<Record<string, Party[]>>(
+        'billcraft_tenant_parties',
+        DEMO_PARTIES
+      );
+      return storeParties[tenantId] || [];
+    }
 
     const { data, error } = await supabase
       .from('parties')
@@ -329,29 +436,47 @@ export const TenantApi = {
   },
 
   async saveParty(tenantId: string, party: Party): Promise<Party> {
-    if (!DEMO_PARTIES[tenantId]) DEMO_PARTIES[tenantId] = [];
-    const idx = DEMO_PARTIES[tenantId].findIndex((p) => p.id === party.id);
+    const storeParties = getLocalStore<Record<string, Party[]>>(
+      'billcraft_tenant_parties',
+      DEMO_PARTIES
+    );
+    if (!storeParties[tenantId]) storeParties[tenantId] = [];
+    const idx = storeParties[tenantId].findIndex((p) => p.id === party.id);
     if (idx >= 0) {
-      DEMO_PARTIES[tenantId][idx] = party;
+      storeParties[tenantId][idx] = party;
     } else {
-      DEMO_PARTIES[tenantId].push(party);
+      storeParties[tenantId].push(party);
     }
+    setLocalStore('billcraft_tenant_parties', storeParties);
     return party;
   },
 
   async getProducts(tenantId: string): Promise<ProductCatalogItem[]> {
-    return DEMO_PRODUCTS[tenantId] || [];
+    const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>(
+      'billcraft_tenant_products',
+      DEMO_PRODUCTS
+    );
+    return storeProducts[tenantId] || [];
   },
 
   async saveProduct(tenantId: string, product: ProductCatalogItem): Promise<ProductCatalogItem> {
-    if (!DEMO_PRODUCTS[tenantId]) DEMO_PRODUCTS[tenantId] = [];
-    DEMO_PRODUCTS[tenantId].push(product);
+    const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>(
+      'billcraft_tenant_products',
+      DEMO_PRODUCTS
+    );
+    if (!storeProducts[tenantId]) storeProducts[tenantId] = [];
+    storeProducts[tenantId].push(product);
+    setLocalStore('billcraft_tenant_products', storeProducts);
     return product;
   },
 
   async getBrandSettings(tenantId: string): Promise<TenantBrandSettings> {
+    const storeBrand = getLocalStore<Record<string, TenantBrandSettings>>(
+      'billcraft_tenant_brand',
+      DEMO_BRAND_SETTINGS
+    );
     return (
-      DEMO_BRAND_SETTINGS[tenantId] || {
+      storeBrand[tenantId] || {
         tenantId,
         primaryColor: '#3157D5',
         secondaryColor: '#0F172A',
@@ -364,9 +489,14 @@ export const TenantApi = {
     tenantId: string,
     settings: Partial<TenantBrandSettings>
   ): Promise<TenantBrandSettings> {
+    const storeBrand = getLocalStore<Record<string, TenantBrandSettings>>(
+      'billcraft_tenant_brand',
+      DEMO_BRAND_SETTINGS
+    );
     const existing = await this.getBrandSettings(tenantId);
     const updated = { ...existing, ...settings };
-    DEMO_BRAND_SETTINGS[tenantId] = updated;
+    storeBrand[tenantId] = updated;
+    setLocalStore('billcraft_tenant_brand', storeBrand);
     return updated;
   },
 
@@ -377,7 +507,11 @@ export const TenantApi = {
     method: any,
     reference?: string
   ): Promise<void> {
-    const docs = DEMO_DOCUMENTS[tenantId] || [];
+    const storeDocs = getLocalStore<Record<string, DocumentModel[]>>(
+      'billcraft_tenant_documents',
+      DEMO_DOCUMENTS
+    );
+    const docs = storeDocs[tenantId] || [];
     const doc = docs.find((d) => d.id === docId);
     if (!doc) return;
 
@@ -399,5 +533,6 @@ export const TenantApi = {
     } else {
       doc.status = 'partially_paid';
     }
+    setLocalStore('billcraft_tenant_documents', storeDocs);
   },
 };
