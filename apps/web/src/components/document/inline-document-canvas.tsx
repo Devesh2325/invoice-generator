@@ -386,7 +386,11 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
 
                 <div className="flex items-center md:justify-end gap-2">
                   <span className={isBannerHeader ? 'text-white/80' : 'text-slate-500'}>
-                    Due Date:
+                    {document.type === 'purchase_order'
+                      ? 'Delivery Date:'
+                      : document.type === 'estimate'
+                      ? 'Valid Until:'
+                      : 'Due Date:'}
                   </span>
                   <input
                     type="date"
@@ -426,7 +430,11 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   style={{ color: primaryColor }}
                 >
                   <Users className="h-3.5 w-3.5" />
-                  Bill To (Customer / Buyer Details)
+                  {document.type === 'purchase_order'
+                    ? 'Vendor / Supplier Details'
+                    : document.type === 'estimate'
+                    ? 'Client / Proposal Recipient'
+                    : 'Bill To (Customer / Buyer Details)'}
                 </span>
 
                 {onSelectCustomer && (

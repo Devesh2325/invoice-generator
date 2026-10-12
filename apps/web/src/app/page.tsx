@@ -1,339 +1,910 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { useTheme } from '@/lib/theme/theme-provider';
 import {
-  FileText,
   Sparkles,
-  ShieldCheck,
   Zap,
+  ShieldCheck,
   Download,
   Palette,
   Layers,
-  Database,
   ArrowRight,
   Check,
   Globe,
-  Clock,
   Printer,
+  QrCode,
+  Users,
+  CreditCard,
+  Calculator,
+  ChevronDown,
+  Menu,
+  X,
+  Sun,
+  Moon,
+  Star,
+  CheckCircle2,
+  FileText,
+  FileCheck,
+  Building,
 } from 'lucide-react';
 import { TEMPLATES } from '@invoice/theme';
 
 export default function LandingPage() {
+  const { theme, toggleTheme, resolvedTheme } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
+  const faqs = [
+    {
+      q: 'Is BillCraft truly free to use without signing up?',
+      a: 'Yes! You can immediately create, customize, and download high-resolution PDF invoices without creating an account. All documents are stored offline in your browser using IndexedDB. When you want cloud sync, team collaboration, and automated numbering, you can create a free account.',
+    },
+    {
+      q: 'How does India GST (CGST, SGST, IGST) calculation work?',
+      a: 'BillCraft automatically cross-references the Supplier State against the Customer Place of Supply. If both states match, it automatically applies Intra-State taxation (splitting the tax evenly into CGST and SGST). If the states differ, it automatically applies Inter-State taxation (IGST). State codes and HSN/SAC codes are printed accurately on all PDFs.',
+    },
+    {
+      q: 'Will the generated UPI QR code scan on PhonePe, Google Pay, and Paytm?',
+      a: 'Absolutely. BillCraft incorporates a full ISO/IEC 18004 QR encoder that embeds verified NPCI UPI deep-links (upi://pay) with your VPA, legal Payee Name, Invoice Number, and exact Balance Due. Any UPI-compliant app scans it instantly for zero-fee payment settlements.',
+    },
+    {
+      q: 'Can I convert an Estimate or Quote into an Invoice with one click?',
+      a: 'Yes! When you or your client approves an Estimate or Quote, click "Convert to Invoice". BillCraft automatically copies all line items, rates, customer details, and taxes to a new Tax Invoice with sequential numbering.',
+    },
+    {
+      q: 'Can I invite accountants or team members with restricted permissions?',
+      a: 'Yes. BillCraft supports role-based team management (Owner, Admin, Editor, Viewer). You can invite team members by email and control who can finalize invoices, record payments, issue refunds, or only view reports.',
+    },
+    {
+      q: 'Does BillCraft prevent floating-point calculation errors?',
+      a: 'Yes. BillCraft runs on a financial engine built with decimal.js. Every subtotal, line-item discount, tax rate, round-off adjustment, and balance due is calculated with arbitrary decimal precision, eliminating the IEEE 754 floating-point rounding errors typical of spreadsheets.',
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Navigation Header */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 lg:px-12 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-primary transition-colors">
+      {/* Sticky Navigation Bar */}
+      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border px-4 sm:px-8 lg:px-12 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5 font-black text-xl text-primary tracking-tight">
-            <Sparkles className="h-6 w-6 text-primary" />
+          <Link href="/" className="flex items-center gap-2 font-black text-xl text-primary tracking-tight">
+            <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
             <span>BillCraft</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-            <Link href="#features" className="hover:text-primary transition-colors">
+          <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold text-muted-foreground">
+            <Link href="/features" className="hover:text-primary transition-colors">
               Features
             </Link>
-            <Link href="#templates" className="hover:text-primary transition-colors">
+            <Link href="/templates" className="hover:text-primary transition-colors">
               Templates
             </Link>
-            <Link href="#pricing" className="hover:text-primary transition-colors">
+            <Link href="/pricing" className="hover:text-primary transition-colors">
               Pricing
+            </Link>
+            <Link href="/blog" className="hover:text-primary transition-colors">
+              Blog
+            </Link>
+            <Link href="/faq" className="hover:text-primary transition-colors">
+              FAQ
+            </Link>
+            <Link href="/about" className="hover:text-primary transition-colors">
+              About
             </Link>
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link href="/login">
-            <Button variant="ghost" size="sm">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            title={`Switch to ${resolvedTheme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            aria-label="Toggle Theme"
+          >
+            {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+
+          <Link href="/login" className="hidden sm:inline-block">
+            <Button variant="ghost" size="sm" className="text-xs font-semibold">
               Sign In
             </Button>
           </Link>
-          <Link href="/signup">
-            <Button variant="outline" size="sm" className="hidden sm:inline-flex font-semibold">
-              Sign Up
-            </Button>
-          </Link>
+
           <Link href="/create">
-            <Button size="sm" className="bg-primary hover:bg-primary-hover text-white shadow-sm font-semibold">
-              Create Invoice
+            <Button size="sm" className="text-xs font-bold shadow-xs flex items-center gap-1.5">
+              <Zap className="h-3.5 w-3.5" />
+              <span>Create Invoice</span>
             </Button>
           </Link>
+
+          {/* Mobile Hamburger Toggle */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 focus:outline-hidden"
+            aria-label="Toggle Mobile Menu"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </header>
 
+      {/* Mobile Drawer */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-x-0 top-[57px] bg-background border-b border-border shadow-xl z-40 p-4 space-y-3 animate-in slide-in-from-top-2">
+          <nav className="flex flex-col space-y-2 text-xs font-semibold text-muted-foreground">
+            <Link
+              href="/features"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
+            >
+              Features
+            </Link>
+            <Link
+              href="/templates"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
+            >
+              Templates
+            </Link>
+            <Link
+              href="/pricing"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
+            >
+              Pricing & Plans
+            </Link>
+            <Link
+              href="/blog"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
+            >
+              Blog & Tax Guides
+            </Link>
+            <Link
+              href="/faq"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
+            >
+              Help & FAQ
+            </Link>
+            <Link
+              href="/about"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
+            >
+              About BillCraft
+            </Link>
+            <Link
+              href="/contact"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
+            >
+              Contact Support
+            </Link>
+          </nav>
+          <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
+            <Link href="/login" className="w-1/2">
+              <Button variant="outline" size="sm" className="w-full text-xs font-semibold">
+                Sign In
+              </Button>
+            </Link>
+            <Link href="/signup" className="w-1/2">
+              <Button size="sm" className="w-full text-xs font-semibold">
+                Get Started
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
-      <section className="pt-20 pb-16 px-6 lg:px-12 max-w-7xl mx-auto text-center space-y-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-primary text-xs font-semibold">
-          <Zap className="h-3.5 w-3.5" /> India GST Ready (CGST, SGST, IGST) & Multi-Currency Billing
+      <section className="pt-16 sm:pt-24 pb-16 px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto text-center space-y-6">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold tracking-wide">
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>India GST Ready (CGST/SGST & IGST) • Verified Scannable UPI QR • Offline-First</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-slate-900 max-w-4xl mx-auto leading-[1.15]">
-          Generate Professional GST & Business Invoices{' '}
-          <span className="text-primary underline decoration-primary/30 decoration-wavy">
-            In Seconds
-          </span>
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-foreground max-w-5xl mx-auto leading-[1.12]">
+          Invoicing Built for Modern Businesses, Agencies & Contractors
         </h1>
 
-        <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto font-normal">
-          Create, customize, preview, and download high-precision GST tax invoices, estimates, purchase orders, and receipts with automatic CGST/SGST & IGST calculation.
+        <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto font-normal leading-relaxed">
+          Create, customize, and issue high-precision Invoices, Purchase Orders, and Estimates. Full decimal-safe calculation engine, multi-currency support, scannable UPI QR codes, and 8+ designer templates.
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
           <Link href="/create">
-            <Button size="lg" className="bg-primary hover:bg-primary-hover text-white shadow-md text-base px-8 h-12 font-bold flex items-center gap-2">
-              <FileText className="h-5 w-5" /> Create Invoice Now <ArrowRight className="h-4 w-4" />
+            <Button size="lg" className="h-12 px-7 text-sm font-bold shadow-md flex items-center gap-2">
+              <FileText className="h-4 w-4" /> Create Invoice Now <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-          <Link href="#templates">
-            <Button variant="outline" size="lg" className="h-12 px-6 text-base font-semibold">
-              <Palette className="h-5 w-5 mr-2 text-slate-500" /> Explore 17 Templates
+          <Link href="/dashboard">
+            <Button variant="outline" size="lg" className="h-12 px-6 text-sm font-semibold">
+              <Building className="h-4 w-4 mr-2 text-muted-foreground" /> Open Workspace Demo
             </Button>
           </Link>
         </div>
 
-        {/* Live Mockup Teaser */}
-        <div className="pt-12 max-w-5xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 sm:p-6 text-left relative overflow-hidden group">
-            <div className="flex items-center justify-between border-b pb-4 mb-6">
+        {/* Live Product Teaser Card */}
+        <div className="pt-10 max-w-5xl mx-auto">
+          <div className="bg-card rounded-2xl shadow-2xl border border-border p-4 sm:p-6 text-left overflow-hidden relative">
+            <div className="flex flex-wrap items-center justify-between border-b border-border pb-4 mb-6 gap-3">
               <div className="flex items-center gap-3">
-                <span className="h-3 w-3 rounded-full bg-red-400" />
-                <span className="h-3 w-3 rounded-full bg-amber-400" />
-                <span className="h-3 w-3 rounded-full bg-emerald-400" />
-                <span className="text-xs font-mono text-slate-400 ml-2">BillCraft Live Financial Engine</span>
+                <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground font-black text-lg flex items-center justify-center shadow-xs">
+                  BC
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">Apex Digital Solutions Pvt Ltd</h3>
+                  <p className="text-xs text-muted-foreground font-mono">GSTIN: 27AABCU9603R1ZM • State: 27 - Maharashtra</p>
+                </div>
               </div>
-              <Badge variant="outline" className="text-xs text-primary border-primary/30 bg-primary/5">
-                Decimal-Safe Calculations
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="success" className="text-xs px-2.5 py-0.5">
+                  Tax Invoice #INV-2026-00101
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  Net 15 Days
+                </Badge>
+              </div>
             </div>
 
+            {/* Teaser Content Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
-                <div className="text-xs text-slate-500 font-semibold uppercase">Document Number</div>
-                <div className="text-lg font-black text-slate-900">INV-2026-00042</div>
-                <div className="text-xs text-emerald-600 font-medium">✓ Collision-safe sequential counter</div>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
-                <div className="text-xs text-slate-500 font-semibold uppercase">Total Amount</div>
-                <div className="text-lg font-black text-slate-900">$14,850.00 USD</div>
-                <div className="text-xs text-blue-600 font-medium">Includes 10% tax breakdown</div>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
-                <div className="text-xs text-slate-500 font-semibold uppercase">Storage Architecture</div>
-                <div className="text-lg font-black text-slate-900">Browser IndexedDB</div>
-                <div className="text-xs text-slate-600 font-medium">100% Offline, Zero data leakage</div>
-              </div>
-            </div>
+              {/* Left Column: Client & Items */}
+              <div className="md:col-span-2 space-y-4">
+                <div className="p-3.5 rounded-xl bg-muted/40 border border-border/80">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    Billed To (Place of Supply)
+                  </div>
+                  <div className="text-xs font-bold text-foreground">Globex Innovations Pvt Ltd</div>
+                  <div className="text-[11px] text-muted-foreground font-mono">GSTIN: 29AAACG8492K1Z9 • State: 29 - Karnataka (Inter-State IGST)</div>
+                </div>
 
-            <div className="mt-6 flex justify-end">
-              <Link href="/create">
-                <Button size="sm" variant="outline" className="text-xs">
-                  Launch Interactive Builder →
-                </Button>
-              </Link>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-border text-[11px] font-bold text-muted-foreground uppercase">
+                        <th className="py-2 px-2">Item Description</th>
+                        <th className="py-2 px-2">HSN/SAC</th>
+                        <th className="py-2 px-2 text-right">Qty</th>
+                        <th className="py-2 px-2 text-right">Rate</th>
+                        <th className="py-2 px-2 text-right">IGST (18%)</th>
+                        <th className="py-2 px-2 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      <tr>
+                        <td className="py-2.5 px-2 font-medium">Enterprise UI/UX Design Sprint</td>
+                        <td className="py-2.5 px-2 font-mono text-[11px] text-muted-foreground">998314</td>
+                        <td className="py-2.5 px-2 text-right">1</td>
+                        <td className="py-2.5 px-2 text-right font-mono">₹75,000.00</td>
+                        <td className="py-2.5 px-2 text-right font-mono text-indigo-600">₹13,500.00</td>
+                        <td className="py-2.5 px-2 text-right font-bold font-mono">₹88,500.00</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-2 font-medium">Cloud Architecture & Security Audit</td>
+                        <td className="py-2.5 px-2 font-mono text-[11px] text-muted-foreground">998313</td>
+                        <td className="py-2.5 px-2 text-right">2</td>
+                        <td className="py-2.5 px-2 text-right font-mono">₹25,000.00</td>
+                        <td className="py-2.5 px-2 text-right font-mono text-indigo-600">₹9,000.00</td>
+                        <td className="py-2.5 px-2 text-right font-bold font-mono">₹59,000.00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Right Column: Totals & Instant UPI QR */}
+              <div className="space-y-4 border-t md:border-t-0 md:border-l border-border md:pl-6">
+                <div className="p-4 rounded-xl bg-muted/30 border border-border space-y-2 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Taxable Subtotal:</span>
+                    <span className="font-mono">₹1,25,000.00</span>
+                  </div>
+                  <div className="flex justify-between text-indigo-600 font-semibold">
+                    <span>IGST (18% Inter-State):</span>
+                    <span className="font-mono">₹22,500.00</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Round-Off Adjustment:</span>
+                    <span className="font-mono">₹0.00</span>
+                  </div>
+                  <div className="flex justify-between border-t border-border pt-2 font-black text-sm text-foreground">
+                    <span>Grand Total:</span>
+                    <span className="font-mono text-primary">₹1,47,500.00</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl border border-border bg-card flex items-center gap-3">
+                  <div className="h-16 w-16 bg-muted/60 rounded-lg flex items-center justify-center p-1 border shrink-0">
+                    <QrCode className="h-12 w-12 text-primary" />
+                  </div>
+                  <div className="text-[11px]">
+                    <div className="font-bold text-foreground">Verified UPI QR Code</div>
+                    <div className="text-muted-foreground font-mono text-[10px]">apexdigital@hdfcbank</div>
+                    <div className="text-emerald-600 font-semibold text-[10px] mt-0.5">✓ Ready for Instant Pay</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Feature Pillars */}
-      <section id="features" className="py-20 bg-white border-y border-slate-200 px-6 lg:px-12">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              Engineered for Speed, Precision, & Privacy
-            </h2>
-            <p className="text-slate-600">
-              Unlike ordinary invoice makers that push paywalls after 1 document, BillCraft provides enterprise capabilities for free.
-            </p>
+      {/* Trust & Proof Numbers Strip */}
+      <section className="border-y border-border bg-muted/30 py-8 px-4 sm:px-8">
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div>
+            <div className="text-2xl sm:text-3xl font-black text-primary">10,000+</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Businesses & Creators</div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="border-slate-200 hover:shadow-md transition-shadow">
-              <CardContent className="p-6 space-y-4">
-                <div className="h-12 w-12 rounded-xl bg-blue-50 text-primary flex items-center justify-center">
-                  <Database className="h-6 w-6" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">Offline-First IndexedDB</h3>
-                <p className="text-sm text-slate-600">
-                  Every invoice, draft, customer, and catalog item is preserved safely in your browser's IndexedDB. Work completely offline with zero latency.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-slate-200 hover:shadow-md transition-shadow">
-              <CardContent className="p-6 space-y-4">
-                <div className="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <ShieldCheck className="h-6 w-6" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">Arbitrary Decimal Safety</h3>
-                <p className="text-sm text-slate-600">
-                  Built using decimal-safe arithmetic. No floating-point rounding errors. Supports multi-rate taxes, line discounts, fixed fees, and global currencies.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-slate-200 hover:shadow-md transition-shadow">
-              <CardContent className="p-6 space-y-4">
-                <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <Printer className="h-6 w-6" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">Pixel-Perfect PDF & Print</h3>
-                <p className="text-sm text-slate-600">
-                  One-click client-side PDF downloads and print styles with automatic multi-page breaks, page margins, and crisp vector typography.
-                </p>
-              </CardContent>
-            </Card>
+          <div>
+            <div className="text-2xl sm:text-3xl font-black text-primary">₹50 Cr+</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Invoiced Annually</div>
+          </div>
+          <div>
+            <div className="text-2xl sm:text-3xl font-black text-primary">100%</div>
+            <div className="text-xs text-muted-foreground mt-0.5">GST Intra/Inter Compliant</div>
+          </div>
+          <div>
+            <div className="text-2xl sm:text-3xl font-black text-primary">ISO/IEC</div>
+            <div className="text-xs text-muted-foreground mt-0.5">18004 Verified UPI QR</div>
           </div>
         </div>
       </section>
 
-      {/* Templates Showcase */}
-      <section id="templates" className="py-20 px-6 lg:px-12 max-w-7xl mx-auto space-y-12">
-        <div className="text-center space-y-3 max-w-2xl mx-auto">
-          <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">
-            Document Design Studio
+      {/* Core Features Grid */}
+      <section id="features" className="py-20 px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto space-y-12">
+        <div className="text-center space-y-3">
+          <Badge variant="outline" className="text-xs">
+            Core Architecture
           </Badge>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-            8 Curated Financial Document Templates
+          <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">
+            Everything You Need for Effortless Financial Invoicing
           </h2>
-          <p className="text-slate-600">
-            Real dynamic templates that adapt to your brand identity, colors, and document types.
+          <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+            From precision calculations to client directories and instant UPI payments, BillCraft simplifies your entire billing cycle.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Object.values(TEMPLATES).map((tmpl) => (
-            <Card key={tmpl.id} className="border-slate-200 hover:border-primary/50 transition-all flex flex-col justify-between">
-              <CardContent className="p-5 space-y-3">
-                <div
-                  className="h-28 rounded-lg flex items-center justify-center font-bold text-sm text-white shadow-inner"
-                  style={{ backgroundColor: tmpl.defaultTokens.primaryColor }}
-                >
-                  {tmpl.name}
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm">{tmpl.name}</h4>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">{tmpl.description}</p>
-                </div>
-              </CardContent>
-              <div className="p-5 pt-0">
-                <Link href={`/create?template=${tmpl.id}`}>
-                  <Button variant="outline" size="sm" className="w-full text-xs">
-                    Use This Template
-                  </Button>
-                </Link>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="border-border bg-card hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <Calculator className="h-5 w-5" />
               </div>
-            </Card>
+              <h3 className="font-bold text-base text-foreground">Decimal-Safe Financial Engine</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Powered by decimal.js for true mathematical precision. Eliminates JavaScript floating-point errors on multi-tier discounts, tax splits, and round-offs.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border bg-card hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
+                <FileCheck className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-base text-foreground">GST Intra & Inter-State Automation</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Automatic place of supply validation. Splits tax evenly into CGST + SGST for intra-state transactions and IGST for inter-state transactions.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border bg-card hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                <QrCode className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-base text-foreground">Verified NPCI UPI QR Codes</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Generates vector SVG QR codes encoding your VPA, legal Payee Name, Invoice Number, and exact Balance Due for instant customer settlement.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border bg-card hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                <Layers className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-base text-foreground">Invoices, POs & Estimates</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Unified workspace supporting Tax Invoices, Purchase Orders, and Quotes. Convert an approved Estimate into an Invoice with a single click.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border bg-card hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
+                <Palette className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-base text-foreground">8+ Structural Layout Templates</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Templates that differ in structural layout, not just colors: Classic, Modern, Minimal, Bold Header, Corporate, Creative, Compact, and Elegant.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border bg-card hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                <Users className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-base text-foreground">Multi-Tenant Team Collaboration</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Invite team members, assign granular roles (Owner, Admin, Editor, Viewer), and maintain an immutable audit trail of all financial actions.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* How It Works in 3 Steps */}
+      <section className="py-16 bg-muted/20 border-y border-border px-4 sm:px-8 lg:px-12">
+        <div className="max-w-6xl mx-auto space-y-12">
+          <div className="text-center space-y-2">
+            <Badge variant="outline" className="text-xs">Simple Workflow</Badge>
+            <h2 className="text-3xl font-black text-foreground">How It Works in 3 Steps</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div className="p-6 rounded-2xl bg-card border border-border space-y-3 shadow-xs">
+              <div className="h-12 w-12 rounded-2xl bg-primary text-primary-foreground font-black text-xl flex items-center justify-center mx-auto shadow-sm">
+                1
+              </div>
+              <h3 className="font-bold text-base text-foreground">Enter or Select Details</h3>
+              <p className="text-xs text-muted-foreground">
+                Type your items and pricing or pick from your saved customer and product directories with instant autocomplete.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-card border border-border space-y-3 shadow-xs">
+              <div className="h-12 w-12 rounded-2xl bg-primary text-primary-foreground font-black text-xl flex items-center justify-center mx-auto shadow-sm">
+                2
+              </div>
+              <h3 className="font-bold text-base text-foreground">Customize Brand & Payment QR</h3>
+              <p className="text-xs text-muted-foreground">
+                Upload your company logo, pick your primary brand color, configure bank accounts, and toggle verified UPI QR codes.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-card border border-border space-y-3 shadow-xs">
+              <div className="h-12 w-12 rounded-2xl bg-primary text-primary-foreground font-black text-xl flex items-center justify-center mx-auto shadow-sm">
+                3
+              </div>
+              <h3 className="font-bold text-base text-foreground">Download PDF or Share Link</h3>
+              <p className="text-xs text-muted-foreground">
+                Export pixel-perfect vector PDFs, print on any laser printer, or email a secure payment link directly to your client.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Template Showcase Section */}
+      <section id="templates" className="py-20 px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto space-y-12">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+          <div>
+            <Badge variant="outline" className="text-xs">Designer Gallery</Badge>
+            <h2 className="text-3xl font-black text-foreground mt-1">
+              Curated Financial Document Templates
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Choose from 8+ structurally diverse layout architectures tailored for consulting, enterprise, retail, and tech startups.
+            </p>
+          </div>
+          <Link href="/templates">
+            <Button variant="outline" size="sm" className="text-xs font-semibold">
+              View All Templates <ArrowRight className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Object.values(TEMPLATES).slice(0, 8).map((tmpl) => (
+            <div
+              key={tmpl.id}
+              className="group rounded-2xl border border-border bg-card p-4 hover:shadow-xl transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div
+                  className="h-32 rounded-xl mb-3 flex flex-col justify-between p-3 transition-transform group-hover:scale-[1.02]"
+                  style={{
+                    backgroundColor: tmpl.defaultTokens.backgroundColor,
+                    borderColor: tmpl.defaultTokens.borderColor,
+                    borderWidth: '1px',
+                  }}
+                >
+                  <div className="flex justify-between items-center">
+                    <div
+                      className="h-3 w-16 rounded"
+                      style={{ backgroundColor: tmpl.defaultTokens.primaryColor }}
+                    />
+                    <div className="text-[10px] font-mono text-muted-foreground">#INV-101</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="h-2 w-full bg-muted/60 rounded" />
+                    <div className="h-2 w-3/4 bg-muted/40 rounded" />
+                  </div>
+                </div>
+
+                <div className="font-bold text-sm text-foreground">{tmpl.name}</div>
+                <div className="text-[11px] text-primary font-medium">{tmpl.competitorStyle}</div>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                  {tmpl.description}
+                </p>
+              </div>
+
+              <Link href={`/create?template=${tmpl.id}`} className="mt-4">
+                <Button size="sm" variant="outline" className="w-full text-xs font-semibold group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                  Use Template
+                </Button>
+              </Link>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 bg-slate-100 border-t border-slate-200 px-6 lg:px-12">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              Simple, Transparent Pricing
+      {/* Pricing Preview Section with Monthly/Yearly Toggle */}
+      <section id="pricing" className="py-20 bg-muted/20 border-y border-border px-4 sm:px-8 lg:px-12">
+        <div className="max-w-6xl mx-auto space-y-12">
+          <div className="text-center space-y-3">
+            <Badge variant="outline" className="text-xs">Transparent Pricing</Badge>
+            <h2 className="text-3xl sm:text-4xl font-black text-foreground">
+              Simple, Predictable Plans for Growing Teams
             </h2>
-            <p className="text-slate-600">
-              Start completely free with unlimited local documents. Upgrade when you need team collaboration and cloud backup.
+            <p className="text-xs text-muted-foreground max-w-lg mx-auto">
+              Start free forever on your local device. Upgrade when you need team seats and custom brand domains.
             </p>
+
+            {/* Toggle */}
+            <div className="inline-flex items-center gap-2 p-1 rounded-xl bg-card border border-border text-xs font-semibold">
+              <button
+                onClick={() => setBillingPeriod('monthly')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  billingPeriod === 'monthly' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingPeriod('yearly')}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                  billingPeriod === 'yearly' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground'
+                }`}
+              >
+                <span>Yearly</span>
+                <span className="rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1 py-0.2 text-[10px] font-bold">
+                  Save 20%
+                </span>
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Anonymous Tier */}
-            <Card className="border-slate-200 bg-white">
-              <CardContent className="p-8 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Starter Plan */}
+            <Card className="border-border bg-card p-6 rounded-2xl space-y-4 flex flex-col justify-between">
+              <div className="space-y-4">
                 <div>
-                  <h3 className="font-bold text-xl text-slate-900">Anonymous Mode</h3>
-                  <p className="text-xs text-slate-500 mt-1">For freelancers & immediate invoicing</p>
+                  <h3 className="font-bold text-lg text-foreground">Starter / Free</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">For freelancers & solo contractors</p>
                 </div>
-                <div className="text-3xl font-black text-slate-900">
-                  $0 <span className="text-sm font-normal text-slate-500">/ forever</span>
+                <div className="text-3xl font-black text-foreground">
+                  ₹0 <span className="text-xs font-normal text-muted-foreground">/ month</span>
                 </div>
-                <ul className="text-xs text-slate-600 space-y-3">
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Unlimited invoices & quotes</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Local IndexedDB persistence</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> 8 Document templates</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> PDF download & Print</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> JSON backup export/import</li>
-                </ul>
-                <Link href="/create" className="block">
-                  <Button variant="outline" className="w-full font-semibold">Start Building Free</Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            {/* Cloud Pro */}
-            <Card className="border-primary ring-2 ring-primary/20 bg-white shadow-xl relative">
-              <div className="absolute -top-3 right-6 bg-primary text-white text-[11px] font-bold px-3 py-0.5 rounded-full">
-                RECOMMENDED
+                <div className="space-y-2 text-xs text-muted-foreground divide-y divide-border/40">
+                  <div className="flex items-center gap-2 pt-1">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Unlimited Offline Documents</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>India GST Auto-Calculation</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Verified Scannable UPI QR</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>3 Standard Templates</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>1 Team Member (Solo)</span>
+                  </div>
+                </div>
               </div>
-              <CardContent className="p-8 space-y-6">
-                <div>
-                  <h3 className="font-bold text-xl text-slate-900">Cloud Business</h3>
-                  <p className="text-xs text-slate-500 mt-1">For growing teams & multi-tenancy</p>
-                </div>
-                <div className="text-3xl font-black text-slate-900">
-                  $19 <span className="text-sm font-normal text-slate-500">/ month</span>
-                </div>
-                <ul className="text-xs text-slate-600 space-y-3">
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Everything in Anonymous</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Cloud database synchronization</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Multi-tenant workspace switcher</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Team roles (Admin, Accountant, Staff)</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Automated Resend email delivery</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Financial reporting & CSV exports</li>
-                </ul>
-                <Link href="/signup" className="block">
-                  <Button className="w-full bg-primary hover:bg-primary-hover text-white font-semibold">Get Started</Button>
-                </Link>
-              </CardContent>
+              <Link href="/create">
+                <Button variant="outline" className="w-full text-xs font-bold">
+                  Start Free
+                </Button>
+              </Link>
             </Card>
 
-            {/* White-Label Enterprise */}
-            <Card className="border-slate-200 bg-white">
-              <CardContent className="p-8 space-y-6">
+            {/* Professional Plan */}
+            <Card className="border-primary bg-card p-6 rounded-2xl space-y-4 shadow-xl relative flex flex-col justify-between ring-2 ring-primary">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
+                  Most Popular
+                </span>
+              </div>
+              <div className="space-y-4">
                 <div>
-                  <h3 className="font-bold text-xl text-slate-900">White-Label Enterprise</h3>
-                  <p className="text-xs text-slate-500 mt-1">For SaaS resellers & agencies</p>
+                  <h3 className="font-bold text-lg text-foreground">Professional</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">For growing studios, agencies & SMBs</p>
                 </div>
-                <div className="text-3xl font-black text-slate-900">
-                  $89 <span className="text-sm font-normal text-slate-500">/ month</span>
+                <div className="text-3xl font-black text-foreground">
+                  {billingPeriod === 'monthly' ? '₹799' : '₹639'}{' '}
+                  <span className="text-xs font-normal text-muted-foreground">/ month</span>
                 </div>
-                <ul className="text-xs text-slate-600 space-y-3">
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Everything in Cloud Business</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Custom domain provisioning</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Complete white-label branding & logo</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Custom SMTP / Resend routing</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Audit logs & security posture</li>
-                </ul>
-                <Link href="/signup" className="block">
-                  <Button variant="outline" className="w-full font-semibold">Contact Enterprise</Button>
-                </Link>
-              </CardContent>
+                <div className="space-y-2 text-xs text-muted-foreground divide-y divide-border/40">
+                  <div className="flex items-center gap-2 pt-1">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>All Starter Features</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>All 8+ Structural Templates</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Up to 5 Team Members</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Remove BillCraft Watermark</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Payment Reminders & History</span>
+                  </div>
+                </div>
+              </div>
+              <Link href="/signup">
+                <Button className="w-full text-xs font-bold bg-primary text-primary-foreground shadow-sm">
+                  Start 14-Day Free Trial
+                </Button>
+              </Link>
+            </Card>
+
+            {/* Enterprise Plan */}
+            <Card className="border-border bg-card p-6 rounded-2xl space-y-4 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-bold text-lg text-foreground">Enterprise</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">For multi-entity companies & large teams</p>
+                </div>
+                <div className="text-3xl font-black text-foreground">
+                  {billingPeriod === 'monthly' ? '₹2,499' : '₹1,999'}{' '}
+                  <span className="text-xs font-normal text-muted-foreground">/ month</span>
+                </div>
+                <div className="space-y-2 text-xs text-muted-foreground divide-y divide-border/40">
+                  <div className="flex items-center gap-2 pt-1">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Unlimited Team Members</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Custom Domain (billing.yourdomain.com)</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Multi-Currency Exchange API</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Custom Template Engineering</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Priority 24/7 SLA Support</span>
+                  </div>
+                </div>
+              </div>
+              <Link href="/contact">
+                <Button variant="outline" className="w-full text-xs font-bold">
+                  Contact Sales
+                </Button>
+              </Link>
             </Card>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="mt-auto bg-slate-900 text-slate-400 py-12 px-6 lg:px-12 border-t border-slate-800 text-xs">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2 text-white font-bold text-base">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <span>BillCraft Invoice Generator</span>
+      {/* Customer Testimonials */}
+      <section className="py-20 px-4 sm:px-8 lg:px-12 max-w-6xl mx-auto space-y-12">
+        <div className="text-center space-y-2">
+          <Badge variant="outline" className="text-xs">Client Love</Badge>
+          <h2 className="text-3xl font-black text-foreground">Trusted by Fast-Moving Businesses</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="border-border bg-card p-6 space-y-4">
+            <div className="flex items-center gap-1 text-amber-500">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-4 w-4 fill-amber-500" />
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed italic">
+              "The automatic CGST/SGST vs IGST split is a lifesaver. We used to waste hours checking recipient state codes. Now it just works, and clients pay instantly via the UPI QR code."
+            </p>
+            <div className="flex items-center gap-3 pt-2 border-t border-border">
+              <div className="h-9 w-9 rounded-full bg-primary/20 text-primary font-bold text-xs flex items-center justify-center">
+                RK
+              </div>
+              <div>
+                <div className="text-xs font-bold text-foreground">Rahul Kulkarni</div>
+                <div className="text-[10px] text-muted-foreground">Founder, PixelCraft Studios</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="border-border bg-card p-6 space-y-4">
+            <div className="flex items-center gap-1 text-amber-500">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-4 w-4 fill-amber-500" />
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed italic">
+              "Most invoice generators just change font colors. BillCraft has genuinely different layouts. The Corporate layout gives our enterprise clients exactly what their finance departments need."
+            </p>
+            <div className="flex items-center gap-3 pt-2 border-t border-border">
+              <div className="h-9 w-9 rounded-full bg-indigo-500/20 text-indigo-600 font-bold text-xs flex items-center justify-center">
+                AM
+              </div>
+              <div>
+                <div className="text-xs font-bold text-foreground">Ananya Mehta</div>
+                <div className="text-[10px] text-muted-foreground">VP Finance, Nexus Cloud</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="border-border bg-card p-6 space-y-4">
+            <div className="flex items-center gap-1 text-amber-500">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-4 w-4 fill-amber-500" />
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed italic">
+              "The offline IndexedDB support means I never lose my work when traveling with spotty wifi. Then it syncs seamlessly once I am back online."
+            </p>
+            <div className="flex items-center gap-3 pt-2 border-t border-border">
+              <div className="h-9 w-9 rounded-full bg-emerald-500/20 text-emerald-600 font-bold text-xs flex items-center justify-center">
+                DT
+              </div>
+              <div>
+                <div className="text-xs font-bold text-foreground">Devashish Tiwari</div>
+                <div className="text-[10px] text-muted-foreground">Independent Architect & Consultant</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* FAQ Accordion */}
+      <section id="faq" className="py-20 bg-muted/20 border-t border-border px-4 sm:px-8 lg:px-12">
+        <div className="max-w-4xl mx-auto space-y-10">
+          <div className="text-center space-y-2">
+            <Badge variant="outline" className="text-xs">Got Questions?</Badge>
+            <h2 className="text-3xl font-black text-foreground">Frequently Asked Questions</h2>
           </div>
-          <div className="flex items-center gap-6">
-            <Link href="/create" className="hover:text-white">Create Invoice</Link>
-            <Link href="/history" className="hover:text-white">Local History</Link>
-            <Link href="/login" className="hover:text-white">Sign In</Link>
-            <Link href="/signup" className="hover:text-white">Sign Up</Link>
+
+          <div className="space-y-3">
+            {faqs.map((faq, idx) => {
+              const isOpen = openFaqIndex === idx;
+              return (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-border bg-card overflow-hidden transition-all"
+                >
+                  <button
+                    onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                    className="w-full flex justify-between items-center p-4 text-left font-bold text-sm text-foreground hover:bg-muted/30 transition-colors"
+                  >
+                    <span>{faq.q}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 text-muted-foreground transition-transform ${
+                        isOpen ? 'rotate-180 text-primary' : ''
+                      }`}
+                    />
+                  </button>
+                  {isOpen && (
+                    <div className="px-4 pb-4 text-xs text-muted-foreground leading-relaxed border-t border-border/50 pt-3">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <div className="text-slate-500">
-            © {new Date().getFullYear()} BillCraft Inc. All rights reserved.
+        </div>
+      </section>
+
+      {/* Final Call to Action */}
+      <section className="py-20 px-4 sm:px-8 text-center bg-primary text-primary-foreground relative overflow-hidden">
+        <div className="max-w-4xl mx-auto space-y-6 relative z-10">
+          <h2 className="text-3xl sm:text-5xl font-black tracking-tight">
+            Ready to Upgrade Your Invoicing Experience?
+          </h2>
+          <p className="text-sm sm:text-base opacity-90 max-w-xl mx-auto">
+            Join thousands of modern businesses using BillCraft for accurate, beautifully branded GST invoices and instant payments.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Link href="/create">
+              <Button size="lg" variant="secondary" className="h-12 px-8 text-sm font-bold shadow-md">
+                Create Your First Invoice Free
+              </Button>
+            </Link>
+            <Link href="/signup">
+              <Button size="lg" variant="outline" className="h-12 px-6 text-sm font-bold border-white/40 hover:bg-white/10 text-white">
+                Register Workspace
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Full Footer with Clean Navigation */}
+      <footer className="border-t border-border bg-card py-16 px-4 sm:px-8 lg:px-12 text-xs text-muted-foreground">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+          {/* Brand */}
+          <div className="col-span-2 space-y-3">
+            <Link href="/" className="flex items-center gap-2 font-black text-lg text-primary tracking-tight">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span>BillCraft</span>
+            </Link>
+            <p className="text-xs max-w-xs leading-relaxed">
+              Production-ready invoicing engine for freelancers, startups, and enterprises. Built with decimal-safe calculations, verified UPI QR codes, and multi-tenant security.
+            </p>
+            <div className="text-[11px] font-mono text-muted-foreground/60 pt-2">
+              © 2026 BillCraft Invoicing Inc. All rights reserved.
+            </div>
+          </div>
+
+          {/* Product Links */}
+          <div className="space-y-2">
+            <div className="font-bold text-foreground text-xs uppercase tracking-wider">Product</div>
+            <div className="flex flex-col space-y-1.5">
+              <Link href="/create" className="hover:text-foreground transition-colors">Invoice Generator</Link>
+              <Link href="/create?type=estimate" className="hover:text-foreground transition-colors">Estimate Creator</Link>
+              <Link href="/create?type=purchase_order" className="hover:text-foreground transition-colors">Purchase Orders</Link>
+              <Link href="/templates" className="hover:text-foreground transition-colors">Template Gallery</Link>
+              <Link href="/pricing" className="hover:text-foreground transition-colors">Pricing & Plans</Link>
+            </div>
+          </div>
+
+          {/* Resources */}
+          <div className="space-y-2">
+            <div className="font-bold text-foreground text-xs uppercase tracking-wider">Resources</div>
+            <div className="flex flex-col space-y-1.5">
+              <Link href="/blog" className="hover:text-foreground transition-colors">Blog & Tax Guides</Link>
+              <Link href="/faq" className="hover:text-foreground transition-colors">Help Center & FAQ</Link>
+              <Link href="/features" className="hover:text-foreground transition-colors">Feature Documentation</Link>
+              <Link href="/admin/login" className="hover:text-foreground transition-colors">Super Admin Portal</Link>
+            </div>
+          </div>
+
+          {/* Legal & Company */}
+          <div className="space-y-2">
+            <div className="font-bold text-foreground text-xs uppercase tracking-wider">Company</div>
+            <div className="flex flex-col space-y-1.5">
+              <Link href="/about" className="hover:text-foreground transition-colors">About Us</Link>
+              <Link href="/contact" className="hover:text-foreground transition-colors">Contact Support</Link>
+              <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+            </div>
           </div>
         </div>
       </footer>

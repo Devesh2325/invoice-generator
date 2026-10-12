@@ -21,6 +21,16 @@ export type TemplateCategory =
   | 'creative'
   | 'minimal';
 
+export type StructuralLayout =
+  | 'classic'      // traditional corporate, top logo, clean table
+  | 'modern'       // bold accent bar, clean typography, badge status
+  | 'minimal'      // monochrome, maximum whitespace, elegant typography
+  | 'bold_header'  // full-width colored header band, white text
+  | 'corporate'    // two-column header, formal borders, bank box
+  | 'creative'     // asymmetric layout, playful accent shapes, agency vibe
+  | 'compact'      // dense layout for receipts / single-page with lots of items
+  | 'elegant';     // centered header, refined borders, premium feel
+
 export interface DocumentTemplateMeta {
   id: string;
   name: string;
@@ -28,6 +38,8 @@ export interface DocumentTemplateMeta {
   description: string;
   category: TemplateCategory;
   categoryLabel: string;
+  layoutStyle: StructuralLayout;
+  isPro?: boolean;
   defaultTokens: ThemeTokens;
 }
 
@@ -48,6 +60,8 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     description: 'Modern GST-compliant tax invoice with HSN/SAC, Place of Supply, and CGST/SGST/IGST split.',
     category: 'gst_india',
     categoryLabel: '🇮🇳 GST & Tax Compliant (India)',
+    layoutStyle: 'corporate',
+    isPro: false,
     defaultTokens: {
       primaryColor: '#1D4ED8',
       secondaryColor: '#1E3A8A',
@@ -67,6 +81,8 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     description: 'Traditional Indian accounting bordered box layout with GSTIN, State Code, HSN/SAC & Signatory.',
     category: 'gst_india',
     categoryLabel: '🇮🇳 GST & Tax Compliant (India)',
+    layoutStyle: 'corporate',
+    isPro: false,
     defaultTokens: {
       primaryColor: '#0F172A',
       secondaryColor: '#334155',
@@ -86,6 +102,8 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     description: 'High-clarity commercial distributor & wholesale GST layout with bold accent header.',
     category: 'gst_india',
     categoryLabel: '🇮🇳 GST & Tax Compliant (India)',
+    layoutStyle: 'bold_header',
+    isPro: false,
     defaultTokens: {
       primaryColor: '#EA580C',
       secondaryColor: '#9A3412',
@@ -107,6 +125,8 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     description: 'Clean high-contrast layout with elegant colored accents and modern cards.',
     category: 'modern',
     categoryLabel: '⚡ SaaS & Modern Fintech',
+    layoutStyle: 'modern',
+    isPro: false,
     defaultTokens: {
       primaryColor: '#3157D5',
       secondaryColor: '#1E293B',
@@ -126,6 +146,8 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     description: 'Ultra-crisp fintech billing statement with indigo accents and tabular precision.',
     category: 'modern',
     categoryLabel: '⚡ SaaS & Modern Fintech',
+    layoutStyle: 'modern',
+    isPro: true,
     defaultTokens: {
       primaryColor: '#635BFF',
       secondaryColor: '#0A2540',
@@ -145,6 +167,8 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     description: 'Structured business invoice with balance due ribbon and clean itemized table.',
     category: 'modern',
     categoryLabel: '⚡ SaaS & Modern Fintech',
+    layoutStyle: 'classic',
+    isPro: false,
     defaultTokens: {
       primaryColor: '#0284C7',
       secondaryColor: '#0C4A6E',
@@ -164,6 +188,8 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     description: 'Left accent bar layout with prominent amount due callout and client-friendly hierarchy.',
     category: 'modern',
     categoryLabel: '⚡ SaaS & Modern Fintech',
+    layoutStyle: 'modern',
+    isPro: true,
     defaultTokens: {
       primaryColor: '#0075DD',
       secondaryColor: '#004B8D',
@@ -178,13 +204,15 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
   },
 
   // 3. CORPORATE & ENTERPRISE
-  professional: {
-    id: 'professional',
-    name: 'Deloitte Navy Executive',
-    competitorStyle: 'Enterprise ERP',
-    description: 'Traditional corporate layout with deep navy headers and crisp borders.',
+  bold_header: {
+    id: 'bold_header',
+    name: 'Bold Header Brand',
+    competitorStyle: 'Full Width Band',
+    description: 'Full-width colored header band with high contrast white text and modern card layout.',
     category: 'corporate',
     categoryLabel: '🏢 Corporate & Enterprise',
+    layoutStyle: 'bold_header',
+    isPro: true,
     defaultTokens: {
       primaryColor: '#1E3A8A',
       secondaryColor: '#3B82F6',
@@ -197,22 +225,24 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
       borderRadius: 'sm',
     },
   },
-  quickbooks_premier: {
-    id: 'quickbooks_premier',
-    name: 'QuickBooks Enterprise',
-    competitorStyle: 'Intuit QuickBooks',
-    description: 'emerald corporate accounting layout with boxed Bill To and Ship To sections.',
+  professional: {
+    id: 'professional',
+    name: 'Deloitte Navy Executive',
+    competitorStyle: 'Enterprise ERP',
+    description: 'Traditional corporate layout with deep navy headers and crisp borders.',
     category: 'corporate',
     categoryLabel: '🏢 Corporate & Enterprise',
+    layoutStyle: 'bold_header',
+    isPro: true,
     defaultTokens: {
-      primaryColor: '#15803D',
-      secondaryColor: '#14532D',
+      primaryColor: '#1E3A8A',
+      secondaryColor: '#3B82F6',
       backgroundColor: '#FFFFFF',
       textColor: '#0F172A',
       subtextColor: '#475569',
-      borderColor: '#BBF7D0',
+      borderColor: '#CBD5E1',
       fontFamily: 'sans',
-      headerLayout: 'split',
+      headerLayout: 'banner',
       borderRadius: 'sm',
     },
   },
@@ -220,9 +250,11 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     id: 'corporate',
     name: 'Executive Emerald',
     competitorStyle: 'SAP / Oracle NetSuite',
-    description: 'Structured layout with dark teal header block and legal statement containers.',
+    description: 'Structured layout with two-column header, formal borders, and dedicated legal bank box.',
     category: 'corporate',
     categoryLabel: '🏢 Corporate & Enterprise',
+    layoutStyle: 'corporate',
+    isPro: true,
     defaultTokens: {
       primaryColor: '#0F766E',
       secondaryColor: '#134E4A',
@@ -239,9 +271,11 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     id: 'classic',
     name: 'Wall Street Classic Serif',
     competitorStyle: 'Legal & Financial Advisory',
-    description: 'Timeless formal document styling with centered serif typography and double rules.',
+    description: 'Timeless formal document styling with centered serif typography and double rule borders.',
     category: 'corporate',
     categoryLabel: '🏢 Corporate & Enterprise',
+    layoutStyle: 'classic',
+    isPro: false,
     defaultTokens: {
       primaryColor: '#27272A',
       secondaryColor: '#52525B',
@@ -254,34 +288,59 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
       borderRadius: 'none',
     },
   },
+  elegant: {
+    id: 'elegant',
+    name: 'Atelier Elegant Serif',
+    competitorStyle: 'Luxury & Haute Couture',
+    description: 'Refined double borders, centered serif masthead, and delicate divider ornaments.',
+    category: 'corporate',
+    categoryLabel: '🏢 Corporate & Enterprise',
+    layoutStyle: 'elegant',
+    isPro: true,
+    defaultTokens: {
+      primaryColor: '#4A3E3D',
+      secondaryColor: '#8C7A78',
+      backgroundColor: '#FFFEFA',
+      textColor: '#2D2926',
+      subtextColor: '#78726D',
+      borderColor: '#E7E2DA',
+      fontFamily: 'serif',
+      headerLayout: 'centered',
+      borderRadius: 'none',
+    },
+  },
 
   // 4. CREATIVE & AGENCY
-  consulting: {
-    id: 'consulting',
-    name: 'McKinsey Advisory',
-    competitorStyle: 'Management Consulting',
-    description: 'Executive design with statement area and project milestone grouping.',
+  creative: {
+    id: 'creative',
+    name: 'Studio Creative Bold',
+    competitorStyle: 'Bonsai / HoneyBook',
+    description: 'Asymmetric vibrant agency layout with modern cards and bold accent badges.',
     category: 'creative',
     categoryLabel: '🎨 Creative & Agency',
+    layoutStyle: 'creative',
+    isPro: true,
     defaultTokens: {
-      primaryColor: '#4F46E5',
-      secondaryColor: '#312E81',
+      primaryColor: '#9333EA',
+      secondaryColor: '#DB2777',
       backgroundColor: '#FFFFFF',
       textColor: '#0F172A',
       subtextColor: '#64748B',
-      borderColor: '#E0E7FF',
+      borderColor: '#F3E8FF',
       fontFamily: 'sans',
-      headerLayout: 'split',
-      borderRadius: 'md',
+      headerLayout: 'banner',
+      borderRadius: 'lg',
     },
   },
   canva_studio: {
     id: 'canva_studio',
-    name: 'Studio Creative Bold',
+    name: 'Canva Studio Bold',
     competitorStyle: 'Bonsai / HoneyBook',
     description: 'Vibrant purple-rose creative agency layout with modern cards and bold typography.',
     category: 'creative',
     categoryLabel: '🎨 Creative & Agency',
+    layoutStyle: 'creative',
+    isPro: true,
     defaultTokens: {
       primaryColor: '#9333EA',
       secondaryColor: '#DB2777',
@@ -301,6 +360,8 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     description: 'High-contrast dark header block with modern monospace metadata and crisp table.',
     category: 'creative',
     categoryLabel: '🎨 Creative & Agency',
+    layoutStyle: 'bold_header',
+    isPro: true,
     defaultTokens: {
       primaryColor: '#111827',
       secondaryColor: '#2563EB',
@@ -322,6 +383,8 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
     description: 'Clean typographic layout focusing on whitespace and stark architectural clarity.',
     category: 'minimal',
     categoryLabel: '📐 Minimal & Industry Specialty',
+    layoutStyle: 'minimal',
+    isPro: false,
     defaultTokens: {
       primaryColor: '#18181B',
       secondaryColor: '#71717A',
@@ -334,32 +397,15 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
       borderRadius: 'none',
     },
   },
-  service_business: {
-    id: 'service_business',
-    name: 'Field Service & Contractor',
-    competitorStyle: 'Jobber / Housecall Pro',
-    description: 'Designed for hourly, engineering, construction, and contractor billing.',
+  compact: {
+    id: 'compact',
+    name: 'Receipt & Quick POS',
+    competitorStyle: 'Shopify / Square POS',
+    description: 'Dense single-page itemized layout ideal for retail, hardware, and multi-item orders.',
     category: 'minimal',
     categoryLabel: '📐 Minimal & Industry Specialty',
-    defaultTokens: {
-      primaryColor: '#D97706',
-      secondaryColor: '#B45309',
-      backgroundColor: '#FFFFFF',
-      textColor: '#0F172A',
-      subtextColor: '#64748B',
-      borderColor: '#FED7AA',
-      fontFamily: 'sans',
-      headerLayout: 'split',
-      borderRadius: 'md',
-    },
-  },
-  retail: {
-    id: 'retail',
-    name: 'POS & Commercial Receipt',
-    competitorStyle: 'Square / Shopify POS',
-    description: 'Compact high-density itemized layout with tax summary breakdown.',
-    category: 'minimal',
-    categoryLabel: '📐 Minimal & Industry Specialty',
+    layoutStyle: 'compact',
+    isPro: true,
     defaultTokens: {
       primaryColor: '#0284C7',
       secondaryColor: '#0369A1',
@@ -370,6 +416,48 @@ export const TEMPLATES: Record<string, DocumentTemplateMeta> = {
       fontFamily: 'mono',
       headerLayout: 'split',
       borderRadius: 'sm',
+    },
+  },
+  retail: {
+    id: 'retail',
+    name: 'POS & Commercial Receipt',
+    competitorStyle: 'Square / Shopify POS',
+    description: 'Compact high-density itemized layout with tax summary breakdown.',
+    category: 'minimal',
+    categoryLabel: '📐 Minimal & Industry Specialty',
+    layoutStyle: 'compact',
+    isPro: true,
+    defaultTokens: {
+      primaryColor: '#0284C7',
+      secondaryColor: '#0369A1',
+      backgroundColor: '#FFFFFF',
+      textColor: '#0F172A',
+      subtextColor: '#64748B',
+      borderColor: '#BAE6FD',
+      fontFamily: 'mono',
+      headerLayout: 'split',
+      borderRadius: 'sm',
+    },
+  },
+  service_business: {
+    id: 'service_business',
+    name: 'Field Service & Contractor',
+    competitorStyle: 'Jobber / Housecall Pro',
+    description: 'Designed for hourly, engineering, construction, and contractor billing.',
+    category: 'minimal',
+    categoryLabel: '📐 Minimal & Industry Specialty',
+    layoutStyle: 'classic',
+    isPro: true,
+    defaultTokens: {
+      primaryColor: '#D97706',
+      secondaryColor: '#B45309',
+      backgroundColor: '#FFFFFF',
+      textColor: '#0F172A',
+      subtextColor: '#64748B',
+      borderColor: '#FED7AA',
+      fontFamily: 'sans',
+      headerLayout: 'split',
+      borderRadius: 'md',
     },
   },
 };

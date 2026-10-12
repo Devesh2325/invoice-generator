@@ -1006,6 +1006,45 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     currency,
     docNumber,
   ]);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSaveDraft();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        triggerPrint();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleAddItem();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [documentModel]);
+
+  const handleMoveItem = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+    setItems((prev) => {
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIndex];
+      copy[targetIndex] = temp;
+      return copy;
+    });
+  };
+
+  const handleConvertEstimateToInvoice = async () => {
+    const newDocNumber = formatDocumentNumber(
+      DEFAULT_NUMBERING_RULES['invoice'],
+      Math.floor(Math.random() * 9000) + 1000
+    );
+    setDocType('invoice');
+    setDocNumber(newDocNumber);
+    setStatus('pending');
+    alert(`Estimate converted to Tax Invoice #${newDocNumber}!`);
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">

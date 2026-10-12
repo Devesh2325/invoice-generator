@@ -1,0 +1,254 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Sparkles, Check, X, ArrowRight, HelpCircle } from 'lucide-react';
+
+export default function PricingPage() {
+  const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly');
+
+  const plans = [
+    {
+      name: 'Starter / Free',
+      description: 'Ideal for solo freelancers, consultants, and contractors starting out.',
+      price: period === 'monthly' ? '₹0' : '₹0',
+      periodText: 'forever free',
+      cta: 'Start Free',
+      ctaHref: '/create',
+      ctaVariant: 'outline' as const,
+      popular: false,
+      highlights: [
+        'Unlimited offline invoices (IndexedDB)',
+        'India GST auto-split (CGST/SGST/IGST)',
+        'Verified scannable UPI QR code',
+        '3 Core templates',
+        'PDF export & direct print',
+        '1 Seat (Single user)',
+      ],
+    },
+    {
+      name: 'Professional',
+      description: 'For growing studios, consulting firms, and agencies requiring collaboration.',
+      price: period === 'monthly' ? '₹799' : '₹639',
+      periodText: period === 'monthly' ? 'per month, billed monthly' : 'per month, billed annually',
+      cta: 'Start 14-Day Free Trial',
+      ctaHref: '/signup',
+      ctaVariant: 'default' as const,
+      popular: true,
+      highlights: [
+        'Everything in Starter',
+        'Cloud synchronization & auto-backup',
+        'All 8+ structural designer templates',
+        'Up to 5 team members (Roles & Permissions)',
+        'Remove BillCraft watermark from PDFs',
+        'Customer and product catalog autocomplete',
+        'Payment reminders & refund tracking',
+      ],
+    },
+    {
+      name: 'Enterprise',
+      description: 'For multi-entity businesses, distributed teams, and high-volume billing.',
+      price: period === 'monthly' ? '₹2,499' : '₹1,999',
+      periodText: period === 'monthly' ? 'per month, billed monthly' : 'per month, billed annually',
+      cta: 'Contact Enterprise Sales',
+      ctaHref: '/contact',
+      ctaVariant: 'outline' as const,
+      popular: false,
+      highlights: [
+        'Everything in Professional',
+        'Unlimited team members & workspaces',
+        'Custom domain (e.g. billing.yourdomain.com)',
+        'Multi-currency live exchange rate feeds',
+        'Custom template engineering by design team',
+        'Dedicated account manager & 24/7 SLA',
+      ],
+    },
+  ];
+
+  const comparisonRows = [
+    { feature: 'Offline Invoices & Receipts', starter: 'Unlimited', pro: 'Unlimited', enterprise: 'Unlimited' },
+    { feature: 'Cloud Workspaces & Sync', starter: false, pro: true, enterprise: true },
+    { feature: 'India GST & State Code Engine', starter: true, pro: true, enterprise: true },
+    { feature: 'Verified UPI QR Codes', starter: true, pro: true, enterprise: true },
+    { feature: 'Included Designer Templates', starter: '3 Templates', pro: 'All 8+ Templates', enterprise: 'All + Custom' },
+    { feature: 'Team Seats Included', starter: '1 Member', pro: '5 Members', enterprise: 'Unlimited' },
+    { feature: 'Role-Based Permissions (RBAC)', starter: false, pro: true, enterprise: true },
+    { feature: 'Remove Watermark', starter: false, pro: true, enterprise: true },
+    { feature: 'Saved Client & Product Autocomplete', starter: 'Local only', pro: 'Cloud synced', enterprise: 'Cloud synced' },
+    { feature: 'Custom Domain (CNAME)', starter: false, pro: false, enterprise: true },
+    { feature: 'Audit Trail & Event Log', starter: 'Basic', pro: 'Full (30 days)', enterprise: 'Unlimited' },
+    { feature: 'Support Level', starter: 'Community', pro: 'Priority Email', enterprise: 'Dedicated 24/7' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border px-6 lg:px-12 py-4 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 font-black text-xl text-primary tracking-tight">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <span>BillCraft</span>
+        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/login">
+            <Button variant="ghost" size="sm" className="text-xs font-semibold">Sign In</Button>
+          </Link>
+          <Link href="/create">
+            <Button size="sm" className="text-xs font-bold">Create Invoice</Button>
+          </Link>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 py-16 space-y-16">
+        <div className="text-center space-y-4 max-w-3xl mx-auto">
+          <Badge variant="outline" className="text-xs">Pricing & Plans</Badge>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground">
+            Predictable Pricing for High-Performance Invoicing
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Choose the plan that fits your business scale. No surprise fees. Upgrade or cancel anytime.
+          </p>
+
+          <div className="inline-flex items-center gap-2 p-1 rounded-xl bg-muted/50 border border-border text-xs font-semibold mt-4">
+            <button
+              onClick={() => setPeriod('monthly')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all ${
+                period === 'monthly' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground'
+              }`}
+            >
+              Monthly Billing
+            </button>
+            <button
+              onClick={() => setPeriod('yearly')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                period === 'yearly' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground'
+              }`}
+            >
+              <span>Annual Billing</span>
+              <span className="rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.2 text-[10px] font-bold">
+                Save 20%
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Plan Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {plans.map((p, idx) => (
+            <Card
+              key={idx}
+              className={`border p-6 rounded-2xl flex flex-col justify-between space-y-6 bg-card relative ${
+                p.popular ? 'border-primary ring-2 ring-primary shadow-xl' : 'border-border'
+              }`}
+            >
+              {p.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
+                    Most Popular
+                  </span>
+                </div>
+              )}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-bold text-lg text-foreground">{p.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-normal">{p.description}</p>
+                </div>
+
+                <div>
+                  <div className="text-3xl font-black text-foreground">{p.price}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">{p.periodText}</div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-border text-xs">
+                  {p.highlights.map((h, i) => (
+                    <div key={i} className="flex items-center gap-2 text-muted-foreground">
+                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>{h}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Link href={p.ctaHref}>
+                <Button
+                  variant={p.ctaVariant}
+                  className={`w-full text-xs font-bold ${
+                    p.popular ? 'bg-primary text-primary-foreground shadow-sm' : ''
+                  }`}
+                >
+                  {p.cta}
+                </Button>
+              </Link>
+            </Card>
+          ))}
+        </div>
+
+        {/* Feature Comparison Matrix */}
+        <div className="space-y-6 pt-8">
+          <div className="text-center space-y-1">
+            <h2 className="text-2xl font-bold text-foreground">Detailed Feature Comparison</h2>
+            <p className="text-xs text-muted-foreground">Compare all capabilities across plans</p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-muted/40 font-bold text-foreground">
+                  <th className="py-3 px-4">Feature</th>
+                  <th className="py-3 px-4 text-center w-36">Starter</th>
+                  <th className="py-3 px-4 text-center w-36 text-primary">Professional</th>
+                  <th className="py-3 px-4 text-center w-36">Enterprise</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {comparisonRows.map((row, i) => (
+                  <tr key={i} className="hover:bg-muted/20">
+                    <td className="py-3 px-4 font-medium text-foreground">{row.feature}</td>
+                    <td className="py-3 px-4 text-center font-mono">
+                      {typeof row.starter === 'boolean' ? (
+                        row.starter ? (
+                          <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                        ) : (
+                          <X className="h-4 w-4 text-muted-foreground/40 mx-auto" />
+                        )
+                      ) : (
+                        row.starter
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono font-semibold text-primary">
+                      {typeof row.pro === 'boolean' ? (
+                        row.pro ? (
+                          <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                        ) : (
+                          <X className="h-4 w-4 text-muted-foreground/40 mx-auto" />
+                        )
+                      ) : (
+                        row.pro
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono font-semibold text-foreground">
+                      {typeof row.enterprise === 'boolean' ? (
+                        row.enterprise ? (
+                          <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                        ) : (
+                          <X className="h-4 w-4 text-muted-foreground/40 mx-auto" />
+                        )
+                      ) : (
+                        row.enterprise
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+
+      <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
+        © 2026 BillCraft Invoicing. Simple transparent billing with zero hidden charges.
+      </footer>
+    </div>
+  );
+}
