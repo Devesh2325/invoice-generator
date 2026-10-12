@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { TenantApi } from '@invoice/api';
+import { useTenant } from '@/lib/auth/tenant-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,6 +12,7 @@ import { Sparkles, Building, Mail, Lock, User, CheckCircle2, AlertCircle } from 
 
 export default function SignUpPage() {
   const router = useRouter();
+  const { refreshTenants } = useTenant();
   const [workspaceName, setWorkspaceName] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -75,6 +77,7 @@ export default function SignUpPage() {
       await TenantApi.updateBrandSettings(tenantId, {
         tenantId,
         businessName: workspaceName.trim(),
+        email: email.trim().toLowerCase(),
         primaryColor: '#3157D5',
         secondaryColor: '#0F172A',
         fontFamily: 'sans',
@@ -82,6 +85,11 @@ export default function SignUpPage() {
         country: 'India',
         gstState: '27 - Maharashtra',
       });
+
+      await refreshTenants();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('billcraft-auth-updated'));
+      }
 
       router.push('/onboarding');
     } catch (err: any) {

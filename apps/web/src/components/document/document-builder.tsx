@@ -6,6 +6,7 @@ import {
   DocumentModel,
   DocumentType,
   DocumentStatus,
+  Party,
   RoundingMode,
   PaymentMethod,
   BankAccountDetails,
@@ -26,7 +27,7 @@ import {
   generateVerifiedUpiQrSvgDataUrl,
 } from '@invoice/core';
 import { getTemplate, getTemplatesByCategory } from '@invoice/theme';
-import { TenantApi } from '@invoice/api';
+import { TenantApi, ProductCatalogItem } from '@invoice/api';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { saveDocument } from '@/lib/storage/indexed-db';
 import { exportDocumentToPdf, triggerPrint } from '@/lib/pdf/export-pdf';
@@ -63,6 +64,8 @@ import {
   Building2,
   SlidersHorizontal,
   ArrowLeft,
+  Users,
+  Package,
 } from 'lucide-react';
 
 interface DocumentBuilderProps {
@@ -303,20 +306,76 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.signatoryName || brandSettings?.signatoryName || 'Authorized Director'
   );
 
-  // Sync workspace defaults when creating a brand-new invoice and brandSettings finish loading
-  const [defaultsApplied, setDefaultsApplied] = useState(Boolean(initialDocument));
+  // Saved Customers & Catalog Items for active workspace
+  const [savedCustomers, setSavedCustomers] = useState<Party[]>([]);
+  const [savedItems, setSavedItems] = useState<ProductCatalogItem[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>(
+    initialDocument?.client?.id || ''
+  );
+
   useEffect(() => {
-    if (!initialDocument && brandSettings && !defaultsApplied) {
-      if (brandSettings.currency) setCurrency(brandSettings.currency);
-      if (brandSettings.businessName) setSenderName(brandSettings.businessName);
+    if (!activeTenant?.id) return;
+    let isMounted = true;
+    const loadCatalogAndCustomers = async () => {
+      try {
+        const [partiesList, productsList] = await Promise.all([
+          TenantApi.getParties(activeTenant.id),
+          TenantApi.getProducts(activeTenant.id),
+        ]);
+        if (!isMounted) return;
+        const customersOnly = partiesList.filter(
+          (p) => !p.isArchived && (p.type === 'customer' || !p.type)
+        );
+        const activeProducts = productsList.filter((p) => !p.isArchived);
+        setSavedCustomers(customersOnly);
+        setSavedItems(activeProducts);
+      } catch (err) {
+        console.error('Failed to load workspace customers & items:', err);
+      }
+    };
+    loadCatalogAndCustomers();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', loadCatalogAndCustomers);
+      return () => {
+        isMounted = false;
+        window.removeEventListener('focus', loadCatalogAndCustomers);
+      };
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTenant?.id]);
+
+  // Sync workspace defaults when creating a brand-new invoice or when active workspace changes
+  const [appliedTenantId, setAppliedTenantId] = useState<string | null>(
+    initialDocument ? activeTenant?.id || 'initial' : null
+  );
+  useEffect(() => {
+    if (!initialDocument && activeTenant && brandSettings && appliedTenantId !== activeTenant.id) {
+      if (brandSettings.currency || activeTenant.currency) {
+        setCurrency(brandSettings.currency || activeTenant.currency || 'INR');
+      }
+      setSenderName(brandSettings.businessName || activeTenant.name || 'Your Business Name');
       if (brandSettings.email) setSenderEmail(brandSettings.email);
       if (brandSettings.phone) setSenderPhone(brandSettings.phone);
-      if (brandSettings.taxId) setSenderTaxId(brandSettings.taxId);
-      if (brandSettings.street) setSenderStreet(brandSettings.street);
-      if (brandSettings.city) setSenderCity(brandSettings.city);
-      if (brandSettings.gstState) setSenderState(brandSettings.gstState);
+      if (brandSettings.taxId || activeTenant.taxId) {
+        setSenderTaxId(brandSettings.taxId || activeTenant.taxId || '');
+      }
+      if (brandSettings.street || activeTenant.street) {
+        setSenderStreet(brandSettings.street || activeTenant.street || '');
+      }
+      if (brandSettings.city || activeTenant.city) {
+        setSenderCity(brandSettings.city || activeTenant.city || '');
+      }
+      if (brandSettings.gstState || activeTenant.gstState) {
+        setSenderState(brandSettings.gstState || activeTenant.gstState || '27 - Maharashtra');
+      }
       if (brandSettings.postalCode) setSenderPostalCode(brandSettings.postalCode);
-      if (brandSettings.country) setSenderCountry(brandSettings.country);
+      if (brandSettings.country || activeTenant.country) {
+        setSenderCountry(brandSettings.country || activeTenant.country || 'India');
+      }
+      if (brandSettings.logoUrl !== undefined) setSenderLogo(brandSettings.logoUrl || '');
       if (brandSettings.enableRoundOff !== undefined) setEnableRoundOff(brandSettings.enableRoundOff);
       if (brandSettings.roundingMode) setRoundingMode(brandSettings.roundingMode);
       if (brandSettings.decimalPrecision !== undefined)
@@ -327,9 +386,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         setPaymentInstructions(brandSettings.defaultInstructions);
       if (brandSettings.signatoryName) setSignatoryName(brandSettings.signatoryName);
       if (brandSettings.defaultTemplateId) setTemplateId(brandSettings.defaultTemplateId);
-      setDefaultsApplied(true);
+      setAppliedTenantId(activeTenant.id);
     }
-  }, [initialDocument, brandSettings, defaultsApplied]);
+  }, [initialDocument, activeTenant, brandSettings, appliedTenantId]);
 
   // UI & Modal state
   const [viewMode, setViewMode] = useState<'sheet' | 'split' | 'pdf_preview'>('sheet');
@@ -470,7 +529,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         },
       },
       client: {
-        id: initialDocument?.client.id || `client_${Date.now()}`,
+        id: selectedCustomerId || initialDocument?.client.id || `client_${docId}`,
         type: 'customer',
         name: clientName,
         email: clientEmail,
@@ -512,6 +571,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   }, [
     docId,
     activeTenant?.id,
+    selectedCustomerId,
     invoiceName,
     initialDocument,
     docType,
@@ -618,6 +678,69 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       copy[index] = { ...copy[index], [field]: value };
       return copy;
     });
+  };
+
+  // Select a saved customer from workspace directory and populate Bill To fields
+  const handleSelectCustomer = (partyId: string) => {
+    setSelectedCustomerId(partyId);
+    const found = savedCustomers.find((c) => c.id === partyId);
+    if (!found) return;
+    setClientName(found.name || '');
+    setClientEmail(found.email || '');
+    setClientPhone(found.phone || '');
+    setClientTaxId(found.taxId || '');
+    setClientStreet(found.billingAddress?.street1 || '');
+    setClientCity(found.billingAddress?.city || '');
+    if (found.billingAddress?.state) {
+      setClientState(found.billingAddress.state);
+    }
+    setClientPostalCode(found.billingAddress?.postalCode || '');
+    setClientCountry(found.billingAddress?.country || 'India');
+  };
+
+  // Select a saved item from workspace catalog for a specific line item row
+  const handleSelectCatalogItem = (lineIndex: number, productId: string) => {
+    const product = savedItems.find((p) => p.id === productId);
+    if (!product) return;
+    setItems((prev) => {
+      const copy = [...prev];
+      const fullDesc = product.description
+        ? `${product.name} — ${product.description}`
+        : product.name;
+      copy[lineIndex] = {
+        ...copy[lineIndex],
+        productId: product.id,
+        description: fullDesc,
+        hsnCode: product.hsnCode || product.sku || copy[lineIndex]?.hsnCode || '',
+        unitPrice: Number(product.unitPrice) || 0,
+        taxRate: product.taxRate ?? (brandSettings?.defaultTaxRate ?? 18),
+      };
+      return copy;
+    });
+  };
+
+  // Append a new line item directly from a saved catalog item
+  const handleAddCatalogItem = (productId: string) => {
+    const product = savedItems.find((p) => p.id === productId);
+    if (!product) return;
+    const fullDesc = product.description
+      ? `${product.name} — ${product.description}`
+      : product.name;
+    setItems((prev) => [
+      ...prev,
+      {
+        id: `item_${Date.now()}`,
+        productId: product.id,
+        description: fullDesc,
+        hsnCode: product.hsnCode || product.sku || '9983',
+        quantity: 1,
+        unitPrice: Number(product.unitPrice) || 0,
+        taxRate: product.taxRate ?? (brandSettings?.defaultTaxRate ?? 18),
+        taxInclusive: false,
+        discountType: 'percentage',
+        discountValue: 0,
+      },
+    ]);
   };
 
   // Inline sheet update handlers
@@ -1212,6 +1335,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           <div className="w-full max-w-4xl">
             <InlineDocumentCanvas
               document={documentModel}
+              savedCustomers={savedCustomers}
+              savedItems={savedItems}
+              selectedCustomerId={selectedCustomerId}
+              onSelectCustomer={handleSelectCustomer}
+              onSelectCatalogItem={handleSelectCatalogItem}
+              onAddCatalogItem={handleAddCatalogItem}
               onUpdateSender={handleUpdateSender}
               onUpdateSenderAddress={handleUpdateSenderAddress}
               onUpdateClient={handleUpdateClient}
@@ -1474,11 +1603,39 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 {/* Client Card */}
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-bold">
-                      Bill To (Customer & Place of Supply)
+                    <CardTitle className="text-sm font-bold flex items-center justify-between gap-2">
+                      <span>Bill To (Customer & Place of Supply)</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2.5">
+                    <div>
+                      <label className="text-[11px] font-bold text-primary flex items-center gap-1 mb-1">
+                        <Users className="h-3.5 w-3.5" /> Select Saved Customer
+                      </label>
+                      <select
+                        aria-label="Select Saved Customer"
+                        value={selectedCustomerId}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleSelectCustomer(e.target.value);
+                          }
+                        }}
+                        className="w-full h-9 rounded-md border border-slate-300 bg-slate-50 hover:bg-white px-2.5 text-xs font-semibold text-slate-800 cursor-pointer"
+                      >
+                        <option value="">
+                          {savedCustomers.length > 0
+                            ? `Choose from ${savedCustomers.length} saved customer(s)...`
+                            : 'No saved customers yet — enter details below'}
+                        </option>
+                        {savedCustomers.map((cust) => (
+                          <option key={cust.id} value={cust.id}>
+                            {cust.name}
+                            {cust.taxId ? ` (${cust.taxId})` : cust.billingAddress?.city ? ` — ${cust.billingAddress.city}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <Input
                       placeholder="Customer / Company Name"
                       value={clientName}
@@ -1543,19 +1700,40 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
               {/* Line Items Card */}
               <Card>
-                <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <CardHeader className="pb-3 flex flex-wrap flex-row items-center justify-between gap-2">
                   <CardTitle className="text-sm font-bold">
                     Invoice Items (HSN/SAC & GST)
                   </CardTitle>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={handleAddItem}
-                    className="h-8 text-xs font-semibold"
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Item
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {savedItems.length > 0 && (
+                      <select
+                        aria-label="Quick Add Saved Item"
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAddCatalogItem(e.target.value);
+                          }
+                        }}
+                        className="h-8 rounded-md border border-slate-300 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 cursor-pointer"
+                      >
+                        <option value="">+ Add from Saved Items ({savedItems.length})...</option>
+                        {savedItems.map((prod) => (
+                          <option key={prod.id} value={prod.id}>
+                            {prod.name} — {formatCurrency(prod.unitPrice, currency)}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleAddItem}
+                      className="h-8 text-xs font-semibold"
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Add Item
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {items.map((item, index) => (
@@ -1563,10 +1741,33 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       key={item.id}
                       className="p-3 rounded-lg border border-slate-200 bg-slate-50/60 space-y-2.5"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-slate-500">
-                          Item #{index + 1}
-                        </span>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-500">
+                            Item #{index + 1}
+                          </span>
+                          <select
+                            aria-label={`Select Saved Item for Item ${index + 1}`}
+                            value={item.productId || ''}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleSelectCatalogItem(index, e.target.value);
+                              }
+                            }}
+                            className="h-7 rounded border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 cursor-pointer"
+                          >
+                            <option value="">
+                              {savedItems.length > 0
+                                ? `📦 Select Saved Item (${savedItems.length})...`
+                                : '📦 No saved items yet'}
+                            </option>
+                            {savedItems.map((prod) => (
+                              <option key={prod.id} value={prod.id}>
+                                {prod.name} — {formatCurrency(prod.unitPrice, currency)} (GST {prod.taxRate}%)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         <div className="flex items-center gap-1">
                           <button
                             type="button"

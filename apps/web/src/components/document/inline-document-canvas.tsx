@@ -4,10 +4,12 @@ import React, { useRef } from 'react';
 import {
   DocumentModel,
   DocumentType,
+  Party,
   formatCurrency,
   INDIAN_STATES,
   generateVerifiedUpiQrSvgDataUrl,
 } from '@invoice/core';
+import { ProductCatalogItem } from '@invoice/api';
 import { getTemplate } from '@invoice/theme';
 import {
   Upload,
@@ -15,10 +17,18 @@ import {
   Trash2,
   Copy,
   X,
+  Users,
+  Package,
 } from 'lucide-react';
 
 interface InlineDocumentCanvasProps {
   document: DocumentModel;
+  savedCustomers?: Party[];
+  savedItems?: ProductCatalogItem[];
+  selectedCustomerId?: string;
+  onSelectCustomer?: (partyId: string) => void;
+  onSelectCatalogItem?: (index: number, productId: string) => void;
+  onAddCatalogItem?: (productId: string) => void;
   onUpdateSender: (field: string, value: any) => void;
   onUpdateSenderAddress: (field: string, value: any) => void;
   onUpdateClient: (field: string, value: any) => void;
@@ -38,6 +48,12 @@ interface InlineDocumentCanvasProps {
 
 export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   document,
+  savedCustomers = [],
+  savedItems = [],
+  selectedCustomerId = '',
+  onSelectCustomer,
+  onSelectCatalogItem,
+  onAddCatalogItem,
   onUpdateSender,
   onUpdateSenderAddress,
   onUpdateClient,
@@ -404,13 +420,41 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
           {/* Bill To & Place of Supply Card */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             <div className="md:col-span-7 p-4 bg-slate-50/90 rounded-xl border border-slate-200 space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-slate-200/80">
                 <span
-                  className="text-[10px] font-bold uppercase tracking-wider"
+                  className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
                   style={{ color: primaryColor }}
                 >
+                  <Users className="h-3.5 w-3.5" />
                   Bill To (Customer / Buyer Details)
                 </span>
+
+                {onSelectCustomer && (
+                  <div className="no-print flex items-center gap-1.5">
+                    <select
+                      aria-label="Select Saved Customer"
+                      value={selectedCustomerId}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          onSelectCustomer(e.target.value);
+                        }
+                      }}
+                      className="text-xs font-semibold bg-white hover:bg-blue-50/50 border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 cursor-pointer shadow-2xs max-w-[240px]"
+                    >
+                      <option value="">
+                        {savedCustomers.length > 0
+                          ? `Select Saved Customer (${savedCustomers.length})...`
+                          : 'No saved customers yet — type below'}
+                      </option>
+                      {savedCustomers.map((cust) => (
+                        <option key={cust.id} value={cust.id}>
+                          {cust.name}
+                          {cust.taxId ? ` (${cust.taxId})` : cust.billingAddress?.city ? ` — ${cust.billingAddress.city}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <input
@@ -557,7 +601,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     style={{ backgroundColor: primaryColor, color: '#FFFFFF' }}
                   >
                     <th className="py-2.5 px-2 w-7 text-center">#</th>
-                    <th className="py-2.5 px-2.5 min-w-[180px]">Item Description</th>
+                    <th className="py-2.5 px-2.5 min-w-[210px]">Item Description</th>
                     <th className="py-2.5 px-2 w-24 text-center">HSN/SAC</th>
                     <th className="py-2.5 px-2 w-16 text-right">Qty</th>
                     <th className="py-2.5 px-2 w-24 text-right">Rate</th>
@@ -581,7 +625,32 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       <td className="py-2.5 px-2 text-center font-mono text-slate-400">
                         {idx + 1}
                       </td>
-                      <td className="py-2.5 px-2">
+                      <td className="py-2.5 px-2 space-y-1">
+                        {onSelectCatalogItem && (
+                          <div className="no-print">
+                            <select
+                              aria-label={`Select Saved Item for Row ${idx + 1}`}
+                              value={(item as any).productId || ''}
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  onSelectCatalogItem(idx, e.target.value);
+                                }
+                              }}
+                              className="w-full text-[11px] font-semibold bg-slate-50 hover:bg-blue-50/60 border border-slate-200 rounded px-2 py-1 text-slate-700 cursor-pointer"
+                            >
+                              <option value="">
+                                {savedItems.length > 0
+                                  ? `📦 Select Saved Item (${savedItems.length})...`
+                                  : '📦 No saved items yet — type below'}
+                              </option>
+                              {savedItems.map((prod) => (
+                                <option key={prod.id} value={prod.id}>
+                                  {prod.name} — {formatCurrency(prod.unitPrice, currency)} (GST {prod.taxRate}%)
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                         <input
                           type="text"
                           value={item.description}
@@ -700,19 +769,44 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
               </table>
             </div>
 
-            <button
-              type="button"
-              onClick={onAddItem}
-              className="no-print inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold border-2 border-dashed transition-all hover:shadow-xs"
-              style={{
-                borderColor: `${primaryColor}60`,
-                color: primaryColor,
-                backgroundColor: `${primaryColor}08`,
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              <span>+ Add New Line Item</span>
-            </button>
+            <div className="no-print flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={onAddItem}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold border-2 border-dashed transition-all hover:shadow-xs"
+                style={{
+                  borderColor: `${primaryColor}60`,
+                  color: primaryColor,
+                  backgroundColor: `${primaryColor}08`,
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                <span>+ Add Blank Line Item</span>
+              </button>
+
+              {onAddCatalogItem && savedItems.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <Package className="h-4 w-4 text-slate-500" />
+                  <select
+                    aria-label="Quick Add Saved Item"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        onAddCatalogItem(e.target.value);
+                      }
+                    }}
+                    className="text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 cursor-pointer shadow-2xs"
+                  >
+                    <option value="">+ Add Line from Saved Items ({savedItems.length})...</option>
+                    {savedItems.map((prod) => (
+                      <option key={prod.id} value={prod.id}>
+                        {prod.name} — {formatCurrency(prod.unitPrice, currency)} (GST {prod.taxRate}%)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ================================================================ */}

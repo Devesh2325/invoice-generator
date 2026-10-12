@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTenant } from '@/lib/auth/tenant-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,12 +11,13 @@ import { Sparkles, Lock, Mail, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refreshTenants } = useTenant();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setLoading(true);
@@ -23,7 +25,7 @@ export default function LoginPage() {
     try {
       const normalizedEmail = email.trim().toLowerCase();
       if (normalizedEmail === 'admin@acmedesign.io') {
-        handleDemoSignIn();
+        await handleDemoSignIn();
         return;
       }
 
@@ -43,6 +45,8 @@ export default function LoginPage() {
           if (matched.tenantId) {
             window.localStorage.setItem('billcraft_active_tenant_id', matched.tenantId);
           }
+          await refreshTenants();
+          window.dispatchEvent(new Event('billcraft-auth-updated'));
           router.push('/dashboard');
           return;
         }
@@ -56,7 +60,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoSignIn = () => {
+  const handleDemoSignIn = async () => {
     setLoading(true);
     if (typeof window !== 'undefined') {
       const demoUser = {
@@ -70,6 +74,10 @@ export default function LoginPage() {
         'billcraft_active_tenant_id',
         'a0000000-0000-0000-0000-000000000001'
       );
+    }
+    await refreshTenants();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('billcraft-auth-updated'));
     }
     router.push('/dashboard');
   };

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TenantApi } from '@invoice/api';
 import { CURRENCIES, INDIAN_STATES } from '@invoice/core';
+import { useTenant } from '@/lib/auth/tenant-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,6 +12,7 @@ import { Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Building, DollarSign, Fi
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { refreshTenants, refreshBrandSettings } = useTenant();
   const [step, setStep] = useState(1);
   const [tenantId, setTenantId] = useState<string | null>(null);
 
@@ -34,6 +36,7 @@ export default function OnboardingPage() {
         try {
           const parsed = JSON.parse(userRaw);
           if (parsed.workspaceName) setBusinessName(parsed.workspaceName);
+          if (parsed.tenantId && !activeId) setTenantId(parsed.tenantId);
         } catch {}
       }
     }
@@ -43,8 +46,13 @@ export default function OnboardingPage() {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      if (tenantId) {
-        await TenantApi.updateTenant(tenantId, {
+      const targetTenantId =
+        tenantId ||
+        (typeof window !== 'undefined'
+          ? window.localStorage.getItem('billcraft_active_tenant_id')
+          : null);
+      if (targetTenantId) {
+        await TenantApi.updateTenant(targetTenantId, {
           name: businessName,
           currency,
           country,
@@ -54,7 +62,7 @@ export default function OnboardingPage() {
           city,
           invoicePrefix: prefix,
         });
-        await TenantApi.updateBrandSettings(tenantId, {
+        await TenantApi.updateBrandSettings(targetTenantId, {
           businessName,
           currency,
           country,
@@ -65,6 +73,11 @@ export default function OnboardingPage() {
           invoicePrefix: prefix,
           defaultTerms: paymentTerms,
         });
+      }
+      await refreshTenants();
+      await refreshBrandSettings();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('billcraft-auth-updated'));
       }
       router.push('/dashboard');
     }

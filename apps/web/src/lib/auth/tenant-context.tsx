@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { Tenant, TenantApi, TenantBrandSettings } from '@invoice/api';
 
 export interface AuthUser {
@@ -33,6 +34,7 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const pathname = usePathname();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [activeTenant, setActiveTenantState] = useState<Tenant | null>(null);
   const [brandSettings, setBrandSettings] = useState<TenantBrandSettings | null>(null);
@@ -72,6 +74,9 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
           const found = list.find((t) => t.id === activeId);
           if (found) chosen = found;
         }
+        if (chosen) {
+          window.localStorage.setItem('billcraft_active_tenant_id', chosen.id);
+        }
       }
       setActiveTenantState(chosen);
       if (chosen) {
@@ -86,6 +91,35 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     loadUserAndTenants();
+  }, [loadUserAndTenants]);
+
+  // Re-verify active user and tenant whenever route changes or auth state is updated
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedUserRaw = window.localStorage.getItem('billcraft_current_user');
+    const storedActiveTenantId = window.localStorage.getItem('billcraft_active_tenant_id');
+    let storedUserId = DEFAULT_DEMO_USER.id;
+    if (storedUserRaw) {
+      try {
+        const parsed = JSON.parse(storedUserRaw);
+        if (parsed?.id) storedUserId = parsed.id;
+      } catch {}
+    }
+    if (
+      storedUserId !== user?.id ||
+      (storedActiveTenantId && storedActiveTenantId !== activeTenant?.id)
+    ) {
+      loadUserAndTenants();
+    }
+  }, [pathname, user?.id, activeTenant?.id, loadUserAndTenants]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleAuthChange = () => {
+      loadUserAndTenants();
+    };
+    window.addEventListener('billcraft-auth-updated', handleAuthChange);
+    return () => window.removeEventListener('billcraft-auth-updated', handleAuthChange);
   }, [loadUserAndTenants]);
 
   const setActiveTenant = (tenant: Tenant) => {
