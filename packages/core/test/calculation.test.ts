@@ -270,3 +270,105 @@ describe('Document Zod Validation Schemas', () => {
     expect(parsed.success).toBe(false);
   });
 });
+
+describe('Round-Off, Refund & Payment Validation Engine', () => {
+  it('computes nearest_integer, up, and down round-off adjustments without floating point drift', () => {
+    // 100.60 with nearest_integer -> rounds to 101.00 (+0.40 round-off)
+    const resNearest = calculateDocument({
+      currency: 'INR',
+      items: [{ description: 'Item', quantity: 1, unitPrice: 100.6 }],
+      enableRoundOff: true,
+      roundingMode: 'nearest_integer',
+    });
+    expect(resNearest.summary.totalBeforeRoundOff).toBe(100.6);
+    expect(resNearest.summary.roundOffAmount).toBe(0.4);
+    expect(resNearest.summary.grandTotal).toBe(101);
+
+    // 100.20 with down -> rounds to 100.00 (-0.20 round-off)
+    const resDown = calculateDocument({
+      currency: 'INR',
+      items: [{ description: 'Item', quantity: 1, unitPrice: 100.2 }],
+      enableRoundOff: true,
+      roundingMode: 'down',
+    });
+    expect(resDown.summary.totalBeforeRoundOff).toBe(100.2);
+    expect(resDown.summary.roundOffAmount).toBe(-0.2);
+    expect(resDown.summary.grandTotal).toBe(100);
+  });
+
+  it('tracks refunds separately from collected payments and does not mark partial refunds as refunded', async () => {
+    const { computeEffectiveInvoiceStatus } = await import('../src/types/document');
+
+    // Invoice of 1000, paid 1000, partial refund of 300 -> still 'paid', not 'refunded'
+    const partialRefundStatus = computeEffectiveInvoiceStatus({
+      status: 'paid',
+      grandTotal: 1000,
+      amountPaid: 1000,
+      refundedAmount: 300,
+      dueDate: '2027-12-31',
+    });
+    expect(partialRefundStatus).toBe('paid');
+
+    // Full refund of 1000 -> 'refunded'
+    const fullRefundStatus = computeEffectiveInvoiceStatus({
+      status: 'paid',
+      grandTotal: 1000,
+      amountPaid: 1000,
+      refundedAmount: 1000,
+      dueDate: '2027-12-31',
+    });
+    expect(fullRefundStatus).toBe('refunded');
+
+    // Overdue calculation from past dueDate + positive balance
+    const overdueStatus = computeEffectiveInvoiceStatus({
+      status: 'pending',
+      grandTotal: 1000,
+      amountPaid: 200,
+      refundedAmount: 0,
+      dueDate: '2020-01-01',
+      referenceDate: new Date('2026-10-12T00:00:00Z'),
+    });
+    expect(overdueStatus).toBe('overdue');
+  });
+
+  it('validates UPI IDs, Bank Accounts, and never generates QR code from incomplete details', async () => {
+    const {
+      validateUpiId,
+      validateBankAccount,
+      generateVerifiedUpiQrSvgDataUrl,
+    } = await import('../src/types/document');
+
+    expect(validateUpiId('merchant@okaxis').valid).toBe(true);
+    expect(validateUpiId('invalid-upi-without-at').valid).toBe(false);
+
+    // Mismatched confirmAccountNumber fails validation
+    const bankCheck = validateBankAccount({
+      id: 'b1',
+      accountHolderName: 'Acme Corp',
+      bankName: 'HDFC Bank',
+      accountNumber: '1234567890',
+      confirmAccountNumber: '1234567899',
+      ifscOrRoutingCode: 'HDFC0001234',
+      accountType: 'current',
+      country: 'India',
+    });
+    expect(bankCheck.valid).toBe(false);
+
+    // Never generate QR code if UPI ID or Payee Name is invalid/missing
+    expect(
+      generateVerifiedUpiQrSvgDataUrl({ upiId: 'bad_upi', payeeName: 'Acme' })
+    ).toBeNull();
+    expect(
+      generateVerifiedUpiQrSvgDataUrl({ upiId: 'merchant@icici', payeeName: '' })
+    ).toBeNull();
+
+    // Valid UPI + Payee Name generates deterministic SVG data URL
+    const qrUrl = generateVerifiedUpiQrSvgDataUrl({
+      upiId: 'merchant@icici',
+      payeeName: 'Acme Pvt Ltd',
+      amount: 1500,
+    });
+    expect(qrUrl).toContain('data:image/svg+xml;utf8,');
+  });
+});
+

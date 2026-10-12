@@ -9,7 +9,14 @@ import {
   exportLocalDataJson,
   importLocalDataJson,
 } from '@/lib/storage/indexed-db';
-import { DocumentModel, formatCurrency, DEFAULT_NUMBERING_RULES, formatDocumentNumber } from '@invoice/core';
+import {
+  DocumentModel,
+  formatCurrency,
+  DEFAULT_NUMBERING_RULES,
+  formatDocumentNumber,
+  computeEffectiveInvoiceStatus,
+  formatInvoiceStatusLabel,
+} from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +30,6 @@ import {
   Copy,
   Edit,
   Upload,
-  Sparkles,
   ArrowLeft,
   Calendar,
   User,
@@ -43,7 +49,7 @@ export default function DocumentHistoryPage() {
       const all = await getAllDocuments();
       setDocuments(all);
     } catch (e) {
-      console.error('Failed to load documents:', e);
+      console.error('Failed to load invoices:', e);
     } finally {
       setLoading(false);
     }
@@ -55,20 +61,24 @@ export default function DocumentHistoryPage() {
 
   const filteredDocs = useMemo(() => {
     return documents.filter((doc) => {
+      const customerName = doc.client?.name || '';
+      const invName = doc.invoiceName || '';
       const matchesSearch =
         search === '' ||
         doc.documentNumber.toLowerCase().includes(search.toLowerCase()) ||
-        doc.client.name.toLowerCase().includes(search.toLowerCase());
+        invName.toLowerCase().includes(search.toLowerCase()) ||
+        customerName.toLowerCase().includes(search.toLowerCase());
 
       const matchesType = typeFilter === 'all' || doc.type === typeFilter;
-      const matchesStatus = statusFilter === 'all' || doc.status === statusFilter;
+      const effStatus = computeEffectiveInvoiceStatus(doc);
+      const matchesStatus = statusFilter === 'all' || effStatus === statusFilter;
 
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [documents, search, typeFilter, statusFilter]);
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this document from device storage?')) {
+    if (confirm('Are you sure you want to delete this invoice from device storage?')) {
       await deleteDocument(id);
       await refreshDocuments();
     }
@@ -79,10 +89,19 @@ export default function DocumentHistoryPage() {
       ...doc,
       id: `doc_${Date.now()}`,
       documentNumber: formatDocumentNumber(
-        DEFAULT_NUMBERING_RULES[doc.type],
+        DEFAULT_NUMBERING_RULES[doc.type] || DEFAULT_NUMBERING_RULES.invoice,
         Math.floor(Math.random() * 9000) + 1000
       ),
       status: 'draft',
+      summary: {
+        ...doc.summary,
+        amountPaid: 0,
+        refundedAmount: 0,
+        netAmountPaid: 0,
+        balanceDue: doc.summary.grandTotal,
+      },
+      payments: [],
+      refunds: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -96,7 +115,7 @@ export default function DocumentHistoryPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `billcraft-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `billcraft-invoices-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -112,7 +131,7 @@ export default function DocumentHistoryPage() {
       if (res.error) {
         setImportStatus(`Import failed: ${res.error}`);
       } else {
-        setImportStatus(`Successfully imported ${res.importedCount} documents!`);
+        setImportStatus(`Successfully imported ${res.importedCount} invoices!`);
         await refreshDocuments();
       }
       setTimeout(() => setImportStatus(null), 4000);
@@ -130,7 +149,7 @@ export default function DocumentHistoryPage() {
           </Link>
           <div className="h-4 w-px bg-slate-200" />
           <h1 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" /> Local Document History
+            <FileText className="h-5 w-5 text-primary" /> Saved Invoices
           </h1>
         </div>
 
@@ -158,7 +177,7 @@ export default function DocumentHistoryPage() {
 
           <Link href="/create">
             <Button size="sm" className="bg-primary hover:bg-primary-hover text-white flex items-center gap-1.5 text-xs font-semibold">
-              <Plus className="h-3.5 w-3.5" /> New Document
+              <Plus className="h-3.5 w-3.5" /> Create Invoice
             </Button>
           </Link>
         </div>
@@ -177,7 +196,7 @@ export default function DocumentHistoryPage() {
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Search by number, client..."
+              placeholder="Search by invoice #, name, customer..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 text-xs"
@@ -190,7 +209,7 @@ export default function DocumentHistoryPage() {
               onChange={(e) => setTypeFilter(e.target.value)}
               className="text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700"
             >
-              <option value="all">All Document Types</option>
+              <option value="all">All Invoice Types</option>
               <option value="invoice">Invoices</option>
               <option value="estimate">Estimates / Quotes</option>
               <option value="purchase_order">Purchase Orders</option>
@@ -206,105 +225,114 @@ export default function DocumentHistoryPage() {
             >
               <option value="all">All Statuses</option>
               <option value="draft">Draft</option>
-              <option value="finalized">Finalized</option>
+              <option value="pending">Pending</option>
+              <option value="partially_paid">Partially Paid</option>
               <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+              <option value="refunded">Refunded</option>
+              <option value="cancelled">Cancelled</option>
             </select>
           </div>
         </div>
 
-        {/* Document List */}
+        {/* Invoice List */}
         {loading ? (
           <div className="p-12 text-center text-slate-500 text-sm">
-            Loading saved documents...
+            Loading saved invoices...
           </div>
         ) : filteredDocs.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-4">
             <div className="h-14 w-14 rounded-full bg-blue-50 text-primary mx-auto flex items-center justify-center">
               <FileText className="h-7 w-7" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">No Documents Found</h3>
+            <h3 className="text-lg font-bold text-slate-900">No Invoices Found</h3>
             <p className="text-sm text-slate-500 max-w-sm mx-auto">
-              You haven't saved any documents matching this filter in your device storage yet.
+              You haven&apos;t saved any invoices matching this filter yet.
             </p>
             <Link href="/create" className="inline-block pt-2">
               <Button size="sm" className="bg-primary hover:bg-primary-hover text-white">
-                Create First Document
+                Create Invoice
               </Button>
             </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDocs.map((doc) => (
-              <Card key={doc.id} className="border-slate-200 hover:shadow-sm transition-shadow">
-                <CardContent className="p-5 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                        {doc.type.replace('_', ' ')}
+            {filteredDocs.map((doc) => {
+              const effStatus = computeEffectiveInvoiceStatus(doc);
+              return (
+                <Card key={doc.id} className="border-slate-200 hover:shadow-sm transition-shadow">
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                          {doc.invoiceName || 'Tax Invoice'}
+                        </span>
+                        <h4 className="text-base font-bold text-slate-900">
+                          {doc.documentNumber}
+                        </h4>
+                      </div>
+                      <Badge
+                        variant={
+                          effStatus === 'paid'
+                            ? 'success'
+                            : effStatus === 'overdue'
+                            ? 'destructive'
+                            : 'secondary'
+                        }
+                      >
+                        {formatInvoiceStatusLabel(effStatus)}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-slate-600">
+                      <div className="flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="font-medium text-slate-800">
+                          {doc.client?.name || 'Customer'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                        <span>Issued: {doc.issueDate}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex justify-between items-baseline">
+                      <span className="text-xs text-slate-500">Final Payable</span>
+                      <span className="text-base font-black text-slate-900 tabular-nums">
+                        {formatCurrency(Number(doc.summary?.grandTotal || 0), doc.currency || 'INR')}
                       </span>
-                      <h4 className="text-base font-bold text-slate-900">
-                        {doc.documentNumber}
-                      </h4>
                     </div>
-                    <Badge
-                      variant={
-                        doc.status === 'paid'
-                          ? 'success'
-                          : doc.status === 'finalized'
-                          ? 'info'
-                          : 'secondary'
-                      }
-                    >
-                      {doc.status.toUpperCase()}
-                    </Badge>
-                  </div>
 
-                  <div className="space-y-1.5 text-xs text-slate-600">
-                    <div className="flex items-center gap-1.5">
-                      <User className="h-3.5 w-3.5 text-slate-400" />
-                      <span className="font-medium text-slate-800">{doc.client.name}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                      <span>Issued: {doc.issueDate}</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex justify-between items-baseline">
-                    <span className="text-xs text-slate-500">Total</span>
-                    <span className="text-base font-black text-slate-900">
-                      {formatCurrency(doc.summary.grandTotal, doc.currency)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-1.5 pt-2">
-                    <Link href={`/edit/${doc.id}`}>
-                      <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs">
-                        <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+                    <div className="flex items-center justify-end gap-1.5 pt-2">
+                      <Link href={`/edit/${doc.id}`}>
+                        <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs">
+                          <Edit className="h-3.5 w-3.5 mr-1" /> Open Invoice
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDuplicate(doc)}
+                        className="h-8 px-2.5 text-xs"
+                        title="Duplicate"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
                       </Button>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDuplicate(doc)}
-                      className="h-8 px-2.5 text-xs"
-                      title="Duplicate"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(doc.id)}
-                      className="h-8 px-2.5 text-xs text-red-600 hover:text-red-700"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(doc.id)}
+                        className="h-8 px-2.5 text-xs text-red-600 hover:text-red-700"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

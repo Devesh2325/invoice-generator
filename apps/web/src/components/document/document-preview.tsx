@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { DocumentModel, formatCurrency } from '@invoice/core';
+import {
+  DocumentModel,
+  formatCurrency,
+  generateVerifiedUpiQrSvgDataUrl,
+  formatInvoiceStatusLabel,
+} from '@invoice/core';
 import { getTemplate } from '@invoice/theme';
 import { Upload, X } from 'lucide-react';
 
@@ -36,6 +41,42 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const isInterState = summary.gstSupplyType === 'inter';
   const senderState = document.sender.address?.state || '';
   const clientState = document.client.billingAddress?.state || document.placeOfSupply || '';
+
+  const payConfig = document.paymentConfig;
+  const showBankDetails = payConfig ? payConfig.display.showBankDetails : false;
+  const showUpiId = payConfig ? payConfig.display.showUpiId : false;
+  const showQrCode = payConfig ? payConfig.display.showQrCode : false;
+  const showPaymentInstructions = payConfig ? payConfig.display.showPaymentInstructions : true;
+  const showPaymentTerms = payConfig ? payConfig.display.showPaymentTerms : true;
+
+  const activeBankAccounts = React.useMemo(() => {
+    if (!payConfig?.bankAccounts?.length) return [];
+    if (payConfig.selectedBankAccountIds && payConfig.selectedBankAccountIds.length > 0) {
+      return payConfig.bankAccounts.filter((b) =>
+        payConfig.selectedBankAccountIds!.includes(b.id)
+      );
+    }
+    return payConfig.bankAccounts;
+  }, [payConfig]);
+
+  const verifiedQrDataUrl = React.useMemo(() => {
+    if (!showQrCode || !payConfig) return null;
+    if (payConfig.qrCodeDataUrl && !payConfig.autoGenerateUpiQr) {
+      return payConfig.qrCodeDataUrl;
+    }
+    if (payConfig.upiId) {
+      return (
+        generateVerifiedUpiQrSvgDataUrl({
+          upiId: payConfig.upiId,
+          payeeName: payConfig.upiPayeeName || document.sender.name,
+          amount: summary.balanceDue > 0 ? summary.balanceDue : summary.grandTotal,
+          currency,
+          invoiceNumber: document.documentNumber,
+        }) || payConfig.qrCodeDataUrl || null
+      );
+    }
+    return payConfig.qrCodeDataUrl || null;
+  }, [showQrCode, payConfig, document.sender.name, document.documentNumber, summary.balanceDue, summary.grandTotal, currency]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -393,10 +434,103 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             </div>
           )}
 
-          {document.paymentInstructions && (
-            <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/70 space-y-1">
+          {/* Structured Payment Details (Controlled by Payment Settings toggles) */}
+          {(showBankDetails && activeBankAccounts.length > 0) ||
+          (showUpiId && payConfig?.upiId) ||
+          verifiedQrDataUrl ? (
+            <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row justify-between gap-4">
+              <div className="space-y-2.5 flex-1">
+                {showBankDetails && activeBankAccounts.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Bank Account Details ({activeBankAccounts.length > 1 ? `${activeBankAccounts.length} Accounts` : 'NEFT / RTGS / Wire'})
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {activeBankAccounts.map((bank) => (
+                        <div
+                          key={bank.id}
+                          className="text-[11px] bg-white p-2.5 rounded-lg border border-slate-200/80 grid grid-cols-2 gap-x-3 gap-y-1"
+                        >
+                          <div>
+                            <span className="text-slate-400">Account Holder: </span>
+                            <span className="font-bold text-slate-800">{bank.accountHolderName}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Bank Name: </span>
+                            <span className="font-bold text-slate-800">{bank.bankName}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Account No: </span>
+                            <span className="font-mono font-bold text-slate-900">{bank.accountNumber}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">IFSC / Routing: </span>
+                            <span className="font-mono font-bold text-slate-900">{bank.ifscOrRoutingCode}</span>
+                          </div>
+                          {bank.branchName && (
+                            <div>
+                              <span className="text-slate-400">Branch: </span>
+                              <span className="text-slate-700">{bank.branchName}</span>
+                            </div>
+                          )}
+                          {bank.accountType && (
+                            <div>
+                              <span className="text-slate-400">Type: </span>
+                              <span className="capitalize text-slate-700">{bank.accountType}</span>
+                            </div>
+                          )}
+                          {bank.swiftBicCode && (
+                            <div className="col-span-2">
+                              <span className="text-slate-400">SWIFT / BIC: </span>
+                              <span className="font-mono font-semibold text-slate-800">{bank.swiftBicCode}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {showUpiId && payConfig?.upiId && (
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      UPI ID / VPA:
+                    </span>
+                    <span className="font-mono text-xs font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      {payConfig.upiId}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {verifiedQrDataUrl && (
+                <div className="shrink-0 flex flex-col items-center justify-center bg-white p-2.5 rounded-lg border border-slate-200 text-center">
+                  <img
+                    src={verifiedQrDataUrl}
+                    alt="Verified Payment QR Code"
+                    className="h-24 w-24 object-contain"
+                  />
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mt-1">
+                    Scan to Pay
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {showPaymentTerms && document.paymentTerms && (
+            <div className="flex items-center gap-2 text-xs text-slate-700">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Payment Terms:
+              </span>
+              <span className="font-semibold">{document.paymentTerms}</span>
+            </div>
+          )}
+
+          {showPaymentInstructions && document.paymentInstructions && (
+            <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/70 space-y-1">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                Bank & Payment Details
+                Payment Instructions
               </div>
               <div className="text-xs text-slate-700 whitespace-pre-line font-mono leading-relaxed">
                 {document.paymentInstructions}
@@ -480,31 +614,56 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
               </div>
             )}
 
+            {(document.enableRoundOff || (summary.roundOffAmount !== undefined && summary.roundOffAmount !== 0)) && (
+              <>
+                <div className="flex justify-between text-slate-500 border-t border-slate-100 pt-1.5">
+                  <span>Total Before Round-Off</span>
+                  <span className="font-mono">
+                    {formatCurrency(summary.totalBeforeRoundOff ?? summary.grandTotal, currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-700">
+                  <span>Round-Off Adjustment</span>
+                  <span className="font-mono font-semibold">
+                    {formatCurrency(summary.roundOffAmount || 0, currency, { showSign: true })}
+                  </span>
+                </div>
+              </>
+            )}
+
             <div
               className="flex justify-between items-center p-3 rounded-lg text-white font-bold text-sm mt-2"
               style={{ backgroundColor: primaryColor }}
             >
-              <span>Grand Total</span>
+              <span>Final Payable Amount</span>
               <span className="font-mono text-base">
                 {formatCurrency(summary.grandTotal, currency)}
               </span>
             </div>
 
-            {summary.amountPaid > 0 && (
-              <>
-                <div className="flex justify-between text-emerald-700 pt-1">
-                  <span>Amount Paid</span>
-                  <span className="font-mono">
+            {(summary.amountPaid > 0 || (summary.refundedAmount || 0) > 0) && (
+              <div className="space-y-1.5 pt-1 border-t border-slate-100">
+                <div className="flex justify-between text-emerald-700">
+                  <span>Payments Collected</span>
+                  <span className="font-mono font-semibold">
                     -{formatCurrency(summary.amountPaid, currency)}
                   </span>
                 </div>
+                {(summary.refundedAmount || 0) > 0 && (
+                  <div className="flex justify-between text-rose-600">
+                    <span>Refunded Amount</span>
+                    <span className="font-mono font-semibold">
+                      {formatCurrency(summary.refundedAmount || 0, currency)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-2 text-sm">
                   <span>Balance Due</span>
                   <span className="font-mono" style={{ color: primaryColor }}>
                     {formatCurrency(summary.balanceDue, currency)}
                   </span>
                 </div>
-              </>
+              </div>
             )}
           </div>
 

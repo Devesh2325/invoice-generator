@@ -14,7 +14,6 @@ import {
   CreditCard,
   BarChart3,
   Palette,
-  Shield,
   Settings,
   Plus,
   LogOut,
@@ -22,7 +21,6 @@ import {
   ChevronDown,
   Menu,
   X,
-  ExternalLink,
 } from 'lucide-react';
 
 interface TenantLayoutProps {
@@ -31,15 +29,15 @@ interface TenantLayoutProps {
 
 export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
   const pathname = usePathname();
-  const { activeTenant, tenants, setActiveTenant, user, signOut } = useTenant();
+  const { activeTenant, tenants, setActiveTenant, tenantCurrency, user, signOut } = useTenant();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
 
   const navLinks = [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Documents', href: '/dashboard/documents', icon: FileText },
-    { label: 'Customers & Vendors', href: '/dashboard/parties', icon: Users },
-    { label: 'Products & Services', href: '/dashboard/products', icon: Package },
+    { label: 'Invoices', href: '/dashboard/documents', icon: FileText },
+    { label: 'Customers', href: '/dashboard/parties', icon: Users },
+    { label: 'Items', href: '/dashboard/products', icon: Package },
     { label: 'Payments', href: '/dashboard/payments', icon: CreditCard },
     { label: 'Reports', href: '/dashboard/reports', icon: BarChart3 },
     { label: 'Brand Studio', href: '/dashboard/brand', icon: Palette },
@@ -75,8 +73,8 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
               <Sparkles className="h-6 w-6 text-primary" />
               <span className="font-black text-xl text-primary tracking-tight">BillCraft</span>
             </Link>
-            <Badge variant="outline" className="text-[10px] text-slate-500 font-mono">
-              SaaS
+            <Badge variant="outline" className="text-[10px] text-slate-600 font-mono">
+              {tenantCurrency}
             </Badge>
           </div>
 
@@ -94,7 +92,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
                   {activeTenant?.name || 'Select Workspace'}
                 </div>
                 <div className="text-[10px] text-slate-500 capitalize">
-                  Role: {activeTenant?.role || 'Member'}
+                  Role: {activeTenant?.role || 'Owner'} • {tenantCurrency}
                 </div>
               </div>
               <ChevronDown className="h-4 w-4 text-slate-400 shrink-0 ml-1" />
@@ -116,18 +114,21 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
                     }`}
                   >
                     <span className="truncate">{t.name}</span>
-                    <span className="text-[10px] text-slate-400 capitalize">{t.role}</span>
+                    <span className="text-[10px] text-slate-400 uppercase">{t.currency || 'INR'}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Contextual Create Document CTA */}
+          {/* Contextual Create Invoice CTA */}
           <div className="pt-1">
             <Link href="/create" className="block">
-              <Button size="sm" className="w-full bg-primary hover:bg-primary-hover text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm">
-                <Plus className="h-4 w-4" /> New Document
+              <Button
+                size="sm"
+                className="w-full bg-primary hover:bg-primary-hover text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Plus className="h-4 w-4" /> Create Invoice
               </Button>
             </Link>
           </div>

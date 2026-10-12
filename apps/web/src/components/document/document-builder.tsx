@@ -1,19 +1,33 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import {
   DocumentModel,
   DocumentType,
   DocumentStatus,
+  RoundingMode,
+  PaymentMethod,
+  BankAccountDetails,
+  BankAccountType,
+  DocumentPaymentConfig,
+  PaymentRecord,
+  RefundRecord,
   calculateDocument,
   DEFAULT_NUMBERING_RULES,
   formatDocumentNumber,
   formatCurrency,
   CURRENCIES,
   INDIAN_STATES,
-  isValidStatusTransition,
+  computeEffectiveInvoiceStatus,
+  formatInvoiceStatusLabel,
+  validateUpiId,
+  validateBankAccount,
+  generateVerifiedUpiQrSvgDataUrl,
 } from '@invoice/core';
 import { getTemplate, getTemplatesByCategory } from '@invoice/theme';
+import { TenantApi } from '@invoice/api';
+import { useTenant } from '@/lib/auth/tenant-context';
 import { saveDocument } from '@/lib/storage/indexed-db';
 import { exportDocumentToPdf, triggerPrint } from '@/lib/pdf/export-pdf';
 import { DocumentPreview } from './document-preview';
@@ -41,6 +55,14 @@ import {
   Edit3,
   Columns,
   RotateCcw,
+  CreditCard,
+  QrCode,
+  Share2,
+  History,
+  Undo2,
+  Building2,
+  SlidersHorizontal,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface DocumentBuilderProps {
@@ -59,13 +81,47 @@ const THEME_COLOR_SWATCHES = [
   { name: 'Crimson Red', hex: '#DC2626' },
 ];
 
+const DEFAULT_BANK_ACCOUNT: BankAccountDetails = {
+  id: 'bank_default_01',
+  accountHolderName: 'Apex Digital Solutions Pvt Ltd',
+  bankName: 'HDFC Bank Ltd',
+  accountNumber: '50200049182731',
+  confirmAccountNumber: '50200049182731',
+  ifscOrRoutingCode: 'HDFC0000124',
+  branchName: 'BKC, Mumbai',
+  accountType: 'current',
+  swiftBicCode: 'HDFCINBB',
+  country: 'India',
+  isPrimary: true,
+};
+
+const DEFAULT_PAYMENT_CONFIG: DocumentPaymentConfig = {
+  bankAccounts: [DEFAULT_BANK_ACCOUNT],
+  selectedBankAccountIds: ['bank_default_01'],
+  upiId: 'apexdigital@hdfcbank',
+  upiPayeeName: 'Apex Digital Solutions Pvt Ltd',
+  autoGenerateUpiQr: true,
+  display: {
+    showBankDetails: true,
+    showUpiId: true,
+    showQrCode: true,
+    showPaymentInstructions: true,
+    showPaymentTerms: true,
+  },
+};
+
 export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   initialDocument,
   onSaved,
 }) => {
+  const { activeTenant, brandSettings, tenantCurrency } = useTenant();
   const categorizedTemplates = useMemo(() => getTemplatesByCategory(), []);
 
-  // Document state
+  // Core Invoice Metadata
+  const [docId] = useState<string>(initialDocument?.id || `doc_${Date.now()}`);
+  const [invoiceName, setInvoiceName] = useState<string>(
+    initialDocument?.invoiceName || 'Tax Invoice — Cloud & Product Engineering'
+  );
   const [docType, setDocType] = useState<DocumentType>(initialDocument?.type || 'invoice');
   const [status, setStatus] = useState<DocumentStatus>(initialDocument?.status || 'draft');
   const [docNumber, setDocNumber] = useState<string>(
@@ -82,41 +138,59 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.dueDate ||
       new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
-  const [currency, setCurrency] = useState<string>(initialDocument?.currency || 'INR');
+  const [currency, setCurrency] = useState<string>(
+    initialDocument?.currency || tenantCurrency || 'INR'
+  );
 
-  // Sender details (India GST defaults)
+  // Rounding & Precision
+  const [enableRoundOff, setEnableRoundOff] = useState<boolean>(
+    initialDocument?.enableRoundOff ?? brandSettings?.enableRoundOff ?? false
+  );
+  const [roundingMode, setRoundingMode] = useState<RoundingMode>(
+    initialDocument?.roundingMode || brandSettings?.roundingMode || 'nearest_integer'
+  );
+  const [decimalPrecision, setDecimalPrecision] = useState<number>(
+    initialDocument?.decimalPrecision ?? brandSettings?.decimalPrecision ?? 2
+  );
+
+  // Sender details
   const [senderLogo, setSenderLogo] = useState<string>(
-    initialDocument?.sender.logoUrl || ''
+    initialDocument?.sender.logoUrl || brandSettings?.logoUrl || ''
   );
   const [senderName, setSenderName] = useState(
-    initialDocument?.sender.name || 'Apex Digital Solutions Pvt Ltd'
+    initialDocument?.sender.name ||
+      brandSettings?.businessName ||
+      activeTenant?.name ||
+      'Apex Digital Solutions Pvt Ltd'
   );
   const [senderEmail, setSenderEmail] = useState(
-    initialDocument?.sender.email || 'billing@apexdigital.in'
+    initialDocument?.sender.email || brandSettings?.email || 'billing@apexdigital.in'
   );
   const [senderPhone, setSenderPhone] = useState(
-    initialDocument?.sender.phone || '+91 22 4890 2100'
+    initialDocument?.sender.phone || brandSettings?.phone || '+91 22 4890 2100'
   );
   const [senderTaxId, setSenderTaxId] = useState(
-    initialDocument?.sender.taxId || '27AABCA9603R1ZM'
+    initialDocument?.sender.taxId || brandSettings?.taxId || '27AABCA9603R1ZM'
   );
   const [senderStreet, setSenderStreet] = useState(
-    initialDocument?.sender.address?.street1 || 'Level 9, Platina Tower, BKC'
+    initialDocument?.sender.address?.street1 ||
+      brandSettings?.street ||
+      'Level 9, Platina Tower, BKC'
   );
   const [senderCity, setSenderCity] = useState(
-    initialDocument?.sender.address?.city || 'Mumbai'
+    initialDocument?.sender.address?.city || brandSettings?.city || 'Mumbai'
   );
   const [senderState, setSenderState] = useState(
-    initialDocument?.sender.address?.state || '27 - Maharashtra'
+    initialDocument?.sender.address?.state || brandSettings?.gstState || '27 - Maharashtra'
   );
   const [senderPostalCode, setSenderPostalCode] = useState(
-    initialDocument?.sender.address?.postalCode || '400051'
+    initialDocument?.sender.address?.postalCode || brandSettings?.postalCode || '400051'
   );
   const [senderCountry, setSenderCountry] = useState(
-    initialDocument?.sender.address?.country || 'India'
+    initialDocument?.sender.address?.country || brandSettings?.country || 'India'
   );
 
-  // Client details (India GST defaults)
+  // Client details
   const [clientName, setClientName] = useState(
     initialDocument?.client.name || 'Reliance Retail Ventures Ltd'
   );
@@ -145,7 +219,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.client.billingAddress?.country || 'India'
   );
 
-  // Line Items with HSN/SAC & GST %
+  // Line Items
   const [items, setItems] = useState<any[]>(
     initialDocument?.items || [
       {
@@ -173,7 +247,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     ]
   );
 
-  // Document level adjustments
+  // Adjustments & Payments / Refunds state
   const [docDiscountType, setDocDiscountType] = useState<'percentage' | 'fixed'>(
     initialDocument?.documentDiscountType || 'percentage'
   );
@@ -186,19 +260,31 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const [extraCharges, setExtraCharges] = useState<number>(
     initialDocument?.extraCharges || 0
   );
-  const [amountPaid, setAmountPaid] = useState<number>(
+  const [payments, setPayments] = useState<PaymentRecord[]>(
+    initialDocument?.payments || []
+  );
+  const [refunds, setRefunds] = useState<RefundRecord[]>(
+    initialDocument?.refunds || []
+  );
+  const [manualAmountPaid, setManualAmountPaid] = useState<number>(
     initialDocument?.summary?.amountPaid || 0
   );
 
   // Template & Custom Theme Overrides
   const [templateId, setTemplateId] = useState<string>(
-    initialDocument?.templateId || 'cleartax_gst'
+    initialDocument?.templateId || brandSettings?.defaultTemplateId || 'cleartax_gst'
   );
   const [customPrimaryColor, setCustomPrimaryColor] = useState<string | undefined>(
-    initialDocument?.customTheme?.primaryColor
+    initialDocument?.customTheme?.primaryColor || brandSettings?.primaryColor
   );
   const [customFontFamily, setCustomFontFamily] = useState<'sans' | 'serif' | 'mono' | undefined>(
-    initialDocument?.customTheme?.fontFamily
+    initialDocument?.customTheme?.fontFamily ||
+      (brandSettings?.fontFamily as 'sans' | 'serif' | 'mono' | undefined)
+  );
+
+  // Payment Configuration (Bank Accounts, UPI, QR Code, Display Toggles)
+  const [paymentConfig, setPaymentConfig] = useState<DocumentPaymentConfig>(
+    initialDocument?.paymentConfig || brandSettings?.paymentConfig || DEFAULT_PAYMENT_CONFIG
   );
 
   const [notes, setNotes] = useState<string>(
@@ -206,22 +292,91 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       '1. Payment is due within 15 days of invoice date.\n2. Goods/services once billed are subject to Mumbai jurisdiction.'
   );
   const [paymentTerms, setPaymentTerms] = useState<string>(
-    initialDocument?.paymentTerms || 'Net 15 Days'
+    initialDocument?.paymentTerms || brandSettings?.defaultTerms || 'Net 15 Days'
   );
   const [paymentInstructions, setPaymentInstructions] = useState<string>(
     initialDocument?.paymentInstructions ||
-      'Bank: HDFC Bank Ltd\nA/C No: 50200049182731\nIFSC: HDFC0000124\nUPI ID: apexdigital@hdfcbank'
+      brandSettings?.defaultInstructions ||
+      'NEFT / RTGS / IMPS / UPI accepted. Please mention Invoice No. in payment remarks.'
   );
   const [signatoryName, setSignatoryName] = useState<string>(
-    initialDocument?.signatoryName || 'Authorized Director'
+    initialDocument?.signatoryName || brandSettings?.signatoryName || 'Authorized Director'
   );
 
-  // UI state
+  // Sync workspace defaults when creating a brand-new invoice and brandSettings finish loading
+  const [defaultsApplied, setDefaultsApplied] = useState(Boolean(initialDocument));
+  useEffect(() => {
+    if (!initialDocument && brandSettings && !defaultsApplied) {
+      if (brandSettings.currency) setCurrency(brandSettings.currency);
+      if (brandSettings.businessName) setSenderName(brandSettings.businessName);
+      if (brandSettings.email) setSenderEmail(brandSettings.email);
+      if (brandSettings.phone) setSenderPhone(brandSettings.phone);
+      if (brandSettings.taxId) setSenderTaxId(brandSettings.taxId);
+      if (brandSettings.street) setSenderStreet(brandSettings.street);
+      if (brandSettings.city) setSenderCity(brandSettings.city);
+      if (brandSettings.gstState) setSenderState(brandSettings.gstState);
+      if (brandSettings.postalCode) setSenderPostalCode(brandSettings.postalCode);
+      if (brandSettings.country) setSenderCountry(brandSettings.country);
+      if (brandSettings.enableRoundOff !== undefined) setEnableRoundOff(brandSettings.enableRoundOff);
+      if (brandSettings.roundingMode) setRoundingMode(brandSettings.roundingMode);
+      if (brandSettings.decimalPrecision !== undefined)
+        setDecimalPrecision(brandSettings.decimalPrecision);
+      if (brandSettings.paymentConfig) setPaymentConfig(brandSettings.paymentConfig);
+      if (brandSettings.defaultTerms) setPaymentTerms(brandSettings.defaultTerms);
+      if (brandSettings.defaultInstructions)
+        setPaymentInstructions(brandSettings.defaultInstructions);
+      if (brandSettings.signatoryName) setSignatoryName(brandSettings.signatoryName);
+      if (brandSettings.defaultTemplateId) setTemplateId(brandSettings.defaultTemplateId);
+      setDefaultsApplied(true);
+    }
+  }, [initialDocument, brandSettings, defaultsApplied]);
+
+  // UI & Modal state
   const [viewMode, setViewMode] = useState<'sheet' | 'split' | 'pdf_preview'>('sheet');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  // Modals for Payment Settings, Record Payment, Issue Refund, Payment History, Share
+  const [paymentSettingsModalOpen, setPaymentSettingsModalOpen] = useState(false);
+  const [recordPaymentModalOpen, setRecordPaymentModalOpen] = useState(false);
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  // New Bank Account form inside Payment Settings Modal
+  const [editingBank, setEditingBank] = useState<BankAccountDetails>({
+    id: '',
+    accountHolderName: '',
+    bankName: '',
+    accountNumber: '',
+    confirmAccountNumber: '',
+    ifscOrRoutingCode: '',
+    branchName: '',
+    accountType: 'current',
+    swiftBicCode: '',
+    country: senderCountry || 'India',
+  });
+  const [showAddBankForm, setShowAddBankForm] = useState(false);
+  const [bankFormErrors, setBankFormErrors] = useState<Record<string, string>>({});
+
+  // Record Payment form state
+  const [payAmountInput, setPayAmountInput] = useState<number>(0);
+  const [payMethodInput, setPayMethodInput] = useState<PaymentMethod>('bank_transfer');
+  const [payDateInput, setPayDateInput] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [payRefInput, setPayRefInput] = useState<string>('');
+  const [payNotesInput, setPayNotesInput] = useState<string>('');
+
+  // Issue Refund form state
+  const [refundAmountInput, setRefundAmountInput] = useState<number>(0);
+  const [refundMethodInput, setRefundMethodInput] = useState<PaymentMethod>('bank_transfer');
+  const [refundDateInput, setRefundDateInput] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [refundReasonInput, setRefundReasonInput] = useState<string>('');
+  const [refundRefInput, setRefundRefInput] = useState<string>('');
+  const [refundNotesInput, setRefundNotesInput] = useState<string>('');
 
   const activeTemplateMeta = useMemo(() => getTemplate(templateId), [templateId]);
   const effectivePrimaryColor =
@@ -229,7 +384,18 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const effectiveFontFamily =
     customFontFamily || activeTemplateMeta.defaultTokens.fontFamily;
 
-  // Recalculate document model reactively using core financial & GST engine
+  const totalPaymentsRecorded = useMemo(() => {
+    if (payments.length > 0) {
+      return payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    }
+    return manualAmountPaid;
+  }, [payments, manualAmountPaid]);
+
+  const totalRefundsRecorded = useMemo(() => {
+    return refunds.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  }, [refunds]);
+
+  // Recalculate document model reactively using core financial, rounding & GST engine
   const calculated = useMemo(() => {
     return calculateDocument({
       currency,
@@ -246,7 +412,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       documentDiscountValue: Number(docDiscountValue) || 0,
       shippingFee: Number(shippingFee) || 0,
       extraCharges: Number(extraCharges) || 0,
-      amountPaid: Number(amountPaid) || 0,
+      amountPaid: totalPaymentsRecorded,
+      refundedAmount: totalRefundsRecorded,
+      enableRoundOff,
+      roundingMode,
+      decimalPrecision,
     });
   }, [
     currency,
@@ -257,14 +427,28 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     docDiscountValue,
     shippingFee,
     extraCharges,
-    amountPaid,
+    totalPaymentsRecorded,
+    totalRefundsRecorded,
+    enableRoundOff,
+    roundingMode,
+    decimalPrecision,
   ]);
+
+  const effectiveStatus = useMemo(() => {
+    return computeEffectiveInvoiceStatus({
+      status,
+      dueDate,
+      summary: calculated.summary,
+    });
+  }, [status, dueDate, calculated.summary]);
 
   const documentModel: DocumentModel = useMemo(() => {
     return {
-      id: initialDocument?.id || `doc_${Date.now()}`,
+      id: docId,
+      tenantId: activeTenant?.id,
+      invoiceName,
       type: docType,
-      status,
+      status: effectiveStatus,
       documentNumber: docNumber,
       referenceNumber,
       issueDate,
@@ -305,24 +489,33 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       documentDiscountValue: docDiscountValue,
       shippingFee,
       extraCharges,
+      enableRoundOff,
+      roundingMode,
+      decimalPrecision,
       summary: calculated.summary,
       templateId,
       customTheme: {
         primaryColor: customPrimaryColor,
         fontFamily: customFontFamily,
       },
+      paymentConfig,
       notes,
       paymentTerms,
       paymentInstructions,
       signatoryName,
-      payments: initialDocument?.payments || [],
+      payments,
+      refunds,
+      auditHistory: initialDocument?.auditHistory || [],
       createdAt: initialDocument?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
   }, [
+    docId,
+    activeTenant?.id,
+    invoiceName,
     initialDocument,
     docType,
-    status,
+    effectiveStatus,
     docNumber,
     referenceNumber,
     issueDate,
@@ -352,31 +545,40 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     docDiscountValue,
     shippingFee,
     extraCharges,
+    enableRoundOff,
+    roundingMode,
+    decimalPrecision,
     templateId,
     customPrimaryColor,
     customFontFamily,
+    paymentConfig,
     notes,
     paymentTerms,
     paymentInstructions,
     signatoryName,
+    payments,
+    refunds,
   ]);
 
-  // Autosave to user-scoped IndexedDB with debounce
+  // Autosave to user-scoped IndexedDB AND active Tenant workspace storage
   useEffect(() => {
     setSaveStatus('unsaved');
     const timer = setTimeout(async () => {
       try {
         setSaveStatus('saving');
         await saveDocument(documentModel);
+        if (activeTenant?.id) {
+          await TenantApi.saveDocument(activeTenant.id, documentModel);
+        }
         setSaveStatus('saved');
         if (onSaved) onSaved(documentModel);
       } catch (e) {
-        console.error('Failed to autosave document:', e);
+        console.error('Failed to autosave invoice:', e);
       }
-    }, 1000);
+    }, 800);
 
     return () => clearTimeout(timer);
-  }, [documentModel]);
+  }, [documentModel, activeTenant?.id]);
 
   // Line item manipulation helpers
   const handleAddItem = () => {
@@ -384,11 +586,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       ...prev,
       {
         id: `item_${Date.now()}`,
-        description: 'New Product / Service Line Item',
+        description: 'New Item / Service',
         hsnCode: '9983',
         quantity: 1,
         unitPrice: 1000,
-        taxRate: 18,
+        taxRate: brandSettings?.defaultTaxRate ?? 18,
         taxInclusive: false,
         discountType: 'percentage',
         discountValue: 0,
@@ -454,7 +656,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       const newType = value as DocumentType;
       setDocType(newType);
       setDocNumber(formatDocumentNumber(DEFAULT_NUMBERING_RULES[newType], 1, new Date()));
-    } else if (field === 'documentNumber') setDocNumber(value);
+    } else if (field === 'invoiceName') setInvoiceName(value);
+    else if (field === 'documentNumber') setDocNumber(value);
     else if (field === 'referenceNumber') setReferenceNumber(value);
     else if (field === 'issueDate') setIssueDate(value);
     else if (field === 'dueDate') setDueDate(value);
@@ -464,6 +667,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     else if (field === 'paymentTerms') setPaymentTerms(value);
     else if (field === 'paymentInstructions') setPaymentInstructions(value);
     else if (field === 'signatoryName') setSignatoryName(value);
+    else if (field === 'enableRoundOff') setEnableRoundOff(Boolean(value));
   };
 
   // Actions
@@ -483,9 +687,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   };
 
   const handleFinalize = async () => {
-    if (isValidStatusTransition(status, 'finalized')) {
-      setStatus('finalized');
-      await saveDocument({ ...documentModel, status: 'finalized' });
+    const nextStatus: DocumentStatus = 'pending';
+    setStatus(nextStatus);
+    const updated = { ...documentModel, status: nextStatus };
+    await saveDocument(updated);
+    if (activeTenant?.id) {
+      await TenantApi.saveDocument(activeTenant.id, updated);
     }
   };
 
@@ -499,12 +706,142 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       id: `doc_${Date.now()}`,
       documentNumber: newDocNumber,
       status: 'draft',
+      payments: [],
+      refunds: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     await saveDocument(newDoc);
-    alert(`Document duplicated as #${newDocNumber}`);
+    if (activeTenant?.id) {
+      await TenantApi.saveDocument(activeTenant.id, newDoc);
+    }
+    alert(`Invoice duplicated as #${newDocNumber}`);
   };
+
+  // Record Payment handler inside Builder
+  const handleRecordPaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = Number(payAmountInput);
+    if (amt <= 0) return;
+
+    const newPayment: PaymentRecord = {
+      id: `pay_${Date.now()}`,
+      documentId: docId,
+      amount: Number(amt.toFixed(2)),
+      paymentDate: payDateInput || new Date().toISOString().split('T')[0],
+      paymentMethod: payMethodInput,
+      reference: payRefInput,
+      notes: payNotesInput,
+      createdAt: new Date().toISOString(),
+    };
+
+    const nextPayments = [...payments, newPayment];
+    setPayments(nextPayments);
+    if (status === 'draft') {
+      setStatus('pending');
+    }
+    setRecordPaymentModalOpen(false);
+    setPayRefInput('');
+    setPayNotesInput('');
+  };
+
+  // Issue Refund handler inside Builder
+  const handleIssueRefundSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const maxRefundable = Math.max(0, totalPaymentsRecorded - totalRefundsRecorded);
+    const amt = Math.min(maxRefundable, Number(refundAmountInput));
+    if (amt <= 0) return;
+
+    const newRefund: RefundRecord = {
+      id: `ref_${Date.now()}`,
+      documentId: docId,
+      amount: Number(amt.toFixed(2)),
+      refundDate: refundDateInput || new Date().toISOString().split('T')[0],
+      refundMethod: refundMethodInput,
+      reason: refundReasonInput,
+      reference: refundRefInput,
+      notes: refundNotesInput,
+      createdAt: new Date().toISOString(),
+    };
+
+    setRefunds((prev) => [...prev, newRefund]);
+    setRefundModalOpen(false);
+    setRefundReasonInput('');
+    setRefundRefInput('');
+    setRefundNotesInput('');
+  };
+
+  // Add Bank Account inside Payment Settings modal
+  const handleSaveBankAccount = () => {
+    const check = validateBankAccount(editingBank);
+    if (!check.valid) {
+      setBankFormErrors(check.errors);
+      return;
+    }
+    setBankFormErrors({});
+    const newId = editingBank.id || `bank_${Date.now()}`;
+    const newBank: BankAccountDetails = {
+      ...editingBank,
+      id: newId,
+      ifscOrRoutingCode: editingBank.ifscOrRoutingCode.toUpperCase(),
+    };
+
+    setPaymentConfig((prev) => {
+      const exists = prev.bankAccounts.some((b) => b.id === newId);
+      const updatedBanks = exists
+        ? prev.bankAccounts.map((b) => (b.id === newId ? newBank : b))
+        : [...prev.bankAccounts, newBank];
+      const updatedSelected = prev.selectedBankAccountIds?.includes(newId)
+        ? prev.selectedBankAccountIds
+        : [...(prev.selectedBankAccountIds || []), newId];
+      return {
+        ...prev,
+        bankAccounts: updatedBanks,
+        selectedBankAccountIds: updatedSelected,
+      };
+    });
+
+    setShowAddBankForm(false);
+    setEditingBank({
+      id: '',
+      accountHolderName: senderName,
+      bankName: '',
+      accountNumber: '',
+      confirmAccountNumber: '',
+      ifscOrRoutingCode: '',
+      branchName: '',
+      accountType: 'current',
+      swiftBicCode: '',
+      country: senderCountry || 'India',
+    });
+  };
+
+  const upiValidation = useMemo(() => validateUpiId(paymentConfig.upiId), [paymentConfig.upiId]);
+  const liveQrPreviewUrl = useMemo(() => {
+    if (!paymentConfig.autoGenerateUpiQr && paymentConfig.qrCodeDataUrl) {
+      return paymentConfig.qrCodeDataUrl;
+    }
+    return generateVerifiedUpiQrSvgDataUrl({
+      upiId: paymentConfig.upiId,
+      payeeName: paymentConfig.upiPayeeName || senderName,
+      amount:
+        calculated.summary.balanceDue > 0
+          ? calculated.summary.balanceDue
+          : calculated.summary.grandTotal,
+      currency,
+      invoiceNumber: docNumber,
+    });
+  }, [
+    paymentConfig.autoGenerateUpiQr,
+    paymentConfig.qrCodeDataUrl,
+    paymentConfig.upiId,
+    paymentConfig.upiPayeeName,
+    senderName,
+    calculated.summary.balanceDue,
+    calculated.summary.grandTotal,
+    currency,
+    docNumber,
+  ]);
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
@@ -514,16 +851,16 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
             <span>
-              <strong>GST & Multi-Currency Invoice Studio:</strong> Automatic CGST + SGST (Intra-State) & IGST (Inter-State) calculation based on State selection.
+              <strong>GST & Multi-Currency Invoice Studio:</strong> Automatic CGST + SGST (Intra-State), IGST (Inter-State), Round-Off, and Verified UPI QR generation.
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <a
-              href="/signup"
+            <Link
+              href="/dashboard"
               className="font-semibold underline hover:text-blue-700 flex items-center gap-1"
             >
-              Create Workspace <ArrowRight className="h-3 w-3" />
-            </a>
+              Go to Workspace <ArrowRight className="h-3 w-3" />
+            </Link>
             <button
               onClick={() => setBannerDismissed(true)}
               className="text-blue-500 hover:text-blue-800 text-sm font-bold"
@@ -536,11 +873,29 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
       {/* Main Top Header Controls */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 no-print shadow-xs">
-        <div className="flex items-center gap-3">
-          <a href="/" className="font-black text-lg text-primary tracking-tight flex items-center gap-1.5">
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/dashboard/documents"
+            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            title="Back to Invoices"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <Link href="/" className="font-black text-lg text-primary tracking-tight flex items-center gap-1.5">
             <Sparkles className="h-5 w-5 text-primary" />
-            <span>BillCraft</span>
-          </a>
+            <span className="hidden sm:inline">BillCraft</span>
+          </Link>
+
+          {/* Invoice Name Input */}
+          <div className="flex items-center gap-1.5">
+            <Input
+              value={invoiceName}
+              onChange={(e) => setInvoiceName(e.target.value)}
+              placeholder="Invoice Name (e.g. Oct Retainer)"
+              aria-label="Invoice Name"
+              className="h-8 text-xs font-bold w-44 sm:w-56 border-slate-300"
+            />
+          </div>
 
           <select
             value={docType}
@@ -564,18 +919,20 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
           <Badge
             variant={
-              status === 'paid'
+              effectiveStatus === 'paid'
                 ? 'success'
-                : status === 'finalized'
-                ? 'info'
-                : 'secondary'
+                : effectiveStatus === 'overdue' || effectiveStatus === 'cancelled'
+                ? 'destructive'
+                : effectiveStatus === 'partially_paid' || effectiveStatus === 'refunded'
+                ? 'warning'
+                : 'info'
             }
           >
-            {status.toUpperCase()}
+            {formatInvoiceStatusLabel(effectiveStatus)}
           </Badge>
 
           {/* Autosave Status */}
-          <div className="hidden md:flex items-center gap-1 text-xs text-slate-500">
+          <div className="hidden xl:flex items-center gap-1 text-xs text-slate-500">
             {saveStatus === 'saved' && (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
@@ -598,12 +955,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         </div>
 
         {/* Action Buttons & Mode Switcher */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {/* 3-Way View Switcher */}
-          <div className="hidden sm:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 mr-1">
+          <div className="hidden md:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 mr-1">
             <button
               onClick={() => setViewMode('sheet')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1 transition-all ${
                 viewMode === 'sheet'
                   ? 'bg-white text-primary shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -614,7 +971,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             </button>
             <button
               onClick={() => setViewMode('split')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1 transition-all ${
                 viewMode === 'split'
                   ? 'bg-white text-primary shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -625,75 +982,106 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             </button>
             <button
               onClick={() => setViewMode('pdf_preview')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1 transition-all ${
                 viewMode === 'pdf_preview'
                   ? 'bg-white text-primary shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Eye className="h-3.5 w-3.5" />
-              <span>Print / PDF View</span>
+              <span>Preview Invoice</span>
             </button>
           </div>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={triggerPrint}
-            className="flex items-center gap-1.5 font-semibold"
+            onClick={() => setPaymentSettingsModalOpen(true)}
+            className="text-xs font-semibold flex items-center gap-1"
+            title="Configure Bank Details, UPI ID, QR Code & Display Controls"
           >
-            <Printer className="h-4 w-4" />
-            <span className="hidden sm:inline">Print A4</span>
+            <QrCode className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden sm:inline">Payment Settings</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setPayAmountInput(
+                calculated.summary.balanceDue > 0
+                  ? calculated.summary.balanceDue
+                  : calculated.summary.grandTotal
+              );
+              setRecordPaymentModalOpen(true);
+            }}
+            className="text-xs font-semibold text-emerald-700 border-emerald-200 hover:bg-emerald-50 flex items-center gap-1"
+          >
+            <CreditCard className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Record Payment</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setHistoryModalOpen(true)}
+            className="text-xs font-semibold flex items-center gap-1"
+            title="View Payment & Refund History"
+          >
+            <History className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">
+              History ({payments.length + refunds.length})
+            </span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShareModalOpen(true)}
+            className="text-xs font-semibold flex items-center gap-1"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Send / Share</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={triggerPrint}
+            className="flex items-center gap-1 font-semibold text-xs"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Print</span>
           </Button>
 
           <Button
             size="sm"
             onClick={handleDownloadPdf}
             disabled={isExportingPdf}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 font-semibold shadow-xs"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 font-semibold text-xs shadow-xs"
           >
-            <Download className="h-4 w-4" />
-            <span>{isExportingPdf ? 'Exporting PDF...' : 'Download PDF'}</span>
+            <Download className="h-3.5 w-3.5" />
+            <span>{isExportingPdf ? 'Exporting...' : 'Download PDF'}</span>
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDuplicateDoc}
-            className="hidden lg:flex items-center gap-1.5"
-          >
-            <Copy className="h-4 w-4" />
-            <span>Duplicate</span>
-          </Button>
-
-          {status === 'draft' ? (
+          {effectiveStatus === 'draft' && (
             <Button
               size="sm"
               onClick={handleFinalize}
-              className="bg-primary hover:bg-primary-hover text-white flex items-center gap-1.5 shadow-xs"
+              className="bg-primary hover:bg-primary-hover text-white flex items-center gap-1 text-xs shadow-xs"
             >
-              <CheckCircle2 className="h-4 w-4" />
-              <span>Finalize</span>
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled
-              className="flex items-center gap-1.5"
-            >
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <span>Finalized</span>
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span>Finalize Invoice</span>
             </Button>
           )}
         </div>
       </header>
 
       {/* ==================================================================== */}
-      {/* DESIGN & TEMPLATE STUDIO BAR (Category Dropdown + Live Theme Picker) */}
+      {/* DESIGN, ROUNDING & CURRENCY STUDIO BAR */}
       {/* ==================================================================== */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 no-print shadow-xs sticky top-[53px] z-30">
-        {/* Left: Category-Wise Template Dropdown */}
+      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-2 flex flex-wrap items-center justify-between gap-3 no-print shadow-xs sticky top-[53px] z-30">
+        {/* Left: Category-Wise Template Dropdown + Theme Swatches */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
@@ -705,7 +1093,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 setTemplateId(e.target.value);
                 setCustomPrimaryColor(undefined);
               }}
-              className="text-xs font-bold bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-slate-900 cursor-pointer min-w-[240px] shadow-2xs"
+              className="text-xs font-bold bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 cursor-pointer min-w-[220px]"
             >
               {categorizedTemplates.map((group) => (
                 <optgroup key={group.category} label={group.label}>
@@ -719,16 +1107,16 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             </select>
           </div>
 
-          {/* Theme Color Picker & Swatches */}
+          {/* Theme Color Swatches */}
           <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
-            <span className="text-[11px] font-semibold text-slate-500 mr-1">Theme Color:</span>
+            <span className="text-[11px] font-semibold text-slate-500 mr-1">Theme:</span>
             {THEME_COLOR_SWATCHES.map((swatch) => (
               <button
                 key={swatch.hex}
                 type="button"
                 onClick={() => setCustomPrimaryColor(swatch.hex)}
                 title={swatch.name}
-                className={`w-5 h-5 rounded-full border transition-transform ${
+                className={`w-4 h-4 rounded-full border transition-transform ${
                   effectivePrimaryColor.toLowerCase() === swatch.hex.toLowerCase()
                     ? 'scale-125 ring-2 ring-offset-1 ring-slate-900 border-white'
                     : 'border-slate-300 hover:scale-110'
@@ -741,21 +1129,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               value={effectivePrimaryColor}
               onChange={(e) => setCustomPrimaryColor(e.target.value)}
               title="Custom Brand Color"
-              className="w-6 h-6 rounded cursor-pointer border border-slate-300 p-0 bg-transparent ml-1"
+              className="w-5 h-5 rounded cursor-pointer border border-slate-300 p-0 bg-transparent ml-0.5"
             />
-            {(customPrimaryColor || customFontFamily) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setCustomPrimaryColor(undefined);
-                  setCustomFontFamily(undefined);
-                }}
-                title="Reset to template default theme"
-                className="text-[11px] text-slate-500 hover:text-slate-900 flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded bg-slate-100"
-              >
-                <RotateCcw className="h-3 w-3" /> Reset
-              </button>
-            )}
           </div>
 
           {/* Typography Selector */}
@@ -773,8 +1148,45 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           </div>
         </div>
 
-        {/* Right: Currency & GST Supply Status */}
-        <div className="flex items-center gap-3">
+        {/* Right: Round-Off Controls & Currency */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Round-Off Quick Toggle & Precision */}
+          <div className="flex items-center gap-2 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs">
+            <label className="flex items-center gap-1.5 font-semibold text-slate-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enableRoundOff}
+                onChange={(e) => setEnableRoundOff(e.target.checked)}
+                className="rounded border-slate-300 text-primary h-3.5 w-3.5"
+              />
+              <span>Round-Off</span>
+            </label>
+            {enableRoundOff && (
+              <select
+                value={roundingMode}
+                onChange={(e) => setRoundingMode(e.target.value as RoundingMode)}
+                className="text-[11px] font-semibold bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-800"
+                title="Rounding Mode"
+              >
+                <option value="nearest_integer">Nearest Whole</option>
+                <option value="half_up">Half Up</option>
+                <option value="half_even">Half Even (Banker)</option>
+                <option value="up">Round Up</option>
+                <option value="down">Round Down</option>
+              </select>
+            )}
+            <select
+              value={decimalPrecision}
+              onChange={(e) => setDecimalPrecision(Number(e.target.value))}
+              className="text-[11px] font-mono bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700"
+              title="Decimal Precision"
+            >
+              <option value={2}>2 Decimals</option>
+              <option value={0}>0 Decimals</option>
+              <option value={3}>3 Decimals</option>
+            </select>
+          </div>
+
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-slate-500">Currency:</span>
             <select
@@ -817,7 +1229,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               }}
               onUpdateShipping={(val) => setShippingFee(val)}
               onUpdateExtra={(val) => setExtraCharges(val)}
-              onUpdatePaid={(val) => setAmountPaid(val)}
+              onUpdatePaid={(val) => setManualAmountPaid(val)}
             />
           </div>
         </div>
@@ -828,7 +1240,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       {/* ==================================================================== */}
       {viewMode === 'pdf_preview' && (
         <div className="flex-1 bg-slate-300/70 p-4 md:p-8 flex flex-col items-center overflow-y-auto no-print">
-          <div className="mb-4 flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 text-xs">
+          <div className="mb-4 flex flex-wrap items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 text-xs">
             <span className="font-semibold text-slate-700">
               A4 Print & PDF Output Preview ({activeTemplateMeta.name})
             </span>
@@ -841,7 +1253,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               <Download className="h-3.5 w-3.5 mr-1" /> Download PDF
             </Button>
             <Button variant="outline" size="sm" onClick={triggerPrint} className="h-7 text-xs">
-              <Printer className="h-3.5 w-3.5 mr-1" /> Print Now
+              <Printer className="h-3.5 w-3.5 mr-1" /> Print Invoice
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPaymentSettingsModalOpen(true)}
+              className="h-7 text-xs"
+            >
+              <QrCode className="h-3.5 w-3.5 mr-1 text-primary" /> Payment Display Controls
             </Button>
           </div>
           <div className="w-full max-w-4xl">
@@ -866,17 +1286,27 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             }`}
           >
             <div className="max-w-2xl mx-auto space-y-5">
-              {/* Document Metadata Card */}
+              {/* Invoice Metadata Card */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" /> Document & Date Details
+                    <FileText className="h-4 w-4 text-primary" /> Invoice Details & Dates
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Invoice Name
+                    </label>
+                    <Input
+                      value={invoiceName}
+                      onChange={(e) => setInvoiceName(e.target.value)}
+                      placeholder="e.g. Q4 Enterprise Cloud Retainer"
+                    />
+                  </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Invoice / Document No.
+                      Invoice Number
                     </label>
                     <Input
                       value={docNumber}
@@ -890,15 +1320,6 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                     <Input
                       value={referenceNumber}
                       onChange={(e) => setReferenceNumber(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Payment Terms
-                    </label>
-                    <Input
-                      value={paymentTerms}
-                      onChange={(e) => setPaymentTerms(e.target.value)}
                     />
                   </div>
                   <div>
@@ -922,6 +1343,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                     />
                   </div>
                   <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Payment Terms
+                    </label>
+                    <Input
+                      value={paymentTerms}
+                      onChange={(e) => setPaymentTerms(e.target.value)}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
                     <label className="text-xs font-semibold text-slate-700 block mb-1">
                       Authorized Signatory
                     </label>
@@ -1076,12 +1506,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       </select>
                     </div>
                     <Input
-                      placeholder="Client Email"
+                      placeholder="Customer Email"
                       value={clientEmail}
                       onChange={(e) => setClientEmail(e.target.value)}
                     />
                     <Input
-                      placeholder="Client Phone"
+                      placeholder="Customer Phone"
                       value={clientPhone}
                       onChange={(e) => setClientPhone(e.target.value)}
                     />
@@ -1115,7 +1545,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               <Card>
                 <CardHeader className="pb-3 flex flex-row items-center justify-between">
                   <CardTitle className="text-sm font-bold">
-                    Line Items (HSN/SAC & GST)
+                    Invoice Items (HSN/SAC & GST)
                   </CardTitle>
                   <Button
                     type="button"
@@ -1197,7 +1627,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                         </div>
                         <div>
                           <label className="text-[10px] font-semibold text-slate-500 block">
-                            Rate ({currency})
+                            Unit Price ({currency})
                           </label>
                           <Input
                             type="number"
@@ -1247,14 +1677,94 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 </CardContent>
               </Card>
 
-              {/* Notes & Bank Details */}
+              {/* Payment Settings, Rounding & Notes Card */}
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between">
                   <CardTitle className="text-sm font-bold">
-                    Bank Details, Notes & Adjustments
+                    Payment Settings, Rounding & Notes
                   </CardTitle>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPaymentSettingsModalOpen(true)}
+                    className="h-7 text-xs"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5 mr-1" /> Configure Bank / UPI / QR
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={paymentConfig.display.showBankDetails}
+                        onChange={(e) =>
+                          setPaymentConfig((p) => ({
+                            ...p,
+                            display: { ...p.display, showBankDetails: e.target.checked },
+                          }))
+                        }
+                      />
+                      <span>Show Bank Details</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={paymentConfig.display.showUpiId}
+                        onChange={(e) =>
+                          setPaymentConfig((p) => ({
+                            ...p,
+                            display: { ...p.display, showUpiId: e.target.checked },
+                          }))
+                        }
+                      />
+                      <span>Show UPI ID</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={paymentConfig.display.showQrCode}
+                        onChange={(e) =>
+                          setPaymentConfig((p) => ({
+                            ...p,
+                            display: { ...p.display, showQrCode: e.target.checked },
+                          }))
+                        }
+                      />
+                      <span>Show QR Code</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={paymentConfig.display.showPaymentInstructions}
+                        onChange={(e) =>
+                          setPaymentConfig((p) => ({
+                            ...p,
+                            display: {
+                              ...p.display,
+                              showPaymentInstructions: e.target.checked,
+                            },
+                          }))
+                        }
+                      />
+                      <span>Show Instructions</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={paymentConfig.display.showPaymentTerms}
+                        onChange={(e) =>
+                          setPaymentConfig((p) => ({
+                            ...p,
+                            display: { ...p.display, showPaymentTerms: e.target.checked },
+                          }))
+                        }
+                      />
+                      <span>Show Payment Terms</span>
+                    </label>
+                  </div>
+
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-slate-700 block mb-1">
@@ -1278,21 +1788,29 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-slate-700 block mb-1">
-                        Advance / Paid
+                        Round-Off Adjustment
                       </label>
-                      <Input
-                        type="number"
-                        value={amountPaid}
-                        onChange={(e) => setAmountPaid(Number(e.target.value))}
-                      />
+                      <div className="h-10 px-3 rounded-md border border-slate-200 bg-slate-50 flex items-center justify-between text-xs font-mono">
+                        <span>
+                          {formatCurrency(calculated.summary.roundOffAmount || 0, currency, {
+                            showSign: true,
+                          })}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={enableRoundOff}
+                          onChange={(e) => setEnableRoundOff(e.target.checked)}
+                          title="Toggle Round-Off"
+                        />
+                      </div>
                     </div>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Bank / NEFT / UPI Payment Instructions
+                      Payment Instructions
                     </label>
                     <Textarea
-                      rows={3}
+                      rows={2}
                       value={paymentInstructions}
                       onChange={(e) => setPaymentInstructions(e.target.value)}
                     />
@@ -1312,7 +1830,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Live Realtime Document Preview */}
+          {/* RIGHT COLUMN: Live Realtime Invoice Preview */}
           <div
             className={`w-full lg:w-1/2 bg-slate-200/70 p-4 md:p-6 overflow-y-auto max-h-[calc(100vh-110px)] flex justify-center items-start ${
               mobileTab === 'editor' ? 'hidden lg:flex' : 'flex'
@@ -1326,6 +1844,963 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 1: PAYMENT SETTINGS (BANK ACCOUNTS, UPI ID, QR CODE & DISPLAY CONTROLS) */}
+      {/* ==================================================================== */}
+      {paymentSettingsModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto no-print">
+          <Card className="w-full max-w-3xl bg-white border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 space-y-6">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+                <div>
+                  <h3 className="font-black text-base text-slate-900 flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    Payment Settings & Invoice Display Controls
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Configure structured Bank Accounts, UPI ID, and Verified QR Code. Only enabled payment methods appear on the invoice.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPaymentSettingsModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-700 font-bold text-lg"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 1. Independent Visibility Toggles */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  1. Invoice Display Controls (Independent Toggles)
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={paymentConfig.display.showBankDetails}
+                      onChange={(e) =>
+                        setPaymentConfig((p) => ({
+                          ...p,
+                          display: { ...p.display, showBankDetails: e.target.checked },
+                        }))
+                      }
+                      className="h-4 w-4 rounded text-primary"
+                    />
+                    <span>Show Bank Details</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={paymentConfig.display.showUpiId}
+                      onChange={(e) =>
+                        setPaymentConfig((p) => ({
+                          ...p,
+                          display: { ...p.display, showUpiId: e.target.checked },
+                        }))
+                      }
+                      className="h-4 w-4 rounded text-primary"
+                    />
+                    <span>Show UPI ID</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={paymentConfig.display.showQrCode}
+                      onChange={(e) =>
+                        setPaymentConfig((p) => ({
+                          ...p,
+                          display: { ...p.display, showQrCode: e.target.checked },
+                        }))
+                      }
+                      className="h-4 w-4 rounded text-primary"
+                    />
+                    <span>Show QR Code</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={paymentConfig.display.showPaymentInstructions}
+                      onChange={(e) =>
+                        setPaymentConfig((p) => ({
+                          ...p,
+                          display: {
+                            ...p.display,
+                            showPaymentInstructions: e.target.checked,
+                          },
+                        }))
+                      }
+                      className="h-4 w-4 rounded text-primary"
+                    />
+                    <span>Show Payment Instructions</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={paymentConfig.display.showPaymentTerms}
+                      onChange={(e) =>
+                        setPaymentConfig((p) => ({
+                          ...p,
+                          display: { ...p.display, showPaymentTerms: e.target.checked },
+                        }))
+                      }
+                      className="h-4 w-4 rounded text-primary"
+                    />
+                    <span>Show Payment Terms</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* 2. Structured Bank Accounts */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    2. Bank Accounts ({paymentConfig.bankAccounts.length})
+                  </h4>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingBank({
+                        id: '',
+                        accountHolderName: senderName,
+                        bankName: '',
+                        accountNumber: '',
+                        confirmAccountNumber: '',
+                        ifscOrRoutingCode: '',
+                        branchName: '',
+                        accountType: 'current',
+                        swiftBicCode: '',
+                        country: senderCountry || 'India',
+                      });
+                      setBankFormErrors({});
+                      setShowAddBankForm(true);
+                    }}
+                    className="h-7 text-xs font-semibold"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Bank Account
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  {paymentConfig.bankAccounts.map((bank) => {
+                    const isSelected =
+                      !paymentConfig.selectedBankAccountIds?.length ||
+                      paymentConfig.selectedBankAccountIds.includes(bank.id);
+                    return (
+                      <div
+                        key={bank.id}
+                        className="p-3 rounded-lg border border-slate-200 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs"
+                      >
+                        <label className="flex items-start gap-2.5 cursor-pointer flex-1">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              setPaymentConfig((p) => {
+                                const currentIds =
+                                  p.selectedBankAccountIds && p.selectedBankAccountIds.length > 0
+                                    ? p.selectedBankAccountIds
+                                    : p.bankAccounts.map((b) => b.id);
+                                const nextIds = e.target.checked
+                                  ? [...currentIds, bank.id]
+                                  : currentIds.filter((id) => id !== bank.id);
+                                return { ...p, selectedBankAccountIds: nextIds };
+                              });
+                            }}
+                            className="mt-1 h-4 w-4 rounded text-primary"
+                          />
+                          <div>
+                            <div className="font-bold text-slate-900">
+                              {bank.bankName} — {bank.accountHolderName}
+                            </div>
+                            <div className="text-slate-600 font-mono text-[11px]">
+                              A/C: {bank.accountNumber} • IFSC/Routing: {bank.ifscOrRoutingCode} •{' '}
+                              <span className="capitalize">{bank.accountType}</span>
+                              {bank.branchName ? ` • ${bank.branchName}` : ''}
+                              {bank.swiftBicCode ? ` • SWIFT: ${bank.swiftBicCode}` : ''}
+                            </div>
+                          </div>
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingBank({
+                                ...bank,
+                                confirmAccountNumber: bank.accountNumber,
+                              });
+                              setBankFormErrors({});
+                              setShowAddBankForm(true);
+                            }}
+                            className="h-7 text-xs px-2"
+                          >
+                            Edit
+                          </Button>
+                          {paymentConfig.bankAccounts.length > 1 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                setPaymentConfig((p) => ({
+                                  ...p,
+                                  bankAccounts: p.bankAccounts.filter((b) => b.id !== bank.id),
+                                  selectedBankAccountIds: (p.selectedBankAccountIds || []).filter(
+                                    (id) => id !== bank.id
+                                  ),
+                                }))
+                              }
+                              className="h-7 text-xs text-red-600 hover:bg-red-50 px-2"
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Individual Input Fields Form for Adding / Editing Bank Account */}
+                {showAddBankForm && (
+                  <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3">
+                    <div className="text-xs font-bold text-slate-800">
+                      {editingBank.id ? 'Edit Bank Account Details' : 'New Bank Account Details'}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">
+                          Account Holder Name *
+                        </label>
+                        <Input
+                          value={editingBank.accountHolderName}
+                          onChange={(e) =>
+                            setEditingBank((b) => ({ ...b, accountHolderName: e.target.value }))
+                          }
+                          placeholder="e.g. Apex Digital Solutions Pvt Ltd"
+                        />
+                        {bankFormErrors.accountHolderName && (
+                          <p className="text-[11px] text-red-600 mt-0.5">
+                            {bankFormErrors.accountHolderName}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">
+                          Bank Name *
+                        </label>
+                        <Input
+                          value={editingBank.bankName}
+                          onChange={(e) =>
+                            setEditingBank((b) => ({ ...b, bankName: e.target.value }))
+                          }
+                          placeholder="e.g. HDFC Bank Ltd"
+                        />
+                        {bankFormErrors.bankName && (
+                          <p className="text-[11px] text-red-600 mt-0.5">
+                            {bankFormErrors.bankName}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">
+                          Account Number *
+                        </label>
+                        <Input
+                          value={editingBank.accountNumber}
+                          onChange={(e) =>
+                            setEditingBank((b) => ({ ...b, accountNumber: e.target.value }))
+                          }
+                          placeholder="50200049182731"
+                        />
+                        {bankFormErrors.accountNumber && (
+                          <p className="text-[11px] text-red-600 mt-0.5">
+                            {bankFormErrors.accountNumber}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">
+                          Confirm Account Number *
+                        </label>
+                        <Input
+                          value={editingBank.confirmAccountNumber || ''}
+                          onChange={(e) =>
+                            setEditingBank((b) => ({
+                              ...b,
+                              confirmAccountNumber: e.target.value,
+                            }))
+                          }
+                          placeholder="Re-enter account number"
+                        />
+                        {bankFormErrors.confirmAccountNumber && (
+                          <p className="text-[11px] text-red-600 mt-0.5">
+                            {bankFormErrors.confirmAccountNumber}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">
+                          IFSC / Routing Code *
+                        </label>
+                        <Input
+                          value={editingBank.ifscOrRoutingCode}
+                          onChange={(e) =>
+                            setEditingBank((b) => ({
+                              ...b,
+                              ifscOrRoutingCode: e.target.value.toUpperCase(),
+                            }))
+                          }
+                          placeholder="HDFC0000124"
+                        />
+                        {bankFormErrors.ifscOrRoutingCode && (
+                          <p className="text-[11px] text-red-600 mt-0.5">
+                            {bankFormErrors.ifscOrRoutingCode}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">
+                          Branch Name
+                        </label>
+                        <Input
+                          value={editingBank.branchName || ''}
+                          onChange={(e) =>
+                            setEditingBank((b) => ({ ...b, branchName: e.target.value }))
+                          }
+                          placeholder="Nariman Point, Mumbai"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">
+                          Account Type
+                        </label>
+                        <select
+                          value={editingBank.accountType}
+                          onChange={(e) =>
+                            setEditingBank((b) => ({
+                              ...b,
+                              accountType: e.target.value as BankAccountType,
+                            }))
+                          }
+                          className="w-full h-10 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium"
+                        >
+                          <option value="current">Current Account</option>
+                          <option value="savings">Savings Account</option>
+                          <option value="checking">Checking Account</option>
+                          <option value="business">Business Corporate</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">
+                          SWIFT / BIC Code (Optional)
+                        </label>
+                        <Input
+                          value={editingBank.swiftBicCode || ''}
+                          onChange={(e) =>
+                            setEditingBank((b) => ({
+                              ...b,
+                              swiftBicCode: e.target.value.toUpperCase(),
+                            }))
+                          }
+                          placeholder="HDFCINBB"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAddBankForm(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleSaveBankAccount}
+                        className="bg-primary text-white"
+                      >
+                        Save Bank Account
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. UPI ID & QR Code Configuration */}
+              <div className="space-y-3 border-t border-slate-200 pt-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  3. UPI ID & Verified QR Code
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                  <div className="md:col-span-2 space-y-3 text-xs">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">
+                        UPI ID / VPA
+                      </label>
+                      <Input
+                        value={paymentConfig.upiId || ''}
+                        onChange={(e) =>
+                          setPaymentConfig((p) => ({ ...p, upiId: e.target.value.trim() }))
+                        }
+                        placeholder="businessname@hdfcbank"
+                      />
+                      {paymentConfig.upiId && !upiValidation.valid && (
+                        <p className="text-[11px] text-amber-600 mt-1">
+                          {upiValidation.error}
+                        </p>
+                      )}
+                      {paymentConfig.upiId && upiValidation.valid && (
+                        <p className="text-[11px] text-emerald-600 mt-1">
+                          ✓ Valid UPI ID format verified.
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">
+                        UPI Payee Name
+                      </label>
+                      <Input
+                        value={paymentConfig.upiPayeeName || senderName}
+                        onChange={(e) =>
+                          setPaymentConfig((p) => ({ ...p, upiPayeeName: e.target.value }))
+                        }
+                        placeholder="Merchant / Business Name"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
+                      <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(paymentConfig.autoGenerateUpiQr)}
+                          onChange={(e) =>
+                            setPaymentConfig((p) => ({
+                              ...p,
+                              autoGenerateUpiQr: e.target.checked,
+                            }))
+                          }
+                        />
+                        <span>Auto-generate verified UPI QR</span>
+                      </label>
+
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700">
+                        <Upload className="h-3.5 w-3.5" /> Upload Custom QR Image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              setPaymentConfig((p) => ({
+                                ...p,
+                                autoGenerateUpiQr: false,
+                                qrCodeDataUrl: ev.target?.result as string,
+                              }));
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* QR Code Preview Box */}
+                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center min-h-[140px]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                      QR Code Preview
+                    </span>
+                    {liveQrPreviewUrl ? (
+                      <>
+                        <img
+                          src={liveQrPreviewUrl}
+                          alt="Verified QR Preview"
+                          className="h-24 w-24 object-contain bg-white p-1.5 rounded border border-slate-200"
+                        />
+                        <span className="text-[10px] text-emerald-700 font-semibold mt-1.5">
+                          ✓ Verified Payment QR Ready
+                        </span>
+                      </>
+                    ) : (
+                      <div className="text-[11px] text-slate-400 px-2">
+                        Enter a valid UPI ID & Payee Name or upload a QR image to generate preview.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={async () => {
+                    if (activeTenant?.id) {
+                      await TenantApi.updateBrandSettings(activeTenant.id, {
+                        paymentConfig,
+                      });
+                    }
+                    setPaymentSettingsModalOpen(false);
+                  }}
+                  className="bg-primary hover:bg-primary-hover text-white font-semibold"
+                >
+                  Apply to Invoice & Save Default
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 2: RECORD PAYMENT (FULL OR PARTIAL) */}
+      {/* ==================================================================== */}
+      {recordPaymentModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
+          <Card className="w-full max-w-md bg-white border-slate-200 shadow-2xl">
+            <form onSubmit={handleRecordPaymentSubmit} className="p-6 space-y-4">
+              <div className="flex justify-between items-center border-b pb-3">
+                <h3 className="font-bold text-base text-slate-900">
+                  Record Payment — #{docNumber}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setRecordPaymentModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Invoice Total:</span>
+                  <span className="font-mono font-bold">
+                    {formatCurrency(calculated.summary.grandTotal, currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Collected So Far:</span>
+                  <span className="font-mono text-emerald-700 font-semibold">
+                    {formatCurrency(calculated.summary.amountPaid, currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t pt-1 font-bold text-slate-900">
+                  <span>Outstanding Balance:</span>
+                  <span className="font-mono text-amber-600">
+                    {formatCurrency(calculated.summary.balanceDue, currency)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Payment Amount ({currency}) *
+                  </label>
+                  <Input
+                    type="number"
+                    step="any"
+                    min="0.01"
+                    required
+                    value={payAmountInput}
+                    onChange={(e) => setPayAmountInput(Number(e.target.value))}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">
+                      Payment Method
+                    </label>
+                    <select
+                      value={payMethodInput}
+                      onChange={(e) => setPayMethodInput(e.target.value as PaymentMethod)}
+                      className="w-full h-10 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium"
+                    >
+                      <option value="bank_transfer">Bank Transfer / NEFT</option>
+                      <option value="upi">UPI</option>
+                      <option value="card">Card</option>
+                      <option value="cash">Cash</option>
+                      <option value="cheque">Cheque</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">
+                      Payment Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={payDateInput}
+                      onChange={(e) => setPayDateInput(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Transaction Reference
+                  </label>
+                  <Input
+                    value={payRefInput}
+                    onChange={(e) => setPayRefInput(e.target.value)}
+                    placeholder="e.g. UTR / NEFT-994120 / UPI Ref"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Notes
+                  </label>
+                  <Input
+                    value={payNotesInput}
+                    onChange={(e) => setPayNotesInput(e.target.value)}
+                    placeholder="Optional payment note..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRecordPaymentModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                >
+                  Save Payment
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 3: PAYMENT & REFUND HISTORY + ISSUE REFUND */}
+      {/* ==================================================================== */}
+      {historyModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
+          <Card className="w-full max-w-2xl bg-white border-slate-200 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-center border-b pb-3">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">
+                    Payment & Refund History — #{docNumber}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Original Invoice Total, Collected Payments, Refunds, and Remaining Balance.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold">Invoice Total</div>
+                  <div className="font-mono font-black text-slate-900 text-sm mt-0.5">
+                    {formatCurrency(calculated.summary.grandTotal, currency)}
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                  <div className="text-[10px] text-emerald-700 uppercase font-bold">Collected</div>
+                  <div className="font-mono font-black text-emerald-700 text-sm mt-0.5">
+                    {formatCurrency(calculated.summary.amountPaid, currency)}
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200">
+                  <div className="text-[10px] text-rose-700 uppercase font-bold">Refunded</div>
+                  <div className="font-mono font-black text-rose-700 text-sm mt-0.5">
+                    {formatCurrency(calculated.summary.refundedAmount || 0, currency)}
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <div className="text-[10px] text-amber-700 uppercase font-bold">Balance Due</div>
+                  <div className="font-mono font-black text-amber-700 text-sm mt-0.5">
+                    {formatCurrency(calculated.summary.balanceDue, currency)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Payments List */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Collected Payments ({payments.length})
+                  </h4>
+                  <div className="flex gap-2">
+                    {totalPaymentsRecorded > totalRefundsRecorded && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setRefundAmountInput(
+                            Number((totalPaymentsRecorded - totalRefundsRecorded).toFixed(2))
+                          );
+                          setRefundModalOpen(true);
+                        }}
+                        className="h-7 text-xs text-rose-700 border-rose-200 hover:bg-rose-50"
+                      >
+                        <Undo2 className="h-3 w-3 mr-1" /> Issue Refund
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setPayAmountInput(calculated.summary.balanceDue);
+                        setRecordPaymentModalOpen(true);
+                      }}
+                      className="h-7 text-xs bg-emerald-600 text-white"
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> Record Payment
+                    </Button>
+                  </div>
+                </div>
+
+                {payments.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-slate-400 border rounded-lg">
+                    No payment transactions recorded yet.
+                  </div>
+                ) : (
+                  <div className="divide-y border rounded-lg text-xs">
+                    {payments.map((p) => (
+                      <div key={p.id} className="p-3 flex justify-between items-center">
+                        <div>
+                          <div className="font-bold text-slate-900 capitalize">
+                            {p.paymentMethod.replace('_', ' ')} • {p.paymentDate}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            {p.reference ? `Ref: ${p.reference}` : 'No reference'}{' '}
+                            {p.notes ? `• ${p.notes}` : ''}
+                          </div>
+                        </div>
+                        <div className="font-mono font-bold text-emerald-700">
+                          +{formatCurrency(p.amount, currency)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Refunds List */}
+              {refunds.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600">
+                    Refunds Issued ({refunds.length})
+                  </h4>
+                  <div className="divide-y border border-rose-200 bg-rose-50/30 rounded-lg text-xs">
+                    {refunds.map((r) => (
+                      <div key={r.id} className="p-3 flex justify-between items-center">
+                        <div>
+                          <div className="font-bold text-slate-900 capitalize">
+                            Refund via {r.refundMethod.replace('_', ' ')} • {r.refundDate}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            {r.reason ? `Reason: ${r.reason}` : ''}{' '}
+                            {r.reference ? `• Ref: ${r.reference}` : ''}
+                          </div>
+                        </div>
+                        <div className="font-mono font-bold text-rose-600">
+                          -{formatCurrency(r.amount, currency)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Issue Refund Inline Sub-Form */}
+              {refundModalOpen && (
+                <form
+                  onSubmit={handleIssueRefundSubmit}
+                  className="p-4 rounded-xl border border-rose-200 bg-rose-50/50 space-y-3 text-xs"
+                >
+                  <div className="font-bold text-rose-900">
+                    Issue Partial or Full Refund (Max Refundable:{' '}
+                    {formatCurrency(totalPaymentsRecorded - totalRefundsRecorded, currency)})
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">
+                        Refund Amount *
+                      </label>
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0.01"
+                        max={totalPaymentsRecorded - totalRefundsRecorded}
+                        required
+                        value={refundAmountInput}
+                        onChange={(e) => setRefundAmountInput(Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">
+                        Refund Method
+                      </label>
+                      <select
+                        value={refundMethodInput}
+                        onChange={(e) => setRefundMethodInput(e.target.value as PaymentMethod)}
+                        className="w-full h-10 rounded-md border border-slate-300 bg-white px-2 text-xs"
+                      >
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="upi">UPI</option>
+                        <option value="card">Card Reversal</option>
+                        <option value="cash">Cash</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">
+                        Refund Date
+                      </label>
+                      <Input
+                        type="date"
+                        value={refundDateInput}
+                        onChange={(e) => setRefundDateInput(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Refund Reason (e.g. Service scope adjustment)"
+                      value={refundReasonInput}
+                      onChange={(e) => setRefundReasonInput(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Transaction Reference"
+                      value={refundRefInput}
+                      onChange={(e) => setRefundRefInput(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setRefundModalOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="bg-rose-600 hover:bg-rose-700 text-white"
+                    >
+                      Confirm Refund
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 4: SEND OR SHARE INVOICE */}
+      {/* ==================================================================== */}
+      {shareModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
+          <Card className="w-full max-w-md bg-white border-slate-200 shadow-2xl">
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-center border-b pb-3">
+                <h3 className="font-bold text-base text-slate-900">
+                  Send or Share Invoice #{docNumber}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShareModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Recipient Email
+                  </label>
+                  <Input defaultValue={clientEmail} placeholder="customer@company.com" />
+                </div>
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 font-mono text-[11px] space-y-1">
+                  <div>
+                    <strong>Invoice:</strong> {invoiceName} (#{docNumber})
+                  </div>
+                  <div>
+                    <strong>Customer:</strong> {clientName}
+                  </div>
+                  <div>
+                    <strong>Payable Amount:</strong>{' '}
+                    {formatCurrency(calculated.summary.grandTotal, currency)}
+                  </div>
+                  <div>
+                    <strong>Due Date:</strong> {dueDate || 'On Receipt'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between gap-2 pt-3 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(
+                      `Invoice #${docNumber} (${invoiceName}) for ${formatCurrency(
+                        calculated.summary.grandTotal,
+                        currency
+                      )} — Due ${dueDate}`
+                    );
+                    alert('Invoice summary copied to clipboard!');
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1" /> Copy Summary
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    if (status === 'draft') setStatus('pending');
+                    setShareModalOpen(false);
+                    alert(`Invoice #${docNumber} queued for dispatch to ${clientEmail || clientName}!`);
+                  }}
+                  className="bg-primary text-white font-semibold"
+                >
+                  Send Invoice Email
+                </Button>
+              </div>
+            </div>
+          </Card>
         </div>
       )}
 

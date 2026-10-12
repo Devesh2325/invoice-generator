@@ -1,7 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Tenant, TenantApi } from '@invoice/api';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Tenant, TenantApi, TenantBrandSettings } from '@invoice/api';
 
 export interface AuthUser {
   id: string;
@@ -13,10 +13,13 @@ interface TenantContextType {
   activeTenant: Tenant | null;
   tenants: Tenant[];
   setActiveTenant: (tenant: Tenant) => void;
+  brandSettings: TenantBrandSettings | null;
+  tenantCurrency: string;
   isLoading: boolean;
   user: AuthUser | null;
   signOut: () => void;
   refreshTenants: () => Promise<void>;
+  refreshBrandSettings: () => Promise<void>;
 }
 
 const DEFAULT_DEMO_USER: AuthUser = {
@@ -32,10 +35,20 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [activeTenant, setActiveTenantState] = useState<Tenant | null>(null);
+  const [brandSettings, setBrandSettings] = useState<TenantBrandSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(DEFAULT_DEMO_USER);
 
-  const loadUserAndTenants = async () => {
+  const loadBrandForTenant = useCallback(async (tenantId: string) => {
+    try {
+      const settings = await TenantApi.getBrandSettings(tenantId);
+      setBrandSettings(settings);
+    } catch (err) {
+      console.error('Failed to load brand settings:', err);
+    }
+  }, []);
+
+  const loadUserAndTenants = useCallback(async () => {
     setIsLoading(true);
     try {
       let currentUser: AuthUser = DEFAULT_DEMO_USER;
@@ -61,23 +74,39 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
       setActiveTenantState(chosen);
+      if (chosen) {
+        await loadBrandForTenant(chosen.id);
+      }
     } catch (err) {
       console.error('Failed to load tenants:', err);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [loadBrandForTenant]);
 
   useEffect(() => {
     loadUserAndTenants();
-  }, []);
+  }, [loadUserAndTenants]);
 
   const setActiveTenant = (tenant: Tenant) => {
     setActiveTenantState(tenant);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('billcraft_active_tenant_id', tenant.id);
     }
+    loadBrandForTenant(tenant.id);
   };
+
+  const refreshBrandSettings = useCallback(async () => {
+    if (activeTenant) {
+      await loadBrandForTenant(activeTenant.id);
+      const list = await TenantApi.getTenants(user?.id);
+      setTenants(list);
+      const updatedActive = list.find((t) => t.id === activeTenant.id);
+      if (updatedActive) {
+        setActiveTenantState(updatedActive);
+      }
+    }
+  }, [activeTenant, loadBrandForTenant, user?.id]);
 
   const signOut = () => {
     if (typeof window !== 'undefined') {
@@ -87,8 +116,12 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     setUser(null);
     setActiveTenantState(null);
+    setBrandSettings(null);
     window.location.href = '/';
   };
+
+  const tenantCurrency =
+    brandSettings?.currency || activeTenant?.currency || 'INR';
 
   return (
     <TenantContext.Provider
@@ -96,10 +129,13 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
         activeTenant,
         tenants,
         setActiveTenant,
+        brandSettings,
+        tenantCurrency,
         isLoading,
         user,
         signOut,
         refreshTenants: loadUserAndTenants,
+        refreshBrandSettings,
       }}
     >
       {children}

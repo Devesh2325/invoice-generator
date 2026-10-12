@@ -5,6 +5,7 @@ import {
   DocumentCalculatedSummary,
   TaxBreakdownItem,
   DiscountType,
+  RoundingMode,
 } from '../types/document';
 import { getCurrencyConfig } from '../types/currency';
 
@@ -21,6 +22,10 @@ export interface CalculationInput {
   shippingFee?: number;
   extraCharges?: number;
   amountPaid?: number;
+  refundedAmount?: number;
+  enableRoundOff?: boolean;
+  roundingMode?: RoundingMode;
+  decimalPrecision?: number;
 }
 
 export interface CalculationResult {
@@ -28,17 +33,41 @@ export interface CalculationResult {
   summary: DocumentCalculatedSummary;
 }
 
+export function getDecimalRoundingMode(mode?: RoundingMode): Decimal.Rounding {
+  switch (mode) {
+    case 'half_even':
+      return Decimal.ROUND_HALF_EVEN;
+    case 'up':
+      return Decimal.ROUND_CEIL;
+    case 'down':
+      return Decimal.ROUND_FLOOR;
+    case 'nearest_integer':
+    case 'half_up':
+    default:
+      return Decimal.ROUND_HALF_UP;
+  }
+}
+
 /**
  * Deterministically rounds a Decimal to the currency's decimal precision.
  */
-export function roundToCurrency(val: Decimal, decimalPlaces: number): Decimal {
-  return val.toDecimalPlaces(decimalPlaces, Decimal.ROUND_HALF_UP);
+export function roundToCurrency(
+  val: Decimal,
+  decimalPlaces: number,
+  roundingMode: Decimal.Rounding = Decimal.ROUND_HALF_UP
+): Decimal {
+  return val.toDecimalPlaces(decimalPlaces, roundingMode);
 }
 
 export function calculateDocument(input: CalculationInput): CalculationResult {
-  const currency = input.currency || 'USD';
+  const currency = input.currency || 'INR';
   const currencyConfig = getCurrencyConfig(currency);
-  const dp = currencyConfig.decimalPlaces;
+  const dp =
+    input.decimalPrecision !== undefined && input.decimalPrecision >= 0
+      ? input.decimalPrecision
+      : currencyConfig.decimalPlaces;
+
+  const roundingModeEnum = getDecimalRoundingMode(input.roundingMode);
 
   const sState = (input.senderState || '').trim().toLowerCase();
   const cState = (input.clientState || '').trim().toLowerCase();
@@ -68,7 +97,6 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
     } else if (raw.discountType === 'fixed') {
       lineDisc = Decimal.min(gross, discVal);
     }
-    // Cap discount at gross
     lineDisc = Decimal.min(gross, lineDisc);
 
     const netBeforeTax = gross.minus(lineDisc);
@@ -80,19 +108,15 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
 
     if (taxRate.greaterThan(0)) {
       if (raw.taxInclusive) {
-        // Price includes tax: Net = Gross / (1 + r), Tax = Gross - Net
         const rateFactor = taxRate.dividedBy(100).plus(1);
         lineNet = netBeforeTax.dividedBy(rateFactor);
         lineTax = netBeforeTax.minus(lineNet);
       } else {
-        // Price excludes tax: Tax = Net * r
         lineTax = netBeforeTax.times(taxRate.dividedBy(100));
       }
     }
 
-    const lineTotal = raw.taxInclusive
-      ? netBeforeTax
-      : lineNet.plus(lineTax);
+    const lineTotal = raw.taxInclusive ? netBeforeTax : lineNet.plus(lineTax);
 
     totalGross = totalGross.plus(gross);
     totalLineDiscounts = totalLineDiscounts.plus(lineDisc);
@@ -110,18 +134,18 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
       taxBuckets.set(rateKey, existing);
     }
 
-    const roundedLineTax = roundToCurrency(lineTax, dp);
-    const halfTax = roundToCurrency(roundedLineTax.dividedBy(2), dp);
-    const otherHalfTax = roundToCurrency(roundedLineTax.minus(halfTax), dp);
+    const roundedLineTax = roundToCurrency(lineTax, dp, roundingModeEnum);
+    const halfTax = roundToCurrency(roundedLineTax.dividedBy(2), dp, roundingModeEnum);
+    const otherHalfTax = roundToCurrency(roundedLineTax.minus(halfTax), dp, roundingModeEnum);
 
     calculatedItems.push({
       ...raw,
       id: raw.id || `item_${i + 1}`,
       quantity: qty.toNumber(),
-      unitPrice: roundToCurrency(unitPrice, dp).toNumber(),
-      lineGross: roundToCurrency(gross, dp).toNumber(),
-      lineDiscount: roundToCurrency(lineDisc, dp).toNumber(),
-      lineNet: roundToCurrency(lineNet, dp).toNumber(),
+      unitPrice: roundToCurrency(unitPrice, dp, roundingModeEnum).toNumber(),
+      lineGross: roundToCurrency(gross, dp, roundingModeEnum).toNumber(),
+      lineDiscount: roundToCurrency(lineDisc, dp, roundingModeEnum).toNumber(),
+      lineNet: roundToCurrency(lineNet, dp, roundingModeEnum).toNumber(),
       taxAmount: roundedLineTax.toNumber(),
       cgstRate: isInterState ? 0 : rateKey / 2,
       cgstAmount: isInterState ? 0 : halfTax.toNumber(),
@@ -129,7 +153,7 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
       sgstAmount: isInterState ? 0 : otherHalfTax.toNumber(),
       igstRate: isInterState ? rateKey : 0,
       igstAmount: isInterState ? roundedLineTax.toNumber() : 0,
-      lineTotal: roundToCurrency(lineTotal, dp).toNumber(),
+      lineTotal: roundToCurrency(lineTotal, dp, roundingModeEnum).toNumber(),
     });
   }
 
@@ -143,7 +167,7 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
   }
   docDiscount = Decimal.min(rawTaxableSubtotal, docDiscount);
 
-  // If there is document-level discount, reduce taxable base proportionally across tax buckets
+  // Proportional taxable reduction across tax buckets
   let totalTax = new Decimal(0);
   let cgstTotal = new Decimal(0);
   let sgstTotal = new Decimal(0);
@@ -155,13 +179,20 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
     : new Decimal(0);
 
   taxBuckets.forEach((bucket, rate) => {
-    // Proportional taxable reduction from document discount
     const adjustedTaxable = bucket.taxable.times(new Decimal(1).minus(discountRatio));
-    const adjustedTax = roundToCurrency(adjustedTaxable.times(new Decimal(rate).dividedBy(100)), dp);
+    const adjustedTax = roundToCurrency(
+      adjustedTaxable.times(new Decimal(rate).dividedBy(100)),
+      dp,
+      roundingModeEnum
+    );
     totalTax = totalTax.plus(adjustedTax);
 
-    const halfBucketTax = roundToCurrency(adjustedTax.dividedBy(2), dp);
-    const secondHalfBucketTax = roundToCurrency(adjustedTax.minus(halfBucketTax), dp);
+    const halfBucketTax = roundToCurrency(adjustedTax.dividedBy(2), dp, roundingModeEnum);
+    const secondHalfBucketTax = roundToCurrency(
+      adjustedTax.minus(halfBucketTax),
+      dp,
+      roundingModeEnum
+    );
 
     if (isInterState) {
       igstTotal = igstTotal.plus(adjustedTax);
@@ -172,7 +203,7 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
 
     taxBreakdown.push({
       rate,
-      taxableAmount: roundToCurrency(adjustedTaxable, dp).toNumber(),
+      taxableAmount: roundToCurrency(adjustedTaxable, dp, roundingModeEnum).toNumber(),
       taxAmount: adjustedTax.toNumber(),
       cgstRate: isInterState ? 0 : rate / 2,
       cgstAmount: isInterState ? 0 : halfBucketTax.toNumber(),
@@ -183,30 +214,61 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
     });
   });
 
-  const totalDiscount = totalLineDiscounts.plus(docDiscount);
-  const taxableSubtotal = Decimal.max(0, rawTaxableSubtotal.minus(docDiscount));
-  const shipping = new Decimal(Math.max(0, input.shippingFee || 0));
-  const extra = new Decimal(Math.max(0, input.extraCharges || 0));
+  const roundedSubtotal = roundToCurrency(totalGross, dp, roundingModeEnum);
+  const roundedDiscount = roundToCurrency(totalLineDiscounts.plus(docDiscount), dp, roundingModeEnum);
+  const roundedTaxableSubtotal = roundToCurrency(
+    Decimal.max(0, rawTaxableSubtotal.minus(docDiscount)),
+    dp,
+    roundingModeEnum
+  );
+  const roundedTotalTax = roundToCurrency(totalTax, dp, roundingModeEnum);
+  const roundedShipping = roundToCurrency(new Decimal(Math.max(0, input.shippingFee || 0)), dp, roundingModeEnum);
+  const roundedExtra = roundToCurrency(new Decimal(Math.max(0, input.extraCharges || 0)), dp, roundingModeEnum);
 
-  const grandTotal = taxableSubtotal.plus(totalTax).plus(shipping).plus(extra);
-  const paid = new Decimal(Math.max(0, input.amountPaid || 0));
+  // Exact total before round-off adjustment (derived from rounded components to prevent double-rounding)
+  const totalBeforeRoundOff = roundedTaxableSubtotal
+    .plus(roundedTotalTax)
+    .plus(roundedShipping)
+    .plus(roundedExtra);
+
+  // Round-Off calculation (when enabled, rounds final payable to whole currency unit using configured mode)
+  let grandTotal = totalBeforeRoundOff;
+  let roundOffAmount = new Decimal(0);
+
+  if (input.enableRoundOff) {
+    const targetRounded = totalBeforeRoundOff.toDecimalPlaces(0, roundingModeEnum);
+    roundOffAmount = roundToCurrency(targetRounded.minus(totalBeforeRoundOff), dp, roundingModeEnum);
+    grandTotal = targetRounded;
+  }
+
+  const paid = roundToCurrency(new Decimal(Math.max(0, input.amountPaid || 0)), dp, roundingModeEnum);
+  const refunded = roundToCurrency(
+    new Decimal(Math.max(0, input.refundedAmount || 0)),
+    dp,
+    roundingModeEnum
+  );
+  const netPaid = Decimal.max(0, paid.minus(refunded));
   const balanceDue = Decimal.max(0, grandTotal.minus(paid));
 
   const summary: DocumentCalculatedSummary = {
-    subtotal: roundToCurrency(totalGross, dp).toNumber(),
-    discountTotal: roundToCurrency(totalDiscount, dp).toNumber(),
-    taxableSubtotal: roundToCurrency(taxableSubtotal, dp).toNumber(),
-    totalTax: roundToCurrency(totalTax, dp).toNumber(),
+    subtotal: roundedSubtotal.toNumber(),
+    discountTotal: roundedDiscount.toNumber(),
+    taxableSubtotal: roundedTaxableSubtotal.toNumber(),
+    totalTax: roundedTotalTax.toNumber(),
     gstSupplyType,
-    cgstTotal: roundToCurrency(cgstTotal, dp).toNumber(),
-    sgstTotal: roundToCurrency(sgstTotal, dp).toNumber(),
-    igstTotal: roundToCurrency(igstTotal, dp).toNumber(),
+    cgstTotal: roundToCurrency(cgstTotal, dp, roundingModeEnum).toNumber(),
+    sgstTotal: roundToCurrency(sgstTotal, dp, roundingModeEnum).toNumber(),
+    igstTotal: roundToCurrency(igstTotal, dp, roundingModeEnum).toNumber(),
     taxBreakdown,
-    shippingFee: roundToCurrency(shipping, dp).toNumber(),
-    extraCharges: roundToCurrency(extra, dp).toNumber(),
-    grandTotal: roundToCurrency(grandTotal, dp).toNumber(),
-    amountPaid: roundToCurrency(paid, dp).toNumber(),
-    balanceDue: roundToCurrency(balanceDue, dp).toNumber(),
+    shippingFee: roundedShipping.toNumber(),
+    extraCharges: roundedExtra.toNumber(),
+    totalBeforeRoundOff: totalBeforeRoundOff.toNumber(),
+    roundOffAmount: roundOffAmount.toNumber(),
+    grandTotal: grandTotal.toNumber(),
+    amountPaid: paid.toNumber(),
+    refundedAmount: refunded.toNumber(),
+    netAmountPaid: netPaid.toNumber(),
+    balanceDue: balanceDue.toNumber(),
   };
 
   return {

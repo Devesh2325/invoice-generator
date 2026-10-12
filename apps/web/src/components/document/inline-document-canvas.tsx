@@ -6,6 +6,7 @@ import {
   DocumentType,
   formatCurrency,
   INDIAN_STATES,
+  generateVerifiedUpiQrSvgDataUrl,
 } from '@invoice/core';
 import { getTemplate } from '@invoice/theme';
 import {
@@ -776,18 +777,125 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 </div>
               )}
 
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                  Bank / NEFT / UPI Payment Instructions
-                </label>
-                <textarea
-                  rows={3}
-                  value={document.paymentInstructions || ''}
-                  onChange={(e) => onUpdateDoc('paymentInstructions', e.target.value)}
-                  placeholder="Bank Name, Account No, IFSC Code, UPI ID..."
-                  className={`${editableInput} w-full text-xs font-mono text-slate-700 bg-slate-50/70 p-2`}
-                />
-              </div>
+              {/* Structured Bank Details, UPI & QR Code (Controlled by Payment Settings toggles) */}
+              {document.paymentConfig &&
+                ((document.paymentConfig.display.showBankDetails &&
+                  document.paymentConfig.bankAccounts.length > 0) ||
+                  (document.paymentConfig.display.showUpiId && document.paymentConfig.upiId) ||
+                  document.paymentConfig.display.showQrCode) && (
+                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row justify-between gap-4">
+                    <div className="space-y-2 flex-1">
+                      {document.paymentConfig.display.showBankDetails &&
+                        document.paymentConfig.bankAccounts
+                          .filter(
+                            (b) =>
+                              !document.paymentConfig?.selectedBankAccountIds?.length ||
+                              document.paymentConfig.selectedBankAccountIds.includes(b.id)
+                          )
+                          .map((bank) => (
+                            <div
+                              key={bank.id}
+                              className="text-[11px] bg-white p-2.5 rounded-lg border border-slate-200/80 grid grid-cols-2 gap-x-3 gap-y-1"
+                            >
+                              <div>
+                                <span className="text-slate-400">Account Holder: </span>
+                                <span className="font-bold text-slate-800">
+                                  {bank.accountHolderName}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400">Bank Name: </span>
+                                <span className="font-bold text-slate-800">{bank.bankName}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400">Account No: </span>
+                                <span className="font-mono font-bold text-slate-900">
+                                  {bank.accountNumber}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400">IFSC / Routing: </span>
+                                <span className="font-mono font-bold text-slate-900">
+                                  {bank.ifscOrRoutingCode}
+                                </span>
+                              </div>
+                              {bank.branchName && (
+                                <div>
+                                  <span className="text-slate-400">Branch: </span>
+                                  <span className="text-slate-700">{bank.branchName}</span>
+                                </div>
+                              )}
+                              {bank.accountType && (
+                                <div>
+                                  <span className="text-slate-400">Type: </span>
+                                  <span className="capitalize text-slate-700">
+                                    {bank.accountType}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+
+                      {document.paymentConfig.display.showUpiId && document.paymentConfig.upiId && (
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            UPI ID / VPA:
+                          </span>
+                          <span className="font-mono text-xs font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                            {document.paymentConfig.upiId}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {document.paymentConfig.display.showQrCode &&
+                      (() => {
+                        const qrUrl =
+                          document.paymentConfig.qrCodeDataUrl &&
+                          !document.paymentConfig.autoGenerateUpiQr
+                            ? document.paymentConfig.qrCodeDataUrl
+                            : generateVerifiedUpiQrSvgDataUrl({
+                                upiId: document.paymentConfig.upiId,
+                                payeeName:
+                                  document.paymentConfig.upiPayeeName || document.sender.name,
+                                amount:
+                                  summary.balanceDue > 0
+                                    ? summary.balanceDue
+                                    : summary.grandTotal,
+                                currency,
+                                invoiceNumber: document.documentNumber,
+                              }) || document.paymentConfig.qrCodeDataUrl;
+                        return qrUrl ? (
+                          <div className="shrink-0 flex flex-col items-center justify-center bg-white p-2 rounded-lg border border-slate-200 text-center">
+                            <img
+                              src={qrUrl}
+                              alt="Verified Payment QR Code"
+                              className="h-20 w-20 object-contain"
+                            />
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mt-1">
+                              Scan to Pay
+                            </span>
+                          </div>
+                        ) : null;
+                      })()}
+                  </div>
+                )}
+
+              {(!document.paymentConfig ||
+                document.paymentConfig.display.showPaymentInstructions) && (
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Payment Instructions
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={document.paymentInstructions || ''}
+                    onChange={(e) => onUpdateDoc('paymentInstructions', e.target.value)}
+                    placeholder="Additional payment instructions or wire notes..."
+                    className={`${editableInput} w-full text-xs font-mono text-slate-700 bg-slate-50/70 p-2`}
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
@@ -900,12 +1008,28 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   />
                 </div>
 
-                {/* Grand Total */}
+                {/* Round-Off Toggle & Adjustment */}
+                <div className="flex items-center justify-between gap-2 text-slate-700 border-t border-slate-200 pt-1.5">
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(document.enableRoundOff)}
+                      onChange={(e) => onUpdateDoc('enableRoundOff', e.target.checked)}
+                      className="rounded border-slate-300 text-primary focus:ring-primary h-3.5 w-3.5"
+                    />
+                    <span className="font-medium">Round-Off Adjustment</span>
+                  </label>
+                  <span className="font-mono font-semibold text-slate-800">
+                    {formatCurrency(summary.roundOffAmount || 0, currency, { showSign: true })}
+                  </span>
+                </div>
+
+                {/* Final Payable Amount */}
                 <div
                   className="flex justify-between items-center p-3 rounded-lg text-white font-bold text-sm mt-2"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  <span>Grand Total</span>
+                  <span>Final Payable Amount</span>
                   <span className="font-mono text-base">
                     {formatCurrency(summary.grandTotal, currency)}
                   </span>
@@ -922,6 +1046,15 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     className={`${editableInput} w-24 text-right font-mono bg-white text-emerald-700 font-bold`}
                   />
                 </div>
+
+                {(summary.refundedAmount || 0) > 0 && (
+                  <div className="flex justify-between text-rose-600">
+                    <span className="font-medium">Refunded Amount</span>
+                    <span className="font-mono font-bold">
+                      {formatCurrency(summary.refundedAmount || 0, currency)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex justify-between font-black text-slate-900 border-t border-slate-200 pt-2 text-sm">
                   <span>Balance Due</span>

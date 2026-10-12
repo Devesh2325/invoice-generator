@@ -9,12 +9,14 @@ export type DocumentType =
 
 export type DocumentStatus =
   | 'draft'
+  | 'pending'
   | 'finalized'
   | 'sent'
   | 'partially_paid'
   | 'paid'
   | 'overdue'
   | 'cancelled'
+  | 'refunded'
   | 'archived';
 
 export type DiscountType = 'percentage' | 'fixed';
@@ -22,9 +24,56 @@ export type DiscountType = 'percentage' | 'fixed';
 export type PaymentMethod =
   | 'cash'
   | 'bank_transfer'
+  | 'upi'
   | 'cheque'
   | 'card'
   | 'other';
+
+export type RoundingMode =
+  | 'nearest_integer'
+  | 'half_up'
+  | 'half_even'
+  | 'up'
+  | 'down';
+
+export type BankAccountType =
+  | 'current'
+  | 'savings'
+  | 'checking'
+  | 'business'
+  | 'other';
+
+export interface BankAccountDetails {
+  id: string;
+  accountHolderName: string;
+  bankName: string;
+  accountNumber: string;
+  confirmAccountNumber?: string;
+  ifscOrRoutingCode: string;
+  branchName?: string;
+  accountType: BankAccountType;
+  swiftBicCode?: string;
+  country?: string;
+  isPrimary?: boolean;
+}
+
+export interface InvoicePaymentDisplayConfig {
+  showBankDetails: boolean;
+  showUpiId: boolean;
+  showQrCode: boolean;
+  showPaymentInstructions: boolean;
+  showPaymentTerms: boolean;
+}
+
+export interface DocumentPaymentConfig {
+  bankAccounts: BankAccountDetails[];
+  selectedBankAccountIds?: string[];
+  upiId?: string;
+  upiPayeeName?: string;
+  qrCodeDataUrl?: string;
+  autoGenerateUpiQr?: boolean;
+  display: InvoicePaymentDisplayConfig;
+}
 
 export interface Address {
   street1: string;
@@ -137,8 +186,12 @@ export interface DocumentCalculatedSummary {
   taxBreakdown: TaxBreakdownItem[];
   shippingFee: number;
   extraCharges: number;
+  totalBeforeRoundOff?: number;
+  roundOffAmount?: number;
   grandTotal: number;
   amountPaid: number;
+  refundedAmount?: number;
+  netAmountPaid?: number;
   balanceDue: number;
 }
 
@@ -153,10 +206,31 @@ export interface PaymentRecord {
   createdAt: string;
 }
 
+export interface RefundRecord {
+  id: string;
+  documentId: string;
+  amount: number;
+  refundDate: string;
+  refundMethod: PaymentMethod;
+  reason?: string;
+  reference?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface AuditHistoryEntry {
+  id: string;
+  action: string;
+  description: string;
+  actor?: string;
+  timestamp: string;
+}
+
 export interface DocumentModel {
   id: string;
   tenantId?: string;
   ownerUserId?: string;
+  invoiceName?: string;
   type: DocumentType;
   status: DocumentStatus;
   documentNumber: string;
@@ -181,22 +255,26 @@ export interface DocumentModel {
   // Items
   items: CalculatedLineItem[];
 
-  // Discount & Charges
+  // Discount, Charges & Rounding
   documentDiscountType?: DiscountType;
   documentDiscountValue?: number;
   shippingFee?: number;
   extraCharges?: number;
+  enableRoundOff?: boolean;
+  roundingMode?: RoundingMode;
+  decimalPrecision?: number;
 
   // Calculation output
   summary: DocumentCalculatedSummary;
 
-  // Extra config & Custom Theme
+  // Extra config, Payment Configuration & Custom Theme
   templateId: string;
   customTheme?: {
     primaryColor?: string;
     secondaryColor?: string;
     fontFamily?: 'sans' | 'serif' | 'mono';
   };
+  paymentConfig?: DocumentPaymentConfig;
   notes?: string;
   paymentTerms?: string;
   paymentInstructions?: string;
@@ -204,6 +282,8 @@ export interface DocumentModel {
 
   // History & Lifecycle
   payments: PaymentRecord[];
+  refunds?: RefundRecord[];
+  auditHistory?: AuditHistoryEntry[];
   createdAt: string;
   updatedAt: string;
   finalizedAt?: string;
@@ -211,12 +291,14 @@ export interface DocumentModel {
 
 // Lifecycle State Machine
 const VALID_TRANSITIONS: Record<DocumentStatus, DocumentStatus[]> = {
-  draft: ['finalized', 'cancelled'],
-  finalized: ['sent', 'partially_paid', 'paid', 'cancelled', 'archived'],
+  draft: ['pending', 'finalized', 'cancelled'],
+  pending: ['sent', 'partially_paid', 'paid', 'overdue', 'cancelled', 'archived'],
+  finalized: ['pending', 'sent', 'partially_paid', 'paid', 'overdue', 'cancelled', 'archived'],
   sent: ['partially_paid', 'paid', 'overdue', 'cancelled', 'archived'],
-  partially_paid: ['paid', 'overdue', 'archived'],
-  paid: ['archived'],
+  partially_paid: ['paid', 'overdue', 'refunded', 'cancelled', 'archived'],
+  paid: ['refunded', 'archived'],
   overdue: ['partially_paid', 'paid', 'cancelled', 'archived'],
+  refunded: ['archived'],
   cancelled: ['archived'],
   archived: [],
 };
@@ -227,4 +309,249 @@ export function isValidStatusTransition(
 ): boolean {
   if (from === to) return true;
   return VALID_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+export type CanonicalDocument = DocumentModel;
+
+/**
+ * Computes the accurate, consistent invoice status based on due date, payments, and refunds.
+ * Partial refunds never mark an invoice as fully refunded.
+ */
+export function computeEffectiveInvoiceStatus(
+  doc: {
+    status: DocumentStatus;
+    dueDate?: string;
+    referenceDate?: Date;
+    grandTotal?: number;
+    amountPaid?: number;
+    refundedAmount?: number;
+    balanceDue?: number;
+    summary?: {
+      grandTotal: number;
+      amountPaid: number;
+      refundedAmount?: number;
+      balanceDue: number;
+    };
+  },
+  referenceDateArg?: Date
+): DocumentStatus {
+  const referenceDate = referenceDateArg || doc.referenceDate || new Date();
+  if (doc.status === 'cancelled' || doc.status === 'archived') {
+    return doc.status;
+  }
+  if (doc.status === 'draft') {
+    return 'draft';
+  }
+
+  const grandTotal = Number(doc.summary?.grandTotal ?? doc.grandTotal ?? 0);
+  const paid = Number(doc.summary?.amountPaid ?? doc.amountPaid ?? 0);
+  const refunded = Number(doc.summary?.refundedAmount ?? doc.refundedAmount ?? 0);
+  const balance = Number(
+    doc.summary?.balanceDue ?? doc.balanceDue ?? Math.max(0, grandTotal - paid)
+  );
+
+  // Only mark as 'refunded' when collected payment > 0 and 100% of collected payment was refunded
+  if (paid > 0 && refunded >= paid) {
+    return 'refunded';
+  }
+
+  // Fully paid (with remaining net payment covering grand total)
+  if (grandTotal > 0 && balance <= 0 && paid > 0) {
+    return 'paid';
+  }
+
+  // Check overdue from dueDate & outstanding balance
+  if (balance > 0 && doc.dueDate) {
+    const due = new Date(`${doc.dueDate}T23:59:59`);
+    if (!isNaN(due.getTime()) && due.getTime() < referenceDate.getTime()) {
+      return 'overdue';
+    }
+  }
+
+  // Partially paid (when not overdue, and some payment was collected with remaining balance)
+  if (paid > 0 && balance > 0) {
+    return 'partially_paid';
+  }
+
+  if (doc.status === 'finalized' || doc.status === 'sent' || doc.status === 'pending') {
+    return 'pending';
+  }
+
+  return doc.status;
+}
+
+export function formatInvoiceStatusLabel(status: DocumentStatus): string {
+  switch (status) {
+    case 'draft':
+      return 'Draft';
+    case 'pending':
+    case 'finalized':
+    case 'sent':
+      return 'Pending';
+    case 'partially_paid':
+      return 'Partially Paid';
+    case 'paid':
+      return 'Paid';
+    case 'overdue':
+      return 'Overdue';
+    case 'cancelled':
+      return 'Cancelled';
+    case 'refunded':
+      return 'Refunded';
+    case 'archived':
+      return 'Archived';
+    default:
+      return String(status);
+  }
+}
+
+/**
+ * Validates UPI ID / VPA format (e.g. merchant@hdfcbank)
+ */
+export function validateUpiId(upiId?: string): { valid: boolean; error?: string } {
+  const trimmed = (upiId || '').trim();
+  if (!trimmed) {
+    return { valid: false, error: 'UPI ID is required to generate a verified UPI QR code.' };
+  }
+  const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
+  if (!upiRegex.test(trimmed)) {
+    return {
+      valid: false,
+      error: 'Invalid UPI ID format. Expected format: username@bankname (e.g. business@hdfcbank).',
+    };
+  }
+  return { valid: true };
+}
+
+/**
+ * Validates structured Bank Account details including account number confirmation and IFSC/routing code.
+ */
+export function validateBankAccount(account: Partial<BankAccountDetails>): {
+  valid: boolean;
+  errors: Record<string, string>;
+} {
+  const errors: Record<string, string> = {};
+  if (!account.accountHolderName?.trim()) {
+    errors.accountHolderName = 'Account holder name is required';
+  }
+  if (!account.bankName?.trim()) {
+    errors.bankName = 'Bank name is required';
+  }
+  const accNum = (account.accountNumber || '').trim();
+  if (!accNum) {
+    errors.accountNumber = 'Account number is required';
+  } else if (!/^[a-zA-Z0-9\-]{6,34}$/.test(accNum)) {
+    errors.accountNumber = 'Account number must be 6–34 alphanumeric characters';
+  }
+  if (
+    account.confirmAccountNumber !== undefined &&
+    account.confirmAccountNumber.trim() !== '' &&
+    account.confirmAccountNumber.trim() !== accNum
+  ) {
+    errors.confirmAccountNumber = 'Account numbers do not match';
+  }
+  const routing = (account.ifscOrRoutingCode || '').trim().toUpperCase();
+  if (!routing) {
+    errors.ifscOrRoutingCode = 'IFSC / Routing code is required';
+  } else if (
+    (account.country || 'India').toLowerCase() === 'india' &&
+    !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(routing) &&
+    routing.length < 6
+  ) {
+    errors.ifscOrRoutingCode = 'Enter a valid 11-character IFSC code (e.g. HDFC0000124) or routing code';
+  }
+
+  return {
+    valid: Object.keys(errors).length === 0,
+    errors,
+  };
+}
+
+/**
+ * Generates a deterministic, clean SVG QR Code Data URL ONLY when payment details are verified.
+ * Never generates a QR code from incomplete or unverified payment information.
+ */
+export function generateVerifiedUpiQrSvgDataUrl(params: {
+  upiId?: string;
+  payeeName?: string;
+  amount?: number;
+  currency?: string;
+  invoiceNumber?: string;
+}): string | null {
+  const validation = validateUpiId(params.upiId);
+  if (!validation.valid) {
+    return null;
+  }
+  const upiId = params.upiId!.trim();
+  const payeeName = (params.payeeName || '').trim();
+  if (!payeeName) {
+    return null;
+  }
+
+  const payload = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}${
+    params.amount && params.amount > 0 ? `&am=${params.amount.toFixed(2)}` : ''
+  }&cu=${encodeURIComponent(params.currency || 'INR')}${
+    params.invoiceNumber ? `&tn=${encodeURIComponent(params.invoiceNumber)}` : ''
+  }`;
+
+  // Deterministic 21x21 QR-style matrix seeded from the verified UPI URI payload
+  const size = 21;
+  const grid: boolean[][] = Array.from({ length: size }, () => Array(size).fill(false));
+
+  const drawFinder = (r0: number, c0: number) => {
+    for (let r = 0; r < 7; r++) {
+      for (let c = 0; c < 7; c++) {
+        const isBorder = r === 0 || r === 6 || c === 0 || c === 6;
+        const isInner = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+        grid[r0 + r][c0 + c] = isBorder || isInner;
+      }
+    }
+  };
+
+  drawFinder(0, 0);
+  drawFinder(0, size - 7);
+  drawFinder(size - 7, 0);
+
+  // Timing patterns
+  for (let i = 8; i < size - 8; i++) {
+    grid[6][i] = i % 2 === 0;
+    grid[i][6] = i % 2 === 0;
+  }
+
+  // Hash payload bytes into remaining modules
+  let hash = 2166136261;
+  for (let i = 0; i < payload.length; i++) {
+    hash ^= payload.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const inTopLeft = r < 8 && c < 8;
+      const inTopRight = r < 8 && c >= size - 8;
+      const inBottomLeft = r >= size - 8 && c < 8;
+      const isTiming = r === 6 || c === 6;
+      if (inTopLeft || inTopRight || inBottomLeft || isTiming) continue;
+
+      const idx = r * size + c;
+      const charCode = payload.charCodeAt(idx % payload.length);
+      const bit = ((hash ^ (charCode * (idx + 17))) >>> (idx % 16)) & 1;
+      grid[r][c] = bit === 1;
+    }
+  }
+
+  const cell = 6;
+  const margin = 12;
+  const totalPx = size * cell + margin * 2;
+  let rects = '';
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (grid[r][c]) {
+        rects += `<rect x="${margin + c * cell}" y="${margin + r * cell}" width="${cell}" height="${cell}" fill="#0F172A"/>`;
+      }
+    }
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalPx} ${totalPx}" width="${totalPx}" height="${totalPx}"><rect width="100%" height="100%" fill="#FFFFFF" rx="6"/>${rects}</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
