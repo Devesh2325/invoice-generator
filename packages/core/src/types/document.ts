@@ -1,3 +1,5 @@
+import { renderQrSvgDataUrl } from '../calculations/qr-encoder';
+
 export type DocumentType =
   | 'invoice'
   | 'estimate'
@@ -468,7 +470,7 @@ export function validateBankAccount(account: Partial<BankAccountDetails>): {
 }
 
 /**
- * Generates a deterministic, clean SVG QR Code Data URL ONLY when payment details are verified.
+ * Generates a real, scannable ISO/IEC 18004 SVG QR Code Data URL ONLY when payment details are verified.
  * Never generates a QR code from incomplete or unverified payment information.
  */
 export function generateVerifiedUpiQrSvgDataUrl(params: {
@@ -488,70 +490,20 @@ export function generateVerifiedUpiQrSvgDataUrl(params: {
     return null;
   }
 
-  const payload = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}${
-    params.amount && params.amount > 0 ? `&am=${params.amount.toFixed(2)}` : ''
-  }&cu=${encodeURIComponent(params.currency || 'INR')}${
-    params.invoiceNumber ? `&tn=${encodeURIComponent(params.invoiceNumber)}` : ''
-  }`;
-
-  // Deterministic 21x21 QR-style matrix seeded from the verified UPI URI payload
-  const size = 21;
-  const grid: boolean[][] = Array.from({ length: size }, () => Array(size).fill(false));
-
-  const drawFinder = (r0: number, c0: number) => {
-    for (let r = 0; r < 7; r++) {
-      for (let c = 0; c < 7; c++) {
-        const isBorder = r === 0 || r === 6 || c === 0 || c === 6;
-        const isInner = r >= 2 && r <= 4 && c >= 2 && c <= 4;
-        grid[r0 + r][c0 + c] = isBorder || isInner;
-      }
-    }
-  };
-
-  drawFinder(0, 0);
-  drawFinder(0, size - 7);
-  drawFinder(size - 7, 0);
-
-  // Timing patterns
-  for (let i = 8; i < size - 8; i++) {
-    grid[6][i] = i % 2 === 0;
-    grid[i][6] = i % 2 === 0;
+  // NPCI UPI Linking Specification: keep '@' literal in pa=VPA so all UPI apps parse VPA directly
+  const queryParts = [
+    `pa=${upiId}`,
+    `pn=${encodeURIComponent(payeeName)}`,
+  ];
+  if (params.amount && params.amount > 0) {
+    queryParts.push(`am=${Number(params.amount).toFixed(2)}`);
+  }
+  queryParts.push(`cu=${encodeURIComponent(params.currency || 'INR')}`);
+  if (params.invoiceNumber) {
+    queryParts.push(`tn=${encodeURIComponent(params.invoiceNumber)}`);
   }
 
-  // Hash payload bytes into remaining modules
-  let hash = 2166136261;
-  for (let i = 0; i < payload.length; i++) {
-    hash ^= payload.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      const inTopLeft = r < 8 && c < 8;
-      const inTopRight = r < 8 && c >= size - 8;
-      const inBottomLeft = r >= size - 8 && c < 8;
-      const isTiming = r === 6 || c === 6;
-      if (inTopLeft || inTopRight || inBottomLeft || isTiming) continue;
-
-      const idx = r * size + c;
-      const charCode = payload.charCodeAt(idx % payload.length);
-      const bit = ((hash ^ (charCode * (idx + 17))) >>> (idx % 16)) & 1;
-      grid[r][c] = bit === 1;
-    }
-  }
-
-  const cell = 6;
-  const margin = 12;
-  const totalPx = size * cell + margin * 2;
-  let rects = '';
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      if (grid[r][c]) {
-        rects += `<rect x="${margin + c * cell}" y="${margin + r * cell}" width="${cell}" height="${cell}" fill="#0F172A"/>`;
-      }
-    }
-  }
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalPx} ${totalPx}" width="${totalPx}" height="${totalPx}"><rect width="100%" height="100%" fill="#FFFFFF" rx="6"/>${rects}</svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  const payload = `upi://pay?${queryParts.join('&')}`;
+  return renderQrSvgDataUrl(payload);
 }
+

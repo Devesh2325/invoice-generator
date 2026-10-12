@@ -362,13 +362,23 @@ describe('Round-Off, Refund & Payment Validation Engine', () => {
       generateVerifiedUpiQrSvgDataUrl({ upiId: 'merchant@icici', payeeName: '' })
     ).toBeNull();
 
-    // Valid UPI + Payee Name generates deterministic SVG data URL
+    // Valid UPI + Payee Name generates deterministic ISO/IEC 18004 SVG data URL
     const qrUrl = generateVerifiedUpiQrSvgDataUrl({
       upiId: 'merchant@icici',
       payeeName: 'Acme Pvt Ltd',
       amount: 1500,
     });
     expect(qrUrl).toContain('data:image/svg+xml;utf8,');
+
+    const { encodeQrMatrix } = await import('../src/calculations/qr-encoder');
+    const matrix = encodeQrMatrix('upi://pay?pa=merchant@icici&pn=Acme%20Pvt%20Ltd&cu=INR&am=1500.00');
+    expect(matrix.length).toBeGreaterThanOrEqual(29);
+    // Verify top-left 7x7 finder pattern outer border
+    expect(matrix[0][0]).toBe(true);
+    expect(matrix[0][6]).toBe(true);
+    expect(matrix[6][0]).toBe(true);
+    expect(matrix[3][3]).toBe(true);
   });
 });
+
 

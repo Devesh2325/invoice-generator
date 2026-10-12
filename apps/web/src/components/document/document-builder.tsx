@@ -123,7 +123,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   // Core Invoice Metadata
   const [docId] = useState<string>(initialDocument?.id || `doc_${Date.now()}`);
   const [invoiceName, setInvoiceName] = useState<string>(
-    initialDocument?.invoiceName || 'Tax Invoice — Cloud & Product Engineering'
+    initialDocument?.invoiceName || ''
   );
   const [docType, setDocType] = useState<DocumentType>(initialDocument?.type || 'invoice');
   const [status, setStatus] = useState<DocumentStatus>(initialDocument?.status || 'draft');
@@ -132,7 +132,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       formatDocumentNumber(DEFAULT_NUMBERING_RULES['invoice'], 1, new Date())
   );
   const [referenceNumber, setReferenceNumber] = useState<string>(
-    initialDocument?.referenceNumber || 'PO-2026-8841'
+    initialDocument?.referenceNumber || ''
   );
   const [issueDate, setIssueDate] = useState<string>(
     initialDocument?.issueDate || new Date().toISOString().split('T')[0]
@@ -164,88 +164,77 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.sender.name ||
       brandSettings?.businessName ||
       activeTenant?.name ||
-      'Apex Digital Solutions Pvt Ltd'
+      ''
   );
   const [senderEmail, setSenderEmail] = useState(
-    initialDocument?.sender.email || brandSettings?.email || 'billing@apexdigital.in'
+    initialDocument?.sender.email || brandSettings?.email || ''
   );
   const [senderPhone, setSenderPhone] = useState(
-    initialDocument?.sender.phone || brandSettings?.phone || '+91 22 4890 2100'
+    initialDocument?.sender.phone || brandSettings?.phone || ''
   );
   const [senderTaxId, setSenderTaxId] = useState(
-    initialDocument?.sender.taxId || brandSettings?.taxId || '27AABCA9603R1ZM'
+    initialDocument?.sender.taxId || brandSettings?.taxId || ''
   );
   const [senderStreet, setSenderStreet] = useState(
     initialDocument?.sender.address?.street1 ||
       brandSettings?.street ||
-      'Level 9, Platina Tower, BKC'
+      ''
   );
   const [senderCity, setSenderCity] = useState(
-    initialDocument?.sender.address?.city || brandSettings?.city || 'Mumbai'
+    initialDocument?.sender.address?.city || brandSettings?.city || ''
   );
   const [senderState, setSenderState] = useState(
     initialDocument?.sender.address?.state || brandSettings?.gstState || '27 - Maharashtra'
   );
   const [senderPostalCode, setSenderPostalCode] = useState(
-    initialDocument?.sender.address?.postalCode || brandSettings?.postalCode || '400051'
+    initialDocument?.sender.address?.postalCode || brandSettings?.postalCode || ''
   );
   const [senderCountry, setSenderCountry] = useState(
     initialDocument?.sender.address?.country || brandSettings?.country || 'India'
   );
 
-  // Client details
+  // Client details (start blank on new invoices so user can select from Saved Customers dropdown or type manually)
   const [clientName, setClientName] = useState(
-    initialDocument?.client.name || 'Reliance Retail Ventures Ltd'
+    initialDocument?.client.name || ''
   );
   const [clientEmail, setClientEmail] = useState(
-    initialDocument?.client.email || 'accounts@relianceretail.in'
+    initialDocument?.client.email || ''
   );
   const [clientPhone, setClientPhone] = useState(
-    initialDocument?.client.phone || '+91 22 6767 3800'
+    initialDocument?.client.phone || ''
   );
   const [clientTaxId, setClientTaxId] = useState(
-    initialDocument?.client.taxId || '27AAACR5055K1Z7'
+    initialDocument?.client.taxId || ''
   );
   const [clientStreet, setClientStreet] = useState(
-    initialDocument?.client.billingAddress?.street1 || '4th Floor, Court House, L.T. Marg'
+    initialDocument?.client.billingAddress?.street1 || ''
   );
   const [clientCity, setClientCity] = useState(
-    initialDocument?.client.billingAddress?.city || 'Mumbai'
+    initialDocument?.client.billingAddress?.city || ''
   );
   const [clientState, setClientState] = useState(
     initialDocument?.client.billingAddress?.state || '27 - Maharashtra'
   );
   const [clientPostalCode, setClientPostalCode] = useState(
-    initialDocument?.client.billingAddress?.postalCode || '400002'
+    initialDocument?.client.billingAddress?.postalCode || ''
   );
   const [clientCountry, setClientCountry] = useState(
     initialDocument?.client.billingAddress?.country || 'India'
   );
 
-  // Line Items
+  // Line Items (start with 1 blank row on new invoices so user can pick from Saved Items dropdown or type manually)
   const [items, setItems] = useState<any[]>(
     initialDocument?.items || [
       {
         id: '1',
-        description: 'Cloud Infrastructure & Enterprise API Architecture',
-        hsnCode: '998315',
+        description: '',
+        hsnCode: '',
         quantity: 1,
-        unitPrice: 45000,
+        unitPrice: 0,
         taxRate: 18,
         taxInclusive: false,
         discountType: 'percentage',
         discountValue: 0,
-      },
-      {
-        id: '2',
-        description: 'Next.js Full-Stack Web Application Engineering',
-        hsnCode: '998314',
-        quantity: 10,
-        unitPrice: 3500,
-        taxRate: 18,
-        taxInclusive: false,
-        discountType: 'percentage',
-        discountValue: 5,
       },
     ]
   );
@@ -392,7 +381,10 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
   // UI & Modal state
   const [viewMode, setViewMode] = useState<'sheet' | 'split' | 'pdf_preview'>('sheet');
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const [isPersisted, setIsPersisted] = useState<boolean>(Boolean(initialDocument));
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>(
+    initialDocument ? 'saved' : 'unsaved'
+  );
   const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -620,8 +612,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     refunds,
   ]);
 
-  // Autosave to user-scoped IndexedDB AND active Tenant workspace storage
+  // Only autosave updates AFTER the invoice has been explicitly saved or finalized
   useEffect(() => {
+    if (!isPersisted) {
+      setSaveStatus('unsaved');
+      return;
+    }
     setSaveStatus('unsaved');
     const timer = setTimeout(async () => {
       try {
@@ -638,7 +634,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [documentModel, activeTenant?.id]);
+  }, [documentModel, activeTenant?.id, isPersisted]);
 
   // Line item manipulation helpers
   const handleAddItem = () => {
@@ -646,10 +642,10 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       ...prev,
       {
         id: `item_${Date.now()}`,
-        description: 'New Item / Service',
-        hsnCode: '9983',
+        description: '',
+        hsnCode: '',
         quantity: 1,
-        unitPrice: 1000,
+        unitPrice: 0,
         taxRate: brandSettings?.defaultTaxRate ?? 18,
         taxInclusive: false,
         discountType: 'percentage',
@@ -809,13 +805,45 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     }
   };
 
+  const handleSaveDraft = async () => {
+    try {
+      setSaveStatus('saving');
+      await saveDocument(documentModel);
+      if (activeTenant?.id) {
+        await TenantApi.saveDocument(activeTenant.id, documentModel);
+      }
+      setIsPersisted(true);
+      setSaveStatus('saved');
+      if (onSaved) onSaved(documentModel);
+    } catch (err) {
+      console.error('Failed to save invoice:', err);
+    }
+  };
+
   const handleFinalize = async () => {
-    const nextStatus: DocumentStatus = 'pending';
-    setStatus(nextStatus);
-    const updated = { ...documentModel, status: nextStatus };
-    await saveDocument(updated);
-    if (activeTenant?.id) {
-      await TenantApi.saveDocument(activeTenant.id, updated);
+    try {
+      setSaveStatus('saving');
+      const nextStatus: DocumentStatus = 'pending';
+      setStatus(nextStatus);
+      const nextEffectiveStatus = computeEffectiveInvoiceStatus({
+        status: nextStatus,
+        dueDate,
+        summary: calculated.summary,
+      });
+      const updated: DocumentModel = {
+        ...documentModel,
+        status: nextEffectiveStatus,
+        updatedAt: new Date().toISOString(),
+      };
+      await saveDocument(updated);
+      if (activeTenant?.id) {
+        await TenantApi.saveDocument(activeTenant.id, updated);
+      }
+      setIsPersisted(true);
+      setSaveStatus('saved');
+      if (onSaved) onSaved(updated);
+    } catch (err) {
+      console.error('Failed to finalize invoice:', err);
     }
   };
 
@@ -860,9 +888,22 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
     const nextPayments = [...payments, newPayment];
     setPayments(nextPayments);
+    const nextStatus: DocumentStatus = status === 'draft' ? 'pending' : status;
     if (status === 'draft') {
       setStatus('pending');
     }
+    const updatedDoc: DocumentModel = {
+      ...documentModel,
+      status: nextStatus,
+      payments: nextPayments,
+      updatedAt: new Date().toISOString(),
+    };
+    await saveDocument(updatedDoc);
+    if (activeTenant?.id) {
+      await TenantApi.saveDocument(activeTenant.id, updatedDoc);
+    }
+    setIsPersisted(true);
+    setSaveStatus('saved');
     setRecordPaymentModalOpen(false);
     setPayRefInput('');
     setPayNotesInput('');
@@ -1054,9 +1095,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             {formatInvoiceStatusLabel(effectiveStatus)}
           </Badge>
 
-          {/* Autosave Status */}
+          {/* Save / Record Status */}
           <div className="hidden xl:flex items-center gap-1 text-xs text-slate-500">
-            {saveStatus === 'saved' && (
+            {isPersisted && saveStatus === 'saved' && (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                 <span>Saved</span>
@@ -1068,10 +1109,10 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 <span>Saving...</span>
               </>
             )}
-            {saveStatus === 'unsaved' && (
+            {(!isPersisted || saveStatus === 'unsaved') && saveStatus !== 'saving' && (
               <>
                 <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-                <span>Editing</span>
+                <span>{isPersisted ? 'Unsaved edits' : 'Not saved yet'}</span>
               </>
             )}
           </div>
@@ -1187,16 +1228,28 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             <span>{isExportingPdf ? 'Exporting...' : 'Download PDF'}</span>
           </Button>
 
-          {effectiveStatus === 'draft' && (
-            <Button
-              size="sm"
-              onClick={handleFinalize}
-              className="bg-primary hover:bg-primary-hover text-white flex items-center gap-1 text-xs shadow-xs"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>Finalize Invoice</span>
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSaveDraft}
+            className="text-xs font-semibold border-slate-300 flex items-center gap-1"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            <span>{isPersisted ? 'Save' : 'Save Draft'}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={handleFinalize}
+            className="bg-primary hover:bg-primary-hover text-white flex items-center gap-1 text-xs shadow-xs font-semibold"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span>
+              {effectiveStatus === 'draft' || !isPersisted
+                ? 'Finalize Invoice'
+                : 'Update Finalized Invoice'}
+            </span>
+          </Button>
         </div>
       </header>
 
