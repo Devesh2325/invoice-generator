@@ -20,6 +20,7 @@ import {
   Users,
   Package,
 } from 'lucide-react';
+import { DocumentTypeSelector } from './document-type-selector';
 
 interface InlineDocumentCanvasProps {
   document: DocumentModel;
@@ -321,28 +322,13 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             {/* Right: Document Type & Metadata */}
             <div className="w-full md:w-5/12 text-left md:text-right space-y-2">
               <div className="flex md:justify-end items-center">
-                <select
+                <DocumentTypeSelector
                   value={document.type}
-                  onChange={(e) => onUpdateDoc('type', e.target.value as DocumentType)}
-                  className="text-base md:text-xl font-black uppercase tracking-wider rounded px-2.5 py-1 cursor-pointer outline-none border"
-                  style={
-                    isBannerHeader
-                      ? { backgroundColor: '#FFFFFF', color: primaryColor, borderColor: '#FFFFFF' }
-                      : {
-                          backgroundColor: `${primaryColor}12`,
-                          color: primaryColor,
-                          borderColor: `${primaryColor}30`,
-                        }
-                  }
-                >
-                  <option value="invoice">TAX INVOICE</option>
-                  <option value="estimate">ESTIMATE / QUOTATION</option>
-                  <option value="pro_forma">PRO FORMA INVOICE</option>
-                  <option value="purchase_order">PURCHASE ORDER</option>
-                  <option value="receipt">PAYMENT RECEIPT</option>
-                  <option value="credit_note">CREDIT NOTE</option>
-                  <option value="debit_note">DEBIT NOTE</option>
-                </select>
+                  onChange={(newType) => onUpdateDoc('type', newType)}
+                  isBannerHeader={isBannerHeader}
+                  primaryColor={primaryColor}
+                  align="right"
+                />
               </div>
 
               <div className="space-y-1.5 text-xs pt-1">

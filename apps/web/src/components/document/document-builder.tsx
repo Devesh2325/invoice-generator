@@ -33,6 +33,7 @@ import { saveDocument } from '@/lib/storage/indexed-db';
 import { exportDocumentToPdf, triggerPrint } from '@/lib/pdf/export-pdf';
 import { DocumentPreview } from './document-preview';
 import { InlineDocumentCanvas } from './inline-document-canvas';
+import { DocumentTypeSelector } from './document-type-selector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -1100,25 +1101,18 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             />
           </div>
 
-          <select
+          <DocumentTypeSelector
             value={docType}
-            onChange={(e) => {
-              const newType = e.target.value as DocumentType;
+            onChange={(newType) => {
               setDocType(newType);
               setDocNumber(
                 formatDocumentNumber(DEFAULT_NUMBERING_RULES[newType], 1, new Date())
               );
             }}
-            className="text-xs uppercase font-bold tracking-wider bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded px-2.5 py-1.5 cursor-pointer text-slate-800"
-          >
-            <option value="invoice">Tax Invoice</option>
-            <option value="estimate">Estimate / Quote</option>
-            <option value="pro_forma">Pro Forma Invoice</option>
-            <option value="purchase_order">Purchase Order</option>
-            <option value="receipt">Payment Receipt</option>
-            <option value="credit_note">Credit Note</option>
-            <option value="debit_note">Debit Note</option>
-          </select>
+            primaryColor={effectivePrimaryColor}
+            compact
+            align="left"
+          />
 
           <Badge
             variant={

@@ -49,7 +49,7 @@ export declare const TEMPLATE_CATEGORIES: {
     label: string;
 }[];
 export declare const TEMPLATES: Record<string, DocumentTemplateMeta>;
-export declare function getTemplate(id: string): DocumentTemplateMeta;
+export declare function getTemplate(id?: string): DocumentTemplateMeta;
 export declare function getTemplatesByCategory(): {
     category: TemplateCategory;
     label: string;
