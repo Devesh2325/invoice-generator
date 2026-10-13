@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { DocumentModel } from '@invoice/core';
 import {
   renderInvoiceDocument,
@@ -8,7 +8,16 @@ import {
   mapCanonicalDocumentToTemplateInv,
   getInvoiceTemplate,
 } from '@invoice/theme';
-import { Upload, X, ZoomIn, ZoomOut, RotateCcw, FileText, CheckCircle2 } from 'lucide-react';
+import {
+  Upload,
+  X,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  FileText,
+  Maximize2,
+  Minimize2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface DocumentPreviewProps {
@@ -29,7 +38,10 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   onRemoveLogo,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(820);
   const [zoomScale, setZoomScale] = useState<number>(1);
+  const [fitToWidth, setFitToWidth] = useState<boolean>(true);
 
   // Template ID with backward compatibility
   const templateId = document.templateId || 'in-gst';
@@ -58,6 +70,30 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const innerMarkup = useMemo(() => {
     return renderInvoice(invData, templateId, templateOptions);
   }, [invData, templateId, templateOptions]);
+
+  // Measure container width for responsive fit in split view & small screens
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setContainerWidth(entry.contentRect.width);
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Compute effective scale based on fitToWidth and container width
+  const effectiveScale = useMemo(() => {
+    if (fitToWidth && containerWidth < 820) {
+      // 794px width + margins
+      const scale = Math.max(0.4, Math.min(1, (containerWidth - 20) / 794));
+      return Number(scale.toFixed(2));
+    }
+    return zoomScale;
+  }, [fitToWidth, containerWidth, zoomScale]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,7 +127,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   }
 
   return (
-    <div className={`flex flex-col items-center w-full ${className}`}>
+    <div ref={containerRef} className={`flex flex-col items-center w-full ${className}`}>
       {/* Hidden file input for logo replacement */}
       {onLogoUpload && (
         <input
@@ -122,7 +158,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
           </div>
         </div>
 
-        {/* Action Controls: Logo & Zoom */}
+        {/* Action Controls: Logo & Zoom & Fit */}
         <div className="flex items-center gap-1.5">
           {onLogoUpload && (
             <Button
@@ -150,33 +186,59 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             </Button>
           )}
 
+          {/* Fit-to-Width Toggle (especially useful in Split View) */}
+          <Button
+            type="button"
+            variant={fitToWidth ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setFitToWidth((prev) => !prev)}
+            className="h-7 text-xs px-2 text-slate-700"
+            title={fitToWidth ? 'Disable auto-fit width' : 'Fit to pane width'}
+          >
+            {fitToWidth ? (
+              <Minimize2 className="w-3 h-3 mr-1 text-primary" />
+            ) : (
+              <Maximize2 className="w-3 h-3 mr-1 text-slate-500" />
+            )}
+            Fit
+          </Button>
+
           {/* Zoom scale controls */}
           <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 ml-1">
             <button
               type="button"
-              onClick={() => setZoomScale((prev) => Math.max(0.6, prev - 0.1))}
+              onClick={() => {
+                setFitToWidth(false);
+                setZoomScale((prev) => Math.max(0.5, prev - 0.1));
+              }}
               className="p-1 text-slate-600 hover:text-slate-900 rounded hover:bg-white"
               title="Zoom out"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
             <span className="text-[10px] font-mono font-bold px-1 text-slate-700 w-9 text-center">
-              {Math.round(zoomScale * 100)}%
+              {Math.round(effectiveScale * 100)}%
             </span>
             <button
               type="button"
-              onClick={() => setZoomScale((prev) => Math.min(1.4, prev + 0.1))}
+              onClick={() => {
+                setFitToWidth(false);
+                setZoomScale((prev) => Math.min(1.4, prev + 0.1));
+              }}
               className="p-1 text-slate-600 hover:text-slate-900 rounded hover:bg-white"
               title="Zoom in"
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
-            {zoomScale !== 1 && (
+            {(effectiveScale !== 1 || !fitToWidth) && (
               <button
                 type="button"
-                onClick={() => setZoomScale(1)}
+                onClick={() => {
+                  setFitToWidth(true);
+                  setZoomScale(1);
+                }}
                 className="p-1 text-slate-500 hover:text-slate-900 rounded hover:bg-white"
-                title="Reset zoom"
+                title="Reset to Fit Width"
               >
                 <RotateCcw className="w-3 h-3" />
               </button>
@@ -185,26 +247,34 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
         </div>
       </div>
 
-      {/* Main A4 Invoice Container (Rendered with iframe for complete CSS isolation) */}
+      {/* Main A4 Invoice Container (Rendered with iframe for complete CSS isolation and auto-scaled) */}
       <div
-        className="relative w-full max-w-[820px] flex justify-center overflow-auto py-2 transition-transform origin-top"
+        className="relative w-full flex justify-center overflow-x-hidden overflow-y-auto py-1"
         style={{
-          transform: zoomScale !== 1 ? `scale(${zoomScale})` : undefined,
-          transformOrigin: 'top center',
+          minHeight: `${Math.round(1140 * effectiveScale)}px`,
         }}
       >
-        <div className="w-[794px] min-h-[1123px] bg-white rounded-lg shadow-2xl overflow-hidden border border-slate-300 ring-1 ring-black/5">
-          <iframe
-            title="Invoice Document Preview"
-            srcDoc={fullHtmlDocument}
-            className="w-full min-h-[1140px] border-0 block bg-white"
-            style={{
-              width: '794px',
-              height: '1140px',
-              display: 'block',
-              border: 0,
-            }}
-          />
+        <div
+          style={{
+            width: '794px',
+            transform: effectiveScale !== 1 ? `scale(${effectiveScale})` : undefined,
+            transformOrigin: 'top center',
+            height: `${Math.round(1140 * effectiveScale)}px`,
+          }}
+        >
+          <div className="w-[794px] min-h-[1123px] bg-white rounded-lg shadow-2xl overflow-hidden border border-slate-300 ring-1 ring-black/5">
+            <iframe
+              title="Invoice Document Preview"
+              srcDoc={fullHtmlDocument}
+              className="w-full min-h-[1140px] border-0 block bg-white"
+              style={{
+                width: '794px',
+                height: '1140px',
+                display: 'block',
+                border: 0,
+              }}
+            />
+          </div>
         </div>
       </div>
 

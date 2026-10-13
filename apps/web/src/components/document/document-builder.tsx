@@ -26,7 +26,7 @@ import {
   validateBankAccount,
   generateVerifiedUpiQrSvgDataUrl,
 } from '@invoice/core';
-import { getTemplate, getTemplatesByCategory } from '@invoice/theme';
+import { getTemplate, getTemplatesByCategory, getInvoiceTemplate } from '@invoice/theme';
 import { TenantApi, ProductCatalogItem } from '@invoice/api';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { saveDocument } from '@/lib/storage/indexed-db';
@@ -431,6 +431,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const [refundNotesInput, setRefundNotesInput] = useState<string>('');
 
   const activeTemplateMeta = useMemo(() => getTemplate(templateId), [templateId]);
+  const activeTemplatePreset = useMemo(() => getInvoiceTemplate(templateId), [templateId]);
+  const [splitLeftMode, setSplitLeftMode] = useState<'form' | 'canvas'>('form');
   const effectivePrimaryColor =
     customPrimaryColor || activeTemplateMeta.defaultTokens.primaryColor;
   const effectiveFontFamily =
@@ -1500,6 +1502,68 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               mobileTab === 'preview' ? 'hidden lg:block' : 'block'
             }`}
           >
+            {/* Split Mode Selector (Form vs Inline Canvas) */}
+            <div className="max-w-2xl mx-auto mb-4 pb-3 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setSplitLeftMode('form')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                    splitLeftMode === 'form'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  📝 Structured Form
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitLeftMode('canvas')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                    splitLeftMode === 'canvas'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  📄 Inline Canvas Editor
+                </button>
+              </div>
+              <span className="text-xs text-slate-500 font-medium hidden sm:inline">
+                Template: <strong className="text-slate-800">{activeTemplatePreset.name}</strong>
+              </span>
+            </div>
+
+            {splitLeftMode === 'canvas' ? (
+              <div className="w-full">
+                <InlineDocumentCanvas
+                  document={documentModel}
+                  savedCustomers={savedCustomers}
+                  savedItems={savedItems}
+                  selectedCustomerId={selectedCustomerId}
+                  onSelectCustomer={handleSelectCustomer}
+                  onSelectCatalogItem={handleSelectCatalogItem}
+                  onAddCatalogItem={handleAddCatalogItem}
+                  onUpdateSender={handleUpdateSender}
+                  onUpdateSenderAddress={handleUpdateSenderAddress}
+                  onUpdateClient={handleUpdateClient}
+                  onUpdateClientAddress={handleUpdateClientAddress}
+                  onUpdateDoc={handleUpdateDoc}
+                  onUpdateItem={handleUpdateItem}
+                  onAddItem={handleAddItem}
+                  onRemoveItem={handleRemoveItem}
+                  onDuplicateItem={handleDuplicateItem}
+                  onLogoUpload={(dataUrl) => setSenderLogo(dataUrl)}
+                  onRemoveLogo={() => setSenderLogo('')}
+                  onUpdateDiscount={(type, val) => {
+                    setDocDiscountType(type);
+                    setDocDiscountValue(val);
+                  }}
+                  onUpdateShipping={(val) => setShippingFee(val)}
+                  onUpdateExtra={(val) => setExtraCharges(val)}
+                  onUpdatePaid={(val) => setManualAmountPaid(val)}
+                />
+              </div>
+            ) : (
             <div className="max-w-2xl mx-auto space-y-5">
               {/* Invoice Metadata Card */}
               <Card>
@@ -2115,6 +2179,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 </CardContent>
               </Card>
             </div>
+            )}
           </div>
 
           {/* RIGHT COLUMN: Live Realtime Invoice Preview */}
