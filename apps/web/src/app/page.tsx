@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Script from 'next/script';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -976,6 +977,31 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* AHDjs PagePilot — App Banner & Sitemap */}
+      <div id="rr" />
+      <Script
+        src="https://unpkg.com/ahdjs/build/index.js"
+        strategy="afterInteractive"
+        onLoad={() => {
+          try {
+            const AHDjs = (window as any).AHDjs?.default;
+            if (AHDjs) {
+              const ahdInstance = new AHDjs(undefined, {
+                applicationId: '6a3d30e35d1dbe1fbd243497',
+                apiHost: 'https://pagepilot.fabbuilder.com',
+                visitorId: 'visitor-id',
+                language: 'en',
+                showProgressbar: false,
+              });
+              ahdInstance.initializeSiteMap();
+              ahdInstance.renderAppBanner('rr', true);
+            }
+          } catch (err) {
+            console.warn('AHDjs initialization failed:', err);
+          }
+        }}
+      />
     </div>
   );
 }
