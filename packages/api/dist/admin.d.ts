@@ -27,6 +27,13 @@ export declare class AdminApi {
     static getTemplates(): AdminTemplateSetting[];
     static updateTemplate(templateId: string, patch: Partial<AdminTemplateSetting>): boolean;
     static getTeams(): AdminTeam[];
+    static createTeam(params: {
+        name: string;
+        ownerEmail: string;
+        plan?: PlanId;
+        currency?: string;
+        isWhiteLabel?: boolean;
+    }): AdminTeam;
     static updateTeam(teamId: string, patch: Partial<AdminTeam>): boolean;
     static getInquiries(): AdminInquiry[];
     static updateInquiry(inquiryId: string, status: 'new' | 'in_progress' | 'resolved', notes?: string): boolean;

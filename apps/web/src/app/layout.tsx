@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { TenantProvider } from '@/lib/auth/tenant-context';
 import { ThemeProvider } from '@/lib/theme/theme-provider';
+import { I18nProvider } from '@/lib/i18n/i18n-context';
 import { Toaster } from '@/components/ui/toaster';
 import { CommandPalette } from '@/components/ui/command-palette';
 
@@ -53,11 +54,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased text-foreground">
         <ThemeProvider>
-          <TenantProvider>
-            {children}
-            <CommandPalette />
-            <Toaster />
-          </TenantProvider>
+          <I18nProvider>
+            <TenantProvider>
+              {children}
+              <CommandPalette />
+              <Toaster />
+            </TenantProvider>
+          </I18nProvider>
         </ThemeProvider>
       </body>
     </html>

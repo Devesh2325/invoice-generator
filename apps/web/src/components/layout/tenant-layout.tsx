@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTenant } from '@/lib/auth/tenant-context';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Breadcrumbs, BreadcrumbItem } from '@/components/ui/breadcrumbs';
 import { NotificationCenter } from '@/components/ui/notification-center';
+import { PlanBadge } from '@/components/ui/plan-badge';
 import { useTheme } from '@/lib/theme/theme-provider';
 import {
   LayoutDashboard,
@@ -37,10 +38,21 @@ interface TenantLayoutProps {
 
 export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
   const pathname = usePathname();
-  const { activeTenant, tenants, setActiveTenant, tenantCurrency, user, signOut } = useTenant();
+  const { activeTenant, brandSettings, tenants, setActiveTenant, tenantCurrency, user, signOut } = useTenant();
   const { toggleTheme, resolvedTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+
+  const isWhiteLabel = Boolean(activeTenant?.isWhiteLabel || brandSettings?.whiteLabelEnabled);
+  const brandName = isWhiteLabel
+    ? brandSettings?.businessName || activeTenant?.name || 'Workspace Studio'
+    : 'BillCraft';
+
+  useEffect(() => {
+    if (isWhiteLabel && (brandSettings?.businessName || activeTenant?.name)) {
+      document.title = `${brandSettings?.businessName || activeTenant?.name} — Invoicing Studio`;
+    }
+  }, [isWhiteLabel, brandSettings?.businessName, activeTenant?.name]);
 
   const navLinks = [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
@@ -85,11 +97,22 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row font-sans text-slate-900 dark:text-slate-100 transition-colors">
       {/* Mobile Top Header */}
       <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <span className="font-black text-lg text-primary tracking-tight">BillCraft</span>
+        <div className="flex items-center gap-2 min-w-0">
+          {brandSettings?.logoUrl ? (
+            <img
+              src={brandSettings.logoUrl}
+              alt={brandName}
+              className="h-6 w-auto max-w-[90px] object-contain rounded"
+            />
+          ) : (
+            <Sparkles className="h-5 w-5 text-primary shrink-0" />
+          )}
+          <span className="font-black text-lg text-primary tracking-tight truncate">
+            {brandName}
+          </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          <PlanBadge />
           <button
             onClick={toggleTheme}
             className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -115,11 +138,21 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
         <div className="p-4 space-y-4 overflow-y-auto">
           {/* Logo & App Brand */}
           <div className="flex items-center justify-between px-2 pt-1 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <Link href="/" className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" />
-              <span className="font-black text-xl text-primary tracking-tight">BillCraft</span>
+            <Link href="/" className="flex items-center gap-2 min-w-0">
+              {brandSettings?.logoUrl ? (
+                <img
+                  src={brandSettings.logoUrl}
+                  alt={brandName}
+                  className="h-7 w-auto max-w-[120px] object-contain rounded shrink-0"
+                />
+              ) : (
+                <Sparkles className="h-6 w-6 text-primary shrink-0" />
+              )}
+              <span className="font-black text-lg text-primary tracking-tight truncate">
+                {brandName}
+              </span>
             </Link>
-            <Badge variant="outline" className="text-[10px] text-slate-600 dark:text-slate-400 font-mono">
+            <Badge variant="outline" className="text-[10px] text-slate-600 dark:text-slate-400 font-mono shrink-0">
               {tenantCurrency}
             </Badge>
           </div>
@@ -230,6 +263,9 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
           <Breadcrumbs items={getBreadcrumbs()} />
 
           <div className="flex items-center gap-3">
+            {/* Active Plan Badge (Silver, Diamond, Star) */}
+            <PlanBadge />
+
             {/* Command Palette Trigger */}
             <button
               onClick={handleOpenSearch}

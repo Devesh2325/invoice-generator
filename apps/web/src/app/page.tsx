@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,12 +33,53 @@ import {
   Building,
 } from 'lucide-react';
 import { TEMPLATES } from '@invoice/theme';
+import { useTranslation } from '@/lib/i18n/i18n-context';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 
 export default function LandingPage() {
   const { theme, toggleTheme, resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [activeSection, setActiveSection] = useState<string>('');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = ['features', 'templates', 'pricing', 'faq'];
+      const scrollPos = window.scrollY + 200;
+      let current = '';
+      for (const sec of sections) {
+        const el = document.getElementById(sec);
+        if (el) {
+          const top = el.offsetTop;
+          const height = el.offsetHeight;
+          if (scrollPos >= top && scrollPos < top + height) {
+            current = sec;
+            break;
+          }
+        }
+      }
+      setActiveSection(current);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+    if (hash.startsWith('#')) {
+      e.preventDefault();
+      const targetId = hash.slice(1);
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+        setActiveSection(targetId);
+        window.history.pushState(null, '', hash);
+      }
+    }
+    setMobileMenuOpen(false);
+  };
 
   const faqs = [
     {
@@ -80,28 +121,55 @@ export default function LandingPage() {
           </Link>
 
           <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold text-muted-foreground">
-            <Link href="/features" className="hover:text-primary transition-colors">
-              Features
-            </Link>
-            <Link href="/templates" className="hover:text-primary transition-colors">
-              Templates
-            </Link>
-            <Link href="/pricing" className="hover:text-primary transition-colors">
-              Pricing
-            </Link>
+            <a
+              href="#features"
+              onClick={(e) => handleNavClick(e, '#features')}
+              className={`transition-colors ${
+                activeSection === 'features' ? 'text-primary font-bold' : 'hover:text-primary'
+              }`}
+            >
+              {t('nav.features', 'Features')}
+            </a>
+            <a
+              href="#templates"
+              onClick={(e) => handleNavClick(e, '#templates')}
+              className={`transition-colors ${
+                activeSection === 'templates' ? 'text-primary font-bold' : 'hover:text-primary'
+              }`}
+            >
+              {t('nav.templates', 'Templates')}
+            </a>
+            <a
+              href="#pricing"
+              onClick={(e) => handleNavClick(e, '#pricing')}
+              className={`transition-colors ${
+                activeSection === 'pricing' ? 'text-primary font-bold' : 'hover:text-primary'
+              }`}
+            >
+              {t('nav.pricing', 'Pricing')}
+            </a>
             <Link href="/blog" className="hover:text-primary transition-colors">
-              Blog
+              {t('nav.blog', 'Blog')}
             </Link>
-            <Link href="/faq" className="hover:text-primary transition-colors">
-              FAQ
-            </Link>
+            <a
+              href="#faq"
+              onClick={(e) => handleNavClick(e, '#faq')}
+              className={`transition-colors ${
+                activeSection === 'faq' ? 'text-primary font-bold' : 'hover:text-primary'
+              }`}
+            >
+              {t('nav.faq', 'FAQ')}
+            </a>
             <Link href="/about" className="hover:text-primary transition-colors">
-              About
+              {t('nav.about', 'About')}
             </Link>
           </nav>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Multi-language Selector */}
+          <LanguageSwitcher />
+
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
@@ -114,14 +182,14 @@ export default function LandingPage() {
 
           <Link href="/login" className="hidden sm:inline-block">
             <Button variant="ghost" size="sm" className="text-xs font-semibold">
-              Sign In
+              {t('common.signIn', 'Sign In')}
             </Button>
           </Link>
 
           <Link href="/create">
             <Button size="sm" className="text-xs font-bold shadow-xs flex items-center gap-1.5">
               <Zap className="h-3.5 w-3.5" />
-              <span>Create Invoice</span>
+              <span>{t('nav.createInvoice', 'Create Invoice')}</span>
             </Button>
           </Link>
 
@@ -140,65 +208,65 @@ export default function LandingPage() {
       {mobileMenuOpen && (
         <div className="lg:hidden fixed inset-x-0 top-[57px] bg-background border-b border-border shadow-xl z-40 p-4 space-y-3 animate-in slide-in-from-top-2">
           <nav className="flex flex-col space-y-2 text-xs font-semibold text-muted-foreground">
-            <Link
-              href="/features"
-              onClick={() => setMobileMenuOpen(false)}
+            <a
+              href="#features"
+              onClick={(e) => handleNavClick(e, '#features')}
               className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
             >
-              Features
-            </Link>
-            <Link
-              href="/templates"
-              onClick={() => setMobileMenuOpen(false)}
+              {t('nav.features', 'Features')}
+            </a>
+            <a
+              href="#templates"
+              onClick={(e) => handleNavClick(e, '#templates')}
               className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
             >
-              Templates
-            </Link>
-            <Link
-              href="/pricing"
-              onClick={() => setMobileMenuOpen(false)}
+              {t('nav.templates', 'Templates')}
+            </a>
+            <a
+              href="#pricing"
+              onClick={(e) => handleNavClick(e, '#pricing')}
               className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
             >
-              Pricing & Plans
-            </Link>
+              {t('nav.pricing', 'Pricing & Plans')}
+            </a>
             <Link
               href="/blog"
               onClick={() => setMobileMenuOpen(false)}
               className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
             >
-              Blog & Tax Guides
+              {t('nav.blog', 'Blog & Tax Guides')}
             </Link>
-            <Link
-              href="/faq"
-              onClick={() => setMobileMenuOpen(false)}
+            <a
+              href="#faq"
+              onClick={(e) => handleNavClick(e, '#faq')}
               className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
             >
-              Help & FAQ
-            </Link>
+              {t('nav.faq', 'Help & FAQ')}
+            </a>
             <Link
               href="/about"
               onClick={() => setMobileMenuOpen(false)}
               className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
             >
-              About BillCraft
+              {t('nav.about', 'About BillCraft')}
             </Link>
             <Link
               href="/contact"
               onClick={() => setMobileMenuOpen(false)}
               className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
             >
-              Contact Support
+              {t('nav.contact', 'Contact Support')}
             </Link>
           </nav>
           <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
             <Link href="/login" className="w-1/2">
               <Button variant="outline" size="sm" className="w-full text-xs font-semibold">
-                Sign In
+                {t('common.signIn', 'Sign In')}
               </Button>
             </Link>
             <Link href="/signup" className="w-1/2">
               <Button size="sm" className="w-full text-xs font-semibold">
-                Get Started
+                {t('common.signUp', 'Get Started')}
               </Button>
             </Link>
           </div>
@@ -833,22 +901,22 @@ export default function LandingPage() {
       </section>
 
       {/* Final Call to Action */}
-      <section className="py-20 px-4 sm:px-8 text-center bg-primary text-primary-foreground relative overflow-hidden">
+      <section className="py-20 px-4 sm:px-8 text-center bg-primary text-white relative overflow-hidden selection:bg-white selection:text-primary">
         <div className="max-w-4xl mx-auto space-y-6 relative z-10">
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight">
+          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white select-text">
             Ready to Upgrade Your Invoicing Experience?
           </h2>
-          <p className="text-sm sm:text-base opacity-90 max-w-xl mx-auto">
+          <p className="text-sm sm:text-base text-white/95 max-w-xl mx-auto select-text font-medium leading-relaxed">
             Join thousands of modern businesses using BillCraft for accurate, beautifully branded GST invoices and instant payments.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link href="/create">
-              <Button size="lg" variant="secondary" className="h-12 px-8 text-sm font-bold shadow-md">
+              <Button size="lg" className="h-12 px-8 text-sm font-bold shadow-lg bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 active:bg-slate-200 active:text-black focus-visible:ring-2 focus-visible:ring-white transition-all">
                 Create Your First Invoice Free
               </Button>
             </Link>
             <Link href="/signup">
-              <Button size="lg" variant="outline" className="h-12 px-6 text-sm font-bold border-white/40 hover:bg-white/10 text-white">
+              <Button size="lg" variant="outline" className="h-12 px-6 text-sm font-bold border-white/60 bg-transparent text-white hover:bg-white/10 hover:text-white active:bg-white/20 active:text-white focus-visible:ring-2 focus-visible:ring-white transition-all">
                 Register Workspace
               </Button>
             </Link>
@@ -892,7 +960,7 @@ export default function LandingPage() {
               <Link href="/blog" className="hover:text-foreground transition-colors">Blog & Tax Guides</Link>
               <Link href="/faq" className="hover:text-foreground transition-colors">Help Center & FAQ</Link>
               <Link href="/features" className="hover:text-foreground transition-colors">Feature Documentation</Link>
-              <Link href="/admin/login" className="hover:text-foreground transition-colors">Super Admin Portal</Link>
+              <Link href="/templates" className="hover:text-foreground transition-colors">Invoice Layouts</Link>
             </div>
           </div>
 

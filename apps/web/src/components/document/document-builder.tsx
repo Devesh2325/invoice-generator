@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import {
   DocumentModel,
@@ -29,6 +29,7 @@ import {
 import { getTemplate, getTemplatesByCategory, getInvoiceTemplate } from '@invoice/theme';
 import { TenantApi, ProductCatalogItem } from '@invoice/api';
 import { useTenant } from '@/lib/auth/tenant-context';
+import { useTheme } from '@/lib/theme/theme-provider';
 import { saveDocument } from '@/lib/storage/indexed-db';
 import { exportDocumentToPdf, triggerPrint } from '@/lib/pdf/export-pdf';
 import { DocumentPreview } from './document-preview';
@@ -39,6 +40,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import {
   Printer,
   Download,
@@ -67,6 +80,10 @@ import {
   ArrowLeft,
   Users,
   Package,
+  MoreHorizontal,
+  Menu,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface DocumentBuilderProps {
@@ -87,14 +104,14 @@ const THEME_COLOR_SWATCHES = [
 
 const DEFAULT_BANK_ACCOUNT: BankAccountDetails = {
   id: 'bank_default_01',
-  accountHolderName: 'Apex Digital Solutions Pvt Ltd',
-  bankName: 'HDFC Bank Ltd',
-  accountNumber: '50200049182731',
-  confirmAccountNumber: '50200049182731',
-  ifscOrRoutingCode: 'HDFC0000124',
-  branchName: 'BKC, Mumbai',
+  accountHolderName: 'Acme Design Agency Pvt Ltd',
+  bankName: 'Demo Bank Ltd',
+  accountNumber: '0000000000',
+  confirmAccountNumber: '0000000000',
+  ifscOrRoutingCode: 'DEMO0000000',
+  branchName: 'Main Branch, Mumbai',
   accountType: 'current',
-  swiftBicCode: 'HDFCINBB',
+  swiftBicCode: 'DEMOBANK',
   country: 'India',
   isPrimary: true,
 };
@@ -102,8 +119,8 @@ const DEFAULT_BANK_ACCOUNT: BankAccountDetails = {
 const DEFAULT_PAYMENT_CONFIG: DocumentPaymentConfig = {
   bankAccounts: [DEFAULT_BANK_ACCOUNT],
   selectedBankAccountIds: ['bank_default_01'],
-  upiId: 'apexdigital@hdfcbank',
-  upiPayeeName: 'Apex Digital Solutions Pvt Ltd',
+  upiId: 'acmedesign@demobank',
+  upiPayeeName: 'Acme Design Agency Pvt Ltd',
   autoGenerateUpiQr: true,
   display: {
     showBankDetails: true,
@@ -381,11 +398,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   }, [initialDocument, activeTenant, brandSettings, appliedTenantId]);
 
   // UI & Modal state
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [viewMode, setViewMode] = useState<'sheet' | 'split' | 'pdf_preview'>('sheet');
   const [isPersisted, setIsPersisted] = useState<boolean>(Boolean(initialDocument));
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>(
-    initialDocument ? 'saved' : 'unsaved'
-  );
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -615,29 +633,31 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     refunds,
   ]);
 
-  // Only autosave updates AFTER the invoice has been explicitly saved or finalized
+  // Auto-save debounced (~1s) on all changes
+  const isFirstMount = useRef(true);
   useEffect(() => {
-    if (!isPersisted) {
-      setSaveStatus('unsaved');
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
       return;
     }
-    setSaveStatus('unsaved');
+    setSaveStatus('saving');
     const timer = setTimeout(async () => {
       try {
-        setSaveStatus('saving');
         await saveDocument(documentModel);
         if (activeTenant?.id) {
           await TenantApi.saveDocument(activeTenant.id, documentModel);
         }
+        setIsPersisted(true);
         setSaveStatus('saved');
         if (onSaved) onSaved(documentModel);
       } catch (e) {
         console.error('Failed to autosave invoice:', e);
+        setSaveStatus('saved');
       }
-    }, 800);
+    }, 1000);
 
     return () => clearTimeout(timer);
-  }, [documentModel, activeTenant?.id, isPersisted]);
+  }, [documentModel, activeTenant?.id]);
 
   // Line item manipulation helpers
   const handleAddItem = () => {
@@ -1050,26 +1070,26 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col text-foreground">
       {/* Top Notice Banner */}
       {!bannerDismissed && (
-        <div className="bg-blue-50 border-b border-blue-200 text-blue-900 px-4 py-2 text-xs flex justify-between items-center no-print">
+        <div className="bg-primary/10 border-b border-primary/20 text-primary px-4 py-1.5 text-xs flex justify-between items-center no-print">
           <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+            <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
             <span>
-              <strong>GST & Multi-Currency Invoice Studio:</strong> Automatic CGST + SGST (Intra-State), IGST (Inter-State), Round-Off, and Verified UPI QR generation.
+              <strong>GST & Multi-Currency Studio:</strong> Intra/Inter-state GST, auto Round-Off & verified UPI QR codes.
             </span>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/dashboard"
-              className="font-semibold underline hover:text-blue-700 flex items-center gap-1"
+              className="font-bold underline hover:opacity-80 flex items-center gap-1"
             >
-              Go to Workspace <ArrowRight className="h-3 w-3" />
+              Workspace <ArrowRight className="h-3 w-3" />
             </Link>
             <button
               onClick={() => setBannerDismissed(true)}
-              className="text-blue-500 hover:text-blue-800 text-sm font-bold"
+              className="opacity-70 hover:opacity-100 text-xs font-bold"
             >
               ✕
             </button>
@@ -1077,32 +1097,37 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         </div>
       )}
 
-      {/* Main Top Header Controls */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 no-print shadow-xs">
-        <div className="flex items-center gap-2.5">
+      {/* ==================================================================== */}
+      {/* DESKTOP HEADER (Single Row, ~68px high) */}
+      {/* ==================================================================== */}
+      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border px-4 md:px-6 h-[68px] hidden md:flex items-center justify-between gap-3 no-print shadow-xs">
+        {/* Left: back button, BillCraft logo, invoice name input, ONE doc-type selector, Draft badge, auto-save status */}
+        <div className="flex items-center gap-2.5 min-w-0">
           <Link
             href="/dashboard/documents"
-            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
             title="Back to Invoices"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <Link href="/" className="font-black text-lg text-primary tracking-tight flex items-center gap-1.5">
+
+          <Link href="/" className="font-black text-lg text-primary tracking-tight flex items-center gap-1.5 shrink-0">
             <Sparkles className="h-5 w-5 text-primary" />
-            <span className="hidden sm:inline">BillCraft</span>
+            <span>BillCraft</span>
           </Link>
 
           {/* Invoice Name Input */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center">
             <Input
               value={invoiceName}
               onChange={(e) => setInvoiceName(e.target.value)}
               placeholder="Invoice Name (e.g. Oct Retainer)"
               aria-label="Invoice Name"
-              className="h-8 text-xs font-bold w-44 sm:w-56 border-slate-300"
+              className="h-8 text-xs font-bold w-36 lg:w-48 bg-background border-border"
             />
           </div>
 
+          {/* ONE document-type selector */}
           <DocumentTypeSelector
             value={docType}
             onChange={(newType) => {
@@ -1116,6 +1141,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             align="left"
           />
 
+          {/* Status Badge */}
           <Badge
             variant={
               effectiveStatus === 'paid'
@@ -1126,300 +1152,666 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 ? 'warning'
                 : 'info'
             }
+            className="shrink-0"
           >
             {formatInvoiceStatusLabel(effectiveStatus)}
           </Badge>
 
-          {/* Save / Record Status */}
-          <div className="hidden xl:flex items-center gap-1 text-xs text-slate-500">
-            {isPersisted && saveStatus === 'saved' && (
-              <>
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Saved</span>
-              </>
-            )}
-            {saveStatus === 'saving' && (
+          {/* Auto-Save Status */}
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium shrink-0">
+            {saveStatus === 'saving' ? (
               <>
                 <span className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                <span>Saving...</span>
+                <span className="hidden xl:inline">Saving...</span>
               </>
-            )}
-            {(!isPersisted || saveStatus === 'unsaved') && saveStatus !== 'saving' && (
+            ) : (
               <>
-                <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-                <span>{isPersisted ? 'Unsaved edits' : 'Not saved yet'}</span>
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="hidden xl:inline">Saved</span>
               </>
             )}
           </div>
         </div>
 
-        {/* Action Buttons & Mode Switcher */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {/* 3-Way View Switcher */}
-          <div className="hidden md:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 mr-1">
-            <button
-              onClick={() => setViewMode('sheet')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1 transition-all ${
-                viewMode === 'sheet'
-                  ? 'bg-white text-primary shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+        {/* Center: segmented toggle: Editor | Split | Preview */}
+        <div className="flex items-center bg-muted/70 p-1 rounded-xl border border-border shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewMode('sheet')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all ${
+              viewMode === 'sheet'
+                ? 'bg-background text-foreground shadow-xs font-black'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Edit3 className="h-3.5 w-3.5" />
+            <span>Editor</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('split')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all ${
+              viewMode === 'split'
+                ? 'bg-background text-foreground shadow-xs font-black'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Columns className="h-3.5 w-3.5" />
+            <span>Split</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('pdf_preview')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all ${
+              viewMode === 'pdf_preview'
+                ? 'bg-background text-foreground shadow-xs font-black'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            <span>Preview</span>
+          </button>
+        </div>
+
+        {/* Right: Customize button (opens popover), Download PDF, Finalize Invoice (primary), More dropdown */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Customize popover */}
+          <Popover open={customizeOpen} onOpenChange={setCustomizeOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-3 text-xs font-bold flex items-center gap-1.5 border-border bg-background hover:bg-accent text-foreground"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
+                <span>Customize</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-80 sm:w-96 p-4 bg-popover border-border shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto z-50"
             >
-              <Edit3 className="h-3.5 w-3.5" />
-              <span>Inline Editor</span>
-            </button>
-            <button
-              onClick={() => setViewMode('split')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1 transition-all ${
-                viewMode === 'split'
-                  ? 'bg-white text-primary shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Columns className="h-3.5 w-3.5" />
-              <span>Split Form</span>
-            </button>
-            <button
-              onClick={() => setViewMode('pdf_preview')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1 transition-all ${
-                viewMode === 'pdf_preview'
-                  ? 'bg-white text-primary shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Eye className="h-3.5 w-3.5" />
-              <span>Preview Invoice</span>
-            </button>
-          </div>
+              <div className="flex items-center justify-between pb-2 border-b border-border">
+                <div className="flex items-center gap-2 font-black text-sm text-foreground">
+                  <Palette className="h-4 w-4 text-primary" />
+                  <span>Customize Document</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCustomizeOpen(false)}
+                  className="text-muted-foreground hover:text-foreground p-1 rounded-md"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPaymentSettingsModalOpen(true)}
-            className="text-xs font-semibold flex items-center gap-1"
-            title="Configure Bank Details, UPI ID, QR Code & Display Controls"
-          >
-            <QrCode className="h-3.5 w-3.5 text-primary" />
-            <span className="hidden sm:inline">Payment Settings</span>
-          </Button>
+              {/* Template */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                  <span>Template</span>
+                  <span className="text-[10px] text-primary">{activeTemplatePreset?.region || activeTemplateMeta?.name}</span>
+                </label>
+                <select
+                  value={templateId}
+                  onChange={(e) => {
+                    setTemplateId(e.target.value);
+                    setCustomPrimaryColor(undefined);
+                  }}
+                  className="w-full text-xs font-bold bg-muted/60 border border-border rounded-lg px-2.5 py-2 text-foreground cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                >
+                  {categorizedTemplates.map((group) => (
+                    <optgroup key={group.category} label={group.label} className="bg-popover text-foreground">
+                      {group.templates.map((tmpl) => (
+                        <option key={tmpl.id} value={tmpl.id}>
+                          {tmpl.name} ({tmpl.competitorStyle})
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setPayAmountInput(
-                calculated.summary.balanceDue > 0
-                  ? calculated.summary.balanceDue
-                  : calculated.summary.grandTotal
-              );
-              setRecordPaymentModalOpen(true);
-            }}
-            className="text-xs font-semibold text-emerald-700 border-emerald-200 hover:bg-emerald-50 flex items-center gap-1"
-          >
-            <CreditCard className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Record Payment</span>
-          </Button>
+              {/* Theme Color Swatches + Custom Picker */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Theme Color
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {THEME_COLOR_SWATCHES.map((swatch) => (
+                    <button
+                      key={swatch.hex}
+                      type="button"
+                      onClick={() => setCustomPrimaryColor(swatch.hex)}
+                      title={swatch.name}
+                      className={`w-6 h-6 rounded-full border transition-transform ${
+                        effectivePrimaryColor.toLowerCase() === swatch.hex.toLowerCase()
+                          ? 'scale-120 ring-2 ring-offset-2 ring-primary border-white'
+                          : 'border-border/60 hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: swatch.hex }}
+                    />
+                  ))}
+                  <div className="flex items-center gap-1.5 pl-1.5 border-l border-border">
+                    <input
+                      type="color"
+                      value={effectivePrimaryColor}
+                      onChange={(e) => setCustomPrimaryColor(e.target.value)}
+                      title="Custom Hex Color"
+                      className="w-7 h-7 rounded-lg cursor-pointer border border-border p-0.5 bg-background"
+                    />
+                    <span className="text-[10px] font-mono text-muted-foreground">{effectivePrimaryColor}</span>
+                  </div>
+                </div>
+              </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setHistoryModalOpen(true)}
-            className="text-xs font-semibold flex items-center gap-1"
-            title="View Payment & Refund History"
-          >
-            <History className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">
-              History ({payments.length + refunds.length})
-            </span>
-          </Button>
+              {/* Font & Currency */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Font
+                  </label>
+                  <select
+                    value={effectiveFontFamily}
+                    onChange={(e) => setCustomFontFamily(e.target.value as 'sans' | 'serif' | 'mono')}
+                    className="w-full text-xs font-semibold bg-muted/60 border border-border rounded-lg px-2.5 py-1.5 text-foreground"
+                  >
+                    <option value="sans">Modern Sans</option>
+                    <option value="serif">Executive Serif</option>
+                    <option value="mono">Technical Mono</option>
+                  </select>
+                </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShareModalOpen(true)}
-            className="text-xs font-semibold flex items-center gap-1"
-          >
-            <Share2 className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Send / Share</span>
-          </Button>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Currency
+                  </label>
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="w-full text-xs font-bold bg-muted/60 border border-border rounded-lg px-2.5 py-1.5 text-foreground cursor-pointer"
+                  >
+                    {Object.values(CURRENCIES).map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} ({c.symbol})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={triggerPrint}
-            className="flex items-center gap-1 font-semibold text-xs"
-          >
-            <Printer className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Print</span>
-          </Button>
+              {/* Round-off & Decimals */}
+              <div className="p-3 rounded-xl bg-muted/50 border border-border space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-xs font-bold text-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={enableRoundOff}
+                      onChange={(e) => setEnableRoundOff(e.target.checked)}
+                      className="rounded border-border text-primary h-4 w-4"
+                    />
+                    <span>Round-Off</span>
+                  </label>
+                  <select
+                    value={decimalPrecision}
+                    onChange={(e) => setDecimalPrecision(Number(e.target.value))}
+                    className="text-xs font-mono font-bold bg-background border border-border rounded-md px-2 py-1 text-foreground"
+                    title="Decimal Precision"
+                  >
+                    <option value={2}>2 Decimals</option>
+                    <option value={0}>0 Decimals</option>
+                    <option value={3}>3 Decimals</option>
+                  </select>
+                </div>
 
+                {enableRoundOff && (
+                  <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground font-medium">Mode:</span>
+                    <select
+                      value={roundingMode}
+                      onChange={(e) => setRoundingMode(e.target.value as RoundingMode)}
+                      className="text-xs font-semibold bg-background border border-border rounded-md px-2 py-1 text-foreground"
+                    >
+                      <option value="nearest_integer">Nearest Whole</option>
+                      <option value="half_up">Half Up</option>
+                      <option value="half_even">Half Even (Banker)</option>
+                      <option value="up">Round Up</option>
+                      <option value="down">Round Down</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Appearance (Light / Dark / System) */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Appearance
+                </label>
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-muted rounded-xl border border-border text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setTheme('light')}
+                    className={`py-1.5 rounded-lg flex items-center justify-center gap-1 transition-all ${
+                      theme === 'light'
+                        ? 'bg-background text-foreground shadow-xs font-bold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Sun className="h-3.5 w-3.5" />
+                    <span>Light</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('dark')}
+                    className={`py-1.5 rounded-lg flex items-center justify-center gap-1 transition-all ${
+                      theme === 'dark'
+                        ? 'bg-background text-foreground shadow-xs font-bold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Moon className="h-3.5 w-3.5" />
+                    <span>Dark</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('system')}
+                    className={`py-1.5 rounded-lg flex items-center justify-center gap-1 transition-all ${
+                      theme === 'system'
+                        ? 'bg-background text-foreground shadow-xs font-bold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    <span>System</span>
+                  </button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Download PDF */}
           <Button
             size="sm"
             onClick={handleDownloadPdf}
             disabled={isExportingPdf}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 font-semibold text-xs shadow-xs"
+            className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 font-bold text-xs shadow-xs"
           >
             <Download className="h-3.5 w-3.5" />
             <span>{isExportingPdf ? 'Exporting...' : 'Download PDF'}</span>
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSaveDraft}
-            className="text-xs font-semibold border-slate-300 flex items-center gap-1"
-          >
-            <FileText className="h-3.5 w-3.5" />
-            <span>{isPersisted ? 'Save' : 'Save Draft'}</span>
-          </Button>
-
+          {/* Finalize Invoice (primary button) */}
           <Button
             size="sm"
             onClick={handleFinalize}
-            className="bg-primary hover:bg-primary-hover text-white flex items-center gap-1 text-xs shadow-xs font-semibold"
+            className="h-9 bg-primary hover:bg-primary-hover text-primary-foreground flex items-center gap-1.5 text-xs shadow-xs font-bold"
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
             <span>
               {effectiveStatus === 'draft' || !isPersisted
                 ? 'Finalize Invoice'
-                : 'Update Finalized Invoice'}
+                : 'Update Finalized'}
             </span>
           </Button>
+
+          {/* More dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 w-9 p-0 border-border bg-background hover:bg-accent text-foreground flex items-center justify-center"
+                title="More Options"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">More Options</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-popover border-border p-1.5 shadow-xl z-50">
+              <DropdownMenuItem
+                onClick={() => setShareModalOpen(true)}
+                className="text-xs flex items-center gap-2.5 py-2 cursor-pointer"
+              >
+                <Share2 className="h-4 w-4 text-primary" />
+                <span>Send / Share</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={triggerPrint}
+                className="text-xs flex items-center gap-2.5 py-2 cursor-pointer"
+              >
+                <Printer className="h-4 w-4 text-muted-foreground" />
+                <span>Print Invoice</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setHistoryModalOpen(true)}
+                className="text-xs flex items-center gap-2.5 py-2 cursor-pointer"
+              >
+                <History className="h-4 w-4 text-muted-foreground" />
+                <span>History ({payments.length + refunds.length})</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="my-1 border-border" />
+
+              <DropdownMenuItem
+                onClick={() => {
+                  setPayAmountInput(
+                    calculated.summary.balanceDue > 0
+                      ? calculated.summary.balanceDue
+                      : calculated.summary.grandTotal
+                  );
+                  setRecordPaymentModalOpen(true);
+                }}
+                className="text-xs flex items-center gap-2.5 py-2 cursor-pointer text-emerald-600 dark:text-emerald-400 font-semibold"
+              >
+                <CreditCard className="h-4 w-4" />
+                <span>Record Payment</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setPaymentSettingsModalOpen(true)}
+                className="text-xs flex items-center gap-2.5 py-2 cursor-pointer"
+              >
+                <QrCode className="h-4 w-4 text-primary" />
+                <span>Payment Settings</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
       {/* ==================================================================== */}
-      {/* DESIGN, ROUNDING & CURRENCY STUDIO BAR */}
+      {/* MOBILE TOP BAR (below 768px) */}
       {/* ==================================================================== */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-2 flex flex-wrap items-center justify-between gap-3 no-print shadow-xs sticky top-[53px] z-30">
-        {/* Left: Category-Wise Template Dropdown + Theme Swatches */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-              <Palette className="h-3.5 w-3.5 text-primary" /> Template:
-            </label>
-            <select
-              value={templateId}
-              onChange={(e) => {
-                setTemplateId(e.target.value);
-                setCustomPrimaryColor(undefined);
-              }}
-              className="text-xs font-bold bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 cursor-pointer min-w-[220px]"
-            >
-              {categorizedTemplates.map((group) => (
-                <optgroup key={group.category} label={group.label}>
-                  {group.templates.map((tmpl) => (
-                    <option key={tmpl.id} value={tmpl.id}>
-                      {tmpl.name} — ({tmpl.competitorStyle})
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
+      <div className="md:hidden sticky top-0 z-40 bg-card border-b border-border px-3.5 py-2.5 flex items-center justify-between gap-2 shadow-xs no-print">
+        <div className="flex items-center gap-2 min-w-0">
+          <Link
+            href="/dashboard/documents"
+            className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            title="Back to Invoices"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
 
-          {/* Theme Color Swatches */}
-          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
-            <span className="text-[11px] font-semibold text-slate-500 mr-1">Theme:</span>
-            {THEME_COLOR_SWATCHES.map((swatch) => (
-              <button
-                key={swatch.hex}
-                type="button"
-                onClick={() => setCustomPrimaryColor(swatch.hex)}
-                title={swatch.name}
-                className={`w-4 h-4 rounded-full border transition-transform ${
-                  effectivePrimaryColor.toLowerCase() === swatch.hex.toLowerCase()
-                    ? 'scale-125 ring-2 ring-offset-1 ring-slate-900 border-white'
-                    : 'border-slate-300 hover:scale-110'
-                }`}
-                style={{ backgroundColor: swatch.hex }}
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-1.5">
+              <Input
+                value={invoiceName}
+                onChange={(e) => setInvoiceName(e.target.value)}
+                placeholder="Invoice Name"
+                className="h-7 text-xs font-bold w-32 border-border bg-background p-1"
               />
-            ))}
-            <input
-              type="color"
-              value={effectivePrimaryColor}
-              onChange={(e) => setCustomPrimaryColor(e.target.value)}
-              title="Custom Brand Color"
-              className="w-5 h-5 rounded cursor-pointer border border-slate-300 p-0 bg-transparent ml-0.5"
-            />
-          </div>
-
-          {/* Typography Selector */}
-          <div className="hidden xl:flex items-center gap-1.5 pl-2 border-l border-slate-200">
-            <span className="text-[11px] font-semibold text-slate-500">Font:</span>
-            <select
-              value={effectiveFontFamily}
-              onChange={(e) => setCustomFontFamily(e.target.value as 'sans' | 'serif' | 'mono')}
-              className="text-xs font-semibold bg-slate-50 border border-slate-300 rounded px-2 py-1 text-slate-800"
-            >
-              <option value="sans">Modern Sans</option>
-              <option value="serif">Executive Serif</option>
-              <option value="mono">Technical Mono</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Right: Round-Off Controls & Currency */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Round-Off Quick Toggle & Precision */}
-          <div className="flex items-center gap-2 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs">
-            <label className="flex items-center gap-1.5 font-semibold text-slate-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={enableRoundOff}
-                onChange={(e) => setEnableRoundOff(e.target.checked)}
-                className="rounded border-slate-300 text-primary h-3.5 w-3.5"
-              />
-              <span>Round-Off</span>
-            </label>
-            {enableRoundOff && (
-              <select
-                value={roundingMode}
-                onChange={(e) => setRoundingMode(e.target.value as RoundingMode)}
-                className="text-[11px] font-semibold bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-800"
-                title="Rounding Mode"
+              <Badge
+                variant={
+                  effectiveStatus === 'paid'
+                    ? 'success'
+                    : effectiveStatus === 'overdue'
+                    ? 'destructive'
+                    : 'info'
+                }
+                className="text-[10px] px-1.5 py-0"
               >
-                <option value="nearest_integer">Nearest Whole</option>
-                <option value="half_up">Half Up</option>
-                <option value="half_even">Half Even (Banker)</option>
-                <option value="up">Round Up</option>
-                <option value="down">Round Down</option>
-              </select>
-            )}
-            <select
-              value={decimalPrecision}
-              onChange={(e) => setDecimalPrecision(Number(e.target.value))}
-              className="text-[11px] font-mono bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700"
-              title="Decimal Precision"
-            >
-              <option value={2}>2 Decimals</option>
-              <option value={0}>0 Decimals</option>
-              <option value={3}>3 Decimals</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-slate-500">Currency:</span>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="text-xs font-bold bg-slate-50 border border-slate-300 rounded-md px-2.5 py-1 text-slate-900 cursor-pointer"
-            >
-              {Object.values(CURRENCIES).map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.code} ({c.symbol})
-                </option>
-              ))}
-            </select>
+                {formatInvoiceStatusLabel(effectiveStatus)}
+              </Badge>
+            </div>
+            <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+              {saveStatus === 'saving' ? (
+                <>
+                  <span className="h-2.5 w-2.5 rounded-full border border-primary border-t-transparent animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Saved</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <DocumentTypeSelector
+            value={docType}
+            onChange={(newType) => {
+              setDocType(newType);
+              setDocNumber(
+                formatDocumentNumber(DEFAULT_NUMBERING_RULES[newType], 1, new Date())
+              );
+            }}
+            primaryColor={effectivePrimaryColor}
+            compact
+            align="right"
+          />
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            className="min-h-[44px] min-w-[44px] p-0 flex items-center justify-center border-border"
+            title="Menu"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Toggle: Editor | Preview */}
+      <div className="md:hidden px-3 py-2 bg-card border-b border-border no-print">
+        <div className="grid grid-cols-2 bg-muted p-1 rounded-xl border border-border">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileTab('editor');
+              if (viewMode === 'pdf_preview') setViewMode('sheet');
+            }}
+            className={`min-h-[44px] py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${
+              mobileTab === 'editor'
+                ? 'bg-background text-foreground shadow-xs font-black'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Edit3 className="h-4 w-4" />
+            <span>Editor</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileTab('preview');
+              setViewMode('pdf_preview');
+            }}
+            className={`min-h-[44px] py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${
+              mobileTab === 'preview'
+                ? 'bg-background text-foreground shadow-xs font-black'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Eye className="h-4 w-4" />
+            <span>Preview</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Hamburger Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end no-print animate-in fade-in-0 duration-150">
+          <div className="w-4/5 max-w-sm h-full bg-card border-l border-border p-5 flex flex-col justify-between shadow-2xl overflow-y-auto">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <span className="font-black text-sm text-foreground flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Invoice Options
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setCustomizeOpen(true);
+                  }}
+                  className="w-full min-h-[44px] px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-accent text-foreground text-xs font-bold flex items-center gap-3 transition-colors"
+                >
+                  <SlidersHorizontal className="h-4 w-4 text-primary" />
+                  <span>Customize Template & Theme</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setShareModalOpen(true);
+                  }}
+                  className="w-full min-h-[44px] px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-accent text-foreground text-xs font-bold flex items-center gap-3 transition-colors"
+                >
+                  <Share2 className="h-4 w-4 text-primary" />
+                  <span>Send / Share Invoice</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    triggerPrint();
+                  }}
+                  className="w-full min-h-[44px] px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-accent text-foreground text-xs font-bold flex items-center gap-3 transition-colors"
+                >
+                  <Printer className="h-4 w-4 text-muted-foreground" />
+                  <span>Print Invoice</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setHistoryModalOpen(true);
+                  }}
+                  className="w-full min-h-[44px] px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-accent text-foreground text-xs font-bold flex items-center gap-3 transition-colors"
+                >
+                  <History className="h-4 w-4 text-muted-foreground" />
+                  <span>Payment History ({payments.length + refunds.length})</span>
+                </button>
+
+                <div className="pt-2 border-t border-border" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setPayAmountInput(
+                      calculated.summary.balanceDue > 0
+                        ? calculated.summary.balanceDue
+                        : calculated.summary.grandTotal
+                    );
+                    setRecordPaymentModalOpen(true);
+                  }}
+                  className="w-full min-h-[44px] px-3 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-3 transition-colors"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  <span>Record Payment</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setPaymentSettingsModalOpen(true);
+                  }}
+                  className="w-full min-h-[44px] px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-accent text-foreground text-xs font-bold flex items-center gap-3 transition-colors"
+                >
+                  <QrCode className="h-4 w-4 text-primary" />
+                  <span>Payment Settings (Bank & UPI)</span>
+                </button>
+              </div>
+
+              {/* Dark mode switcher in mobile drawer */}
+              <div className="pt-4 border-t border-border">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">
+                  Theme Appearance
+                </span>
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-muted rounded-xl border border-border text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setTheme('light')}
+                    className={`min-h-[40px] rounded-lg flex items-center justify-center gap-1 transition-all ${
+                      theme === 'light'
+                        ? 'bg-background text-foreground shadow-xs font-bold'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    <Sun className="h-3.5 w-3.5" />
+                    <span>Light</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('dark')}
+                    className={`min-h-[40px] rounded-lg flex items-center justify-center gap-1 transition-all ${
+                      theme === 'dark'
+                        ? 'bg-background text-foreground shadow-xs font-bold'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    <Moon className="h-3.5 w-3.5" />
+                    <span>Dark</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('system')}
+                    className={`min-h-[40px] rounded-lg flex items-center justify-center gap-1 transition-all ${
+                      theme === 'system'
+                        ? 'bg-background text-foreground shadow-xs font-bold'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    <span>Auto</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-border text-center text-[10px] text-muted-foreground">
+              BillCraft Invoice Studio
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky Bottom Bar on Mobile */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-3 bg-card/95 backdrop-blur-md border-t border-border flex items-center gap-2.5 shadow-2xl no-print">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleDownloadPdf}
+          disabled={isExportingPdf}
+          className="flex-1 min-h-[44px] text-xs font-bold border-border bg-background hover:bg-accent text-foreground flex items-center justify-center gap-1.5"
+        >
+          <Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <span>{isExportingPdf ? 'Exporting...' : 'Download PDF'}</span>
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleFinalize}
+          className="flex-1 min-h-[44px] text-xs font-bold bg-primary hover:bg-primary-hover text-primary-foreground flex items-center justify-center gap-1.5 shadow-md"
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          <span>{effectiveStatus === 'draft' || !isPersisted ? 'Finalize Invoice' : 'Update Finalized'}</span>
+        </Button>
       </div>
 
       {/* ==================================================================== */}
       {/* VIEW MODE 1: INLINE SHEET EDITOR (Default) */}
       {/* ==================================================================== */}
       {viewMode === 'sheet' && (
-        <div className="flex-1 bg-slate-200/70 p-4 md:p-8 flex justify-center items-start overflow-y-auto no-print">
+        <div className="flex-1 bg-slate-200/50 dark:bg-slate-900/60 p-4 md:p-8 flex justify-center items-start overflow-y-auto no-print pb-28 md:pb-8">
           <div className="w-full max-w-4xl">
             <InlineDocumentCanvas
               document={documentModel}
@@ -1456,9 +1848,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       {/* VIEW MODE 2: PRINT / PDF CLEAN PREVIEW */}
       {/* ==================================================================== */}
       {viewMode === 'pdf_preview' && (
-        <div className="flex-1 bg-slate-300/70 p-4 md:p-8 flex flex-col items-center overflow-y-auto no-print">
-          <div className="mb-4 flex flex-wrap items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 text-xs">
-            <span className="font-semibold text-slate-700">
+        <div className="flex-1 bg-slate-300/50 dark:bg-slate-900 p-4 md:p-8 flex flex-col items-center overflow-y-auto no-print pb-28 md:pb-8">
+          <div className="mb-4 flex flex-wrap items-center gap-3 bg-card px-4 py-2 rounded-full shadow-sm border border-border text-xs text-card-foreground">
+            <span className="font-semibold text-foreground">
               A4 Print & PDF Output Preview ({activeTemplateMeta.name})
             </span>
             <Button
@@ -1469,14 +1861,14 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             >
               <Download className="h-3.5 w-3.5 mr-1" /> Download PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={triggerPrint} className="h-7 text-xs">
+            <Button variant="outline" size="sm" onClick={triggerPrint} className="h-7 text-xs border-border bg-background hover:bg-accent">
               <Printer className="h-3.5 w-3.5 mr-1" /> Print Invoice
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPaymentSettingsModalOpen(true)}
-              className="h-7 text-xs"
+              className="h-7 text-xs border-border bg-background hover:bg-accent"
             >
               <QrCode className="h-3.5 w-3.5 mr-1 text-primary" /> Payment Display Controls
             </Button>
@@ -1495,7 +1887,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       {/* VIEW MODE 3: 2-COLUMN SPLIT FORM & LIVE PREVIEW */}
       {/* ==================================================================== */}
       {viewMode === 'split' && (
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden no-print">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden no-print pb-28 md:pb-0">
           {/* LEFT COLUMN: Structured Editing Form */}
           <div
             className={`w-full lg:w-1/2 p-4 md:p-6 overflow-y-auto max-h-[calc(100vh-110px)] ${
@@ -1503,15 +1895,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             }`}
           >
             {/* Split Mode Selector (Form vs Inline Canvas) */}
-            <div className="max-w-2xl mx-auto mb-4 pb-3 border-b border-slate-200 flex items-center justify-between">
-              <div className="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg">
+            <div className="max-w-2xl mx-auto mb-4 pb-3 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-1 bg-muted p-0.5 rounded-lg border border-border">
                 <button
                   type="button"
                   onClick={() => setSplitLeftMode('form')}
                   className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
                     splitLeftMode === 'form'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-background text-foreground shadow-xs font-black'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   📝 Structured Form

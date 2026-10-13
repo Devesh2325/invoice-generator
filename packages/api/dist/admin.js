@@ -1,6 +1,6 @@
 import { PLANS, } from '@invoice/core';
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'dmchaturvedi@gmail.com';
-const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || 'Devesh@23251995';
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admin@billcraft.io';
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || 'Admin@123456';
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 mins
 export class AdminApi {
@@ -94,43 +94,58 @@ export class AdminApi {
         const mrr = activeSubscribers.reduce((acc, u) => {
             return acc + (u.plan === 'pro' ? 799 : 2499);
         }, 0);
+        let invoicesCount = 0;
+        if (typeof window !== 'undefined') {
+            try {
+                const docsRaw = localStorage.getItem('billcraft_documents');
+                if (docsRaw) {
+                    const parsed = JSON.parse(docsRaw);
+                    invoicesCount = Array.isArray(parsed) ? parsed.length : 0;
+                }
+            }
+            catch { }
+        }
         return {
             totalUsers: users.length,
             activeSubscribers: activeSubscribers.length,
             monthlyRecurringRevenue: mrr,
-            invoicesThisMonth: 1240,
-            userGrowth: [
-                { month: 'Nov', count: 420 },
-                { month: 'Dec', count: 680 },
-                { month: 'Jan', count: 950 },
-                { month: 'Feb', count: 1210 },
-                { month: 'Mar', count: 1540 },
-                { month: 'Apr', count: users.length },
-            ],
+            invoicesThisMonth: invoicesCount,
+            userGrowth: users.length > 0 ? [
+                { month: 'Current', count: users.length },
+            ] : [],
         };
     }
-    // Users Management
+    // Users Management - Starts empty and fills strictly with real signups
     static getUsers() {
-        const seedUsers = [
-            { id: 'usr_1', email: 'aditya@apextech.in', name: 'Aditya Sharma', plan: 'pro', status: 'active', createdAt: '2026-01-12', invoicesCount: 48 },
-            { id: 'usr_2', email: 'priya@studioflow.io', name: 'Priya Nambiar', plan: 'enterprise', status: 'active', createdAt: '2026-02-04', invoicesCount: 192 },
-            { id: 'usr_3', email: 'vikram@solodesign.co', name: 'Vikram Joshi', plan: 'starter', status: 'active', createdAt: '2026-02-18', invoicesCount: 14 },
-            { id: 'usr_4', email: 'karan@cloudops.net', name: 'Karan Mehra', plan: 'pro', status: 'active', createdAt: '2026-03-01', invoicesCount: 65 },
-            { id: 'usr_5', email: 'spammer@tempmail.com', name: 'Suspicious Entity', plan: 'starter', status: 'banned', createdAt: '2026-03-12', invoicesCount: 0 },
-        ];
         if (typeof window === 'undefined')
-            return seedUsers;
+            return [];
         try {
             const stored = localStorage.getItem('billcraft_admin_users');
             if (stored) {
                 const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0)
+                if (Array.isArray(parsed))
                     return parsed;
             }
-            localStorage.setItem('billcraft_admin_users', JSON.stringify(seedUsers));
+            // Also check registered users
+            const regRaw = localStorage.getItem('billcraft_registered_users');
+            if (regRaw) {
+                const registered = JSON.parse(regRaw);
+                if (Array.isArray(registered) && registered.length > 0) {
+                    const mapped = registered.map((u) => ({
+                        id: u.id || `usr_${Date.now()}`,
+                        email: u.email,
+                        name: u.name || 'User',
+                        plan: u.plan || 'starter',
+                        status: 'active',
+                        createdAt: u.createdAt || new Date().toISOString().split('T')[0],
+                        invoicesCount: u.invoicesCount || 0,
+                    }));
+                    return mapped;
+                }
+            }
         }
         catch { }
-        return seedUsers;
+        return [];
     }
     static updateUser(userId, patch) {
         const users = this.getUsers();
@@ -215,27 +230,74 @@ export class AdminApi {
         }
         return true;
     }
-    // Teams & Workspaces Management
+    // Teams & Workspaces Management - Starts empty
     static getTeams() {
-        const seeds = [
-            { id: 'tm_1', name: 'Apex Technologies Pvt Ltd', ownerEmail: 'aditya@apextech.in', membersCount: 4, invoicesCount: 48, plan: 'pro', status: 'active', createdAt: '2026-01-12' },
-            { id: 'tm_2', name: 'Studio Flow Media', ownerEmail: 'priya@studioflow.io', membersCount: 12, invoicesCount: 192, plan: 'enterprise', status: 'active', createdAt: '2026-02-04' },
-            { id: 'tm_3', name: 'Solo Design Works', ownerEmail: 'vikram@solodesign.co', membersCount: 1, invoicesCount: 14, plan: 'starter', status: 'active', createdAt: '2026-02-18' },
-            { id: 'tm_4', name: 'CloudOps Systems Inc', ownerEmail: 'karan@cloudops.net', membersCount: 3, invoicesCount: 65, plan: 'pro', status: 'active', createdAt: '2026-03-01' },
-        ];
         if (typeof window === 'undefined')
-            return seeds;
+            return [];
         try {
             const stored = localStorage.getItem('billcraft_admin_teams');
             if (stored) {
                 const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0)
+                if (Array.isArray(parsed))
                     return parsed;
             }
-            localStorage.setItem('billcraft_admin_teams', JSON.stringify(seeds));
+            // Also check if any custom tenants exist
+            const ctRaw = localStorage.getItem('billcraft_custom_tenants');
+            if (ctRaw) {
+                const ct = JSON.parse(ctRaw);
+                if (Array.isArray(ct) && ct.length > 0) {
+                    return ct.map((t) => ({
+                        id: t.id,
+                        name: t.name,
+                        ownerEmail: t.ownerUserId || 'owner@workspace.io',
+                        membersCount: 1,
+                        invoicesCount: 0,
+                        plan: 'starter',
+                        status: 'active',
+                        createdAt: new Date().toISOString().split('T')[0],
+                        isWhiteLabel: Boolean(t.isWhiteLabel),
+                    }));
+                }
+            }
         }
         catch { }
-        return seeds;
+        return [];
+    }
+    static createTeam(params) {
+        const teams = this.getTeams();
+        const newTeam = {
+            id: `tm_${Date.now()}`,
+            name: params.name,
+            ownerEmail: params.ownerEmail,
+            membersCount: 1,
+            invoicesCount: 0,
+            plan: params.plan || 'starter',
+            status: 'active',
+            createdAt: new Date().toISOString().split('T')[0],
+            isWhiteLabel: Boolean(params.isWhiteLabel),
+        };
+        const updated = [newTeam, ...teams];
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('billcraft_admin_teams', JSON.stringify(updated));
+            // Mirror to custom tenants for app usage
+            try {
+                const existingTenantsRaw = localStorage.getItem('billcraft_custom_tenants');
+                const existingTenants = existingTenantsRaw ? JSON.parse(existingTenantsRaw) : [];
+                const newTenant = {
+                    id: newTeam.id,
+                    name: newTeam.name,
+                    slug: newTeam.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                    ownerUserId: newTeam.ownerEmail,
+                    role: 'owner',
+                    currency: params.currency || 'INR',
+                    isWhiteLabel: Boolean(params.isWhiteLabel),
+                };
+                localStorage.setItem('billcraft_custom_tenants', JSON.stringify([newTenant, ...existingTenants]));
+            }
+            catch { }
+            this.recordAuditLog('CREATE_WORKSPACE', `Team: ${newTeam.name} (${newTeam.id})`, 'Super Admin');
+        }
+        return newTeam;
     }
     static updateTeam(teamId, patch) {
         const teams = this.getTeams();
@@ -246,51 +308,20 @@ export class AdminApi {
         }
         return true;
     }
-    // Inquiries Management
+    // Inquiries Management - Starts empty
     static getInquiries() {
-        const seedInquiries = [
-            {
-                id: 'inq_1',
-                name: 'Rohan Verma',
-                email: 'rohan@technet.in',
-                subject: 'Custom Domain Setup for Enterprise',
-                message: 'We are interested in mapping billing.technet.in to our BillCraft workspace with custom SSL.',
-                status: 'new',
-                createdAt: '2026-04-10T11:20:00Z',
-            },
-            {
-                id: 'inq_2',
-                name: 'Sneha Patel',
-                email: 'sneha@designlab.co',
-                subject: 'GST Multi-State Billing Question',
-                message: 'How do we handle SEZ supplies under zero-rated tax rules? Can we add an SEZ LUT checkbox on our invoices?',
-                status: 'in_progress',
-                createdAt: '2026-04-08T15:45:00Z',
-                notes: 'Advised client on place of supply override and zero-rate toggle.',
-            },
-            {
-                id: 'inq_3',
-                name: 'Vikram Malhotra',
-                email: 'vikram@retailedge.com',
-                subject: 'Bulk Invoicing API Access',
-                message: 'Do you offer an automated REST API or webhook for our warehouse ERP to generate invoices automatically?',
-                status: 'new',
-                createdAt: '2026-04-12T09:15:00Z',
-            },
-        ];
         if (typeof window === 'undefined')
-            return seedInquiries;
+            return [];
         try {
             const stored = localStorage.getItem('billcraft_inquiries');
             if (stored) {
                 const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0)
+                if (Array.isArray(parsed))
                     return parsed;
             }
-            localStorage.setItem('billcraft_inquiries', JSON.stringify(seedInquiries));
         }
         catch { }
-        return seedInquiries;
+        return [];
     }
     static updateInquiry(inquiryId, status, notes) {
         const inquiries = this.getInquiries();
@@ -345,16 +376,10 @@ export class AdminApi {
         }
         return false;
     }
-    // System Audit Logs
+    // System Audit Logs - Starts empty
     static getSystemAuditLogs() {
-        const seeds = [
-            { id: 'log_1', actor: 'Super Admin', action: 'PORTAL_LOGIN', target: '/admin', timestamp: new Date().toISOString() },
-            { id: 'log_2', actor: 'System Worker', action: 'DATABASE_BACKUP_COMPLETED', target: 'IndexedDB & Supabase', timestamp: new Date(Date.now() - 3600000).toISOString() },
-            { id: 'log_3', actor: 'Super Admin', action: 'PLAN_LIMITS_SYNCHRONIZED', target: 'Starter / Pro / Enterprise', timestamp: new Date(Date.now() - 86400000).toISOString() },
-            { id: 'log_4', actor: 'System Worker', action: 'AUTO_REFRESH_TOKEN_VERIFY', target: 'Auth Daemon', timestamp: new Date(Date.now() - 172800000).toISOString() },
-        ];
         if (typeof window === 'undefined')
-            return seeds;
+            return [];
         try {
             const stored = localStorage.getItem('billcraft_admin_audit_logs');
             if (stored) {
@@ -364,7 +389,7 @@ export class AdminApi {
             }
         }
         catch { }
-        return seeds;
+        return [];
     }
     static recordAuditLog(action, target, actor = 'Super Admin') {
         if (typeof window === 'undefined')

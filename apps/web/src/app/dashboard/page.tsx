@@ -27,12 +27,16 @@ import {
   TrendingUp,
   RotateCcw,
   Wallet,
+  Sparkles,
+  X,
 } from 'lucide-react';
 
 export default function TenantDashboardPage() {
   const { activeTenant, tenantCurrency } = useTenant();
   const [documents, setDocuments] = useState<CanonicalDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const isPaidPlan = Boolean(activeTenant?.plan && activeTenant.plan !== 'starter');
 
   useEffect(() => {
     async function loadData() {
@@ -172,6 +176,53 @@ export default function TenantDashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* Upgraded Plan Celebration Banner */}
+        {isPaidPlan && !bannerDismissed && (
+          <div className="relative overflow-hidden rounded-2xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/90 via-purple-50/70 to-amber-50/50 p-5 dark:border-indigo-900/60 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-slate-900 shadow-sm transition-all">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm md:text-base">
+                      {activeTenant?.plan?.toUpperCase()} Plan Active
+                    </h3>
+                    <Badge variant="outline" className="border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300 text-[10px] uppercase font-bold tracking-wider">
+                      Premium Features Unlocked
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
+                    You have unlocked unlimited invoices, custom branding, UPI QR codes, multi-currency support, and priority email dispatch.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 self-end md:self-center shrink-0">
+                <Link href="/settings">
+                  <Button size="sm" variant="outline" className="text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-100/60 dark:border-indigo-800 dark:text-indigo-300">
+                    Brand Settings
+                  </Button>
+                </Link>
+                <Link href="/create">
+                  <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm">
+                    New Invoice
+                  </Button>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setBannerDismissed(true)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg ml-1"
+                  aria-label="Dismiss banner"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 6 Financial KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

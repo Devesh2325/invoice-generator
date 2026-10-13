@@ -24,10 +24,6 @@ export default function LoginPage() {
 
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      if (normalizedEmail === 'admin@acmedesign.io') {
-        await handleDemoSignIn();
-        return;
-      }
 
       if (typeof window !== 'undefined') {
         const usersRaw = window.localStorage.getItem('billcraft_registered_users');
@@ -52,7 +48,7 @@ export default function LoginPage() {
         }
       }
 
-      setErrorMsg('No account found with this email. Please create a workspace first or use Demo Login.');
+      setErrorMsg('No account found with this email. Please create a workspace first.');
       setLoading(false);
     } catch (err: any) {
       setErrorMsg('Authentication error. Please try again.');
@@ -60,52 +56,30 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoSignIn = async () => {
-    setLoading(true);
-    if (typeof window !== 'undefined') {
-      const demoUser = {
-        id: 'usr_demo_01',
-        email: 'admin@acmedesign.io',
-        name: 'Sarah Connor (Studio Director)',
-      };
-      window.localStorage.setItem('billcraft_current_user', JSON.stringify(demoUser));
-      window.localStorage.setItem('billcraft_current_user_id', demoUser.id);
-      window.localStorage.setItem(
-        'billcraft_active_tenant_id',
-        'a0000000-0000-0000-0000-000000000001'
-      );
-    }
-    await refreshTenants();
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('billcraft-auth-updated'));
-    }
-    router.push('/dashboard');
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center items-center p-6 font-sans">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 font-black text-2xl text-primary tracking-tight">
             <Sparkles className="h-6 w-6 text-primary" />
             <span>BillCraft</span>
           </Link>
-          <h2 className="text-xl font-bold text-slate-900">Sign in to your Workspace</h2>
-          <p className="text-xs text-slate-500">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Sign in to your Workspace</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Access your private GST & financial documents, customers, and analytics
           </p>
         </div>
 
-        <Card className="border-slate-200 shadow-lg">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-bold">Account Credentials</CardTitle>
-            <CardDescription className="text-xs">
-              Enter your registered email and password or use the demo workspace
+            <CardTitle className="text-base font-bold text-slate-900 dark:text-slate-100">Account Credentials</CardTitle>
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
+              Enter your registered email and password
             </CardDescription>
           </CardHeader>
           <CardContent>
             {errorMsg && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-400 text-xs flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -113,7 +87,7 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Email Address</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
@@ -121,14 +95,14 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 text-xs"
+                    className="pl-9 text-xs bg-transparent"
                     placeholder="you@company.in"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Password</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
@@ -136,7 +110,7 @@ export default function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9 text-xs"
+                    className="pl-9 text-xs bg-transparent"
                     placeholder="••••••••"
                   />
                 </div>
@@ -150,25 +124,6 @@ export default function LoginPage() {
                 {loading ? 'Signing In...' : 'Sign In to Workspace'}
               </Button>
             </form>
-
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase">
-                <span className="bg-white px-2 text-slate-400">Or Instant Sandbox</span>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleDemoSignIn}
-              disabled={loading}
-              className="w-full text-xs h-9 border-dashed border-slate-300 hover:bg-blue-50/50"
-            >
-              1-Click Demo Login (Acme Design Agency)
-            </Button>
           </CardContent>
         </Card>
 

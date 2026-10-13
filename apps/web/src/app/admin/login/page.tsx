@@ -11,8 +11,8 @@ import Link from 'next/link';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('dmchaturvedi@gmail.com');
-  const [password, setPassword] = useState('Devesh@23251995');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,7 +53,7 @@ export default function AdminLoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4 text-xs">
               <div>
                 <label className="text-slate-300 font-semibold block mb-1">Admin Email</label>
                 <div className="relative">
@@ -61,8 +61,10 @@ export default function AdminLoginPage() {
                   <Input
                     type="email"
                     required
+                    autoComplete="off"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@yourcompany.com"
                     className="pl-9 bg-slate-800/80 border-slate-700 text-white font-mono text-xs"
                   />
                 </div>
@@ -75,8 +77,10 @@ export default function AdminLoginPage() {
                   <Input
                     type="password"
                     required
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
                     className="pl-9 bg-slate-800/80 border-slate-700 text-white font-mono text-xs"
                   />
                 </div>

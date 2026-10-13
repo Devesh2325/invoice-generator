@@ -19,6 +19,8 @@ export interface Tenant {
     email?: string;
     phone?: string;
     invoicePrefix?: string;
+    isWhiteLabel?: boolean;
+    plan?: string;
 }
 export interface ProductCatalogItem {
     id: string;
@@ -62,6 +64,7 @@ export interface TenantBrandSettings {
     enableRoundOff?: boolean;
     roundingMode?: RoundingMode;
     paymentConfig?: DocumentPaymentConfig;
+    whiteLabelEnabled?: boolean;
 }
 export declare function getSupabase(): SupabaseClient | null;
 export declare const TenantApi: {

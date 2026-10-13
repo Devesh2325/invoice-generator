@@ -41,8 +41,14 @@ export const CommandPalette: React.FC = () => {
         setOpen((prev) => !prev);
       }
     };
+    const handleOpenEvent = () => setOpen(true);
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-command-palette', handleOpenEvent);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-command-palette', handleOpenEvent);
+    };
   }, []);
 
   const commands: CommandItem[] = [
@@ -147,8 +153,8 @@ export const CommandPalette: React.FC = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="p-0 overflow-hidden max-w-xl border-border bg-card shadow-2xl">
-        <div className="flex items-center border-b border-border px-3.5">
+      <DialogContent className="p-0 overflow-hidden w-[92vw] sm:max-w-xl max-h-[85vh] border-border bg-card shadow-2xl z-[100] flex flex-col">
+        <div className="flex items-center border-b border-border px-3.5 shrink-0">
           <Search className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />
           <input
             value={query}
@@ -162,9 +168,9 @@ export const CommandPalette: React.FC = () => {
           </kbd>
         </div>
 
-        <div className="max-h-80 overflow-y-auto p-2 divide-y divide-border/40">
+        <div className="flex-1 overflow-y-auto max-h-[60vh] p-2 divide-y divide-border/40">
           {filtered.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
+            <div className="p-8 text-center text-xs text-muted-foreground">
               No matching commands found.
             </div>
           ) : (
@@ -195,7 +201,7 @@ export const CommandPalette: React.FC = () => {
             })
           )}
         </div>
-        <div className="border-t border-border px-3 py-2 bg-muted/40 text-[11px] text-muted-foreground flex justify-between items-center">
+        <div className="border-t border-border px-3.5 py-2.5 bg-muted/40 text-[11px] text-muted-foreground flex justify-between items-center shrink-0">
           <span>Navigate with mouse or keyboard</span>
           <span className="font-mono">Cmd + K / Ctrl + K</span>
         </div>

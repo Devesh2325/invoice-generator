@@ -31,6 +31,8 @@ export interface Tenant {
   email?: string;
   phone?: string;
   invoicePrefix?: string;
+  isWhiteLabel?: boolean;
+  plan?: string;
 }
 
 export interface ProductCatalogItem {
@@ -82,6 +84,7 @@ export interface TenantBrandSettings {
 
   // Payment Configuration (Structured Bank Accounts, UPI, QR Code & Display Controls)
   paymentConfig?: DocumentPaymentConfig;
+  whiteLabelEnabled?: boolean;
 }
 
 // 1. Client initialization
@@ -124,13 +127,13 @@ function setLocalStore<T>(key: string, value: T): void {
 const DEFAULT_DEMO_BANK_ACCOUNT: BankAccountDetails = {
   id: 'bank_demo_01',
   accountHolderName: 'Acme Design Agency Pvt Ltd',
-  bankName: 'HDFC Bank Ltd',
-  accountNumber: '50200049182731',
-  confirmAccountNumber: '50200049182731',
-  ifscOrRoutingCode: 'HDFC0000124',
-  branchName: 'Nariman Point, Mumbai',
+  bankName: 'Demo Bank',
+  accountNumber: '0000000000',
+  confirmAccountNumber: '0000000000',
+  ifscOrRoutingCode: 'DEMO0000000',
+  branchName: 'Main Branch',
   accountType: 'current',
-  swiftBicCode: 'HDFCINBB',
+  swiftBicCode: 'DEMOBANK',
   country: 'India',
   isPrimary: true,
 };
@@ -138,15 +141,9 @@ const DEFAULT_DEMO_BANK_ACCOUNT: BankAccountDetails = {
 const DEFAULT_DEMO_PAYMENT_CONFIG: DocumentPaymentConfig = {
   bankAccounts: [DEFAULT_DEMO_BANK_ACCOUNT],
   selectedBankAccountIds: ['bank_demo_01'],
-  upiId: 'acmedesign@hdfcbank',
+  upiId: 'billing@example.com',
   upiPayeeName: 'Acme Design Agency Pvt Ltd',
   autoGenerateUpiQr: true,
-  qrCodeDataUrl:
-    generateVerifiedUpiQrSvgDataUrl({
-      upiId: 'acmedesign@hdfcbank',
-      payeeName: 'Acme Design Agency Pvt Ltd',
-      currency: 'INR',
-    }) || undefined,
   display: {
     showBankDetails: true,
     showUpiId: true,
@@ -156,249 +153,13 @@ const DEFAULT_DEMO_PAYMENT_CONFIG: DocumentPaymentConfig = {
   },
 };
 
-// 2. Demo Seed Data (Scoped strictly to Demo User 'usr_demo_01')
-const DEMO_TENANTS: Tenant[] = [
-  {
-    id: 'a0000000-0000-0000-0000-000000000001',
-    name: 'Acme Design Agency',
-    slug: 'acme-design',
-    ownerUserId: 'usr_demo_01',
-    custom_domain: 'billing.acmedesign.io',
-    is_domain_verified: true,
-    role: 'owner',
-    currency: 'INR',
-    locale: 'en-IN',
-    country: 'India',
-    gstState: '27 - Maharashtra',
-    taxId: '27AABCU9603R1ZM',
-    street: 'Level 8, One BKC, Bandra Kurla Complex',
-    city: 'Mumbai',
-    postalCode: '400051',
-    email: 'billing@acmedesign.io',
-    phone: '+91 22 4001 9200',
-    invoicePrefix: 'INV',
-  },
-  {
-    id: 'a0000000-0000-0000-0000-000000000002',
-    name: 'Nexus Cloud Solutions',
-    slug: 'nexus-cloud',
-    ownerUserId: 'usr_demo_01',
-    custom_domain: null,
-    is_domain_verified: false,
-    role: 'admin',
-    currency: 'USD',
-    locale: 'en-US',
-    country: 'United States',
-    invoicePrefix: 'NEX',
-  },
-];
+// 2. Collections start empty - populating strictly as real users and tenants create data
+const DEMO_TENANTS: Tenant[] = [];
 
-const DEMO_PARTIES: Record<string, Party[]> = {
-  'a0000000-0000-0000-0000-000000000001': [
-    {
-      id: 'c0000000-0000-0000-0000-000000000001',
-      type: 'customer',
-      name: 'Reliance Retail Ventures Ltd',
-      email: 'accounts@relianceretail.in',
-      phone: '+91 22 6767 3800',
-      taxId: '27AAACR5055K1Z7',
-      billingAddress: {
-        street1: '4th Floor, Court House, Lokmanya Tilak Marg',
-        city: 'Mumbai',
-        state: '27 - Maharashtra',
-        postalCode: '400002',
-        country: 'India',
-      },
-      notes: 'Enterprise GST client, net 15 payment terms',
-      isArchived: false,
-    },
-    {
-      id: 'c0000000-0000-0000-0000-000000000002',
-      type: 'customer',
-      name: 'Infosys Finacle Technologies',
-      email: 'finance@infosys.com',
-      phone: '+91 80 2852 0261',
-      taxId: '29AAACI1681G1Z0',
-      billingAddress: {
-        street1: 'Electronics City, Hosur Road',
-        city: 'Bengaluru',
-        state: '29 - Karnataka',
-        postalCode: '560100',
-        country: 'India',
-      },
-      notes: 'Inter-state IGST billing account',
-      isArchived: false,
-    },
-  ],
-  'a0000000-0000-0000-0000-000000000002': [
-    {
-      id: 'c0000000-0000-0000-0000-000000000003',
-      type: 'customer',
-      name: 'Vandelay Industries',
-      email: 'george@vandelay.com',
-      phone: '+1 (555) 777-8899',
-      taxId: 'GSTIN-88491',
-      billingAddress: {
-        street1: '129 W 81st St',
-        city: 'New York',
-        postalCode: '10024',
-        country: 'United States',
-      },
-      isArchived: false,
-    },
-  ],
-};
+const DEMO_PARTIES: Record<string, Party[]> = {};
+const DEMO_PRODUCTS: Record<string, ProductCatalogItem[]> = {};
 
-const DEMO_PRODUCTS: Record<string, ProductCatalogItem[]> = {
-  'a0000000-0000-0000-0000-000000000001': [
-    {
-      id: 'p0000000-0000-0000-0000-000000000001',
-      tenantId: 'a0000000-0000-0000-0000-000000000001',
-      name: 'UI/UX Design & Brand System Sprint',
-      sku: 'SAC-998314',
-      hsnCode: '998314',
-      description: '5-day interactive product design & component architecture',
-      unitPrice: 85000,
-      unit: 'sprint',
-      taxRate: 18,
-      isArchived: false,
-    },
-    {
-      id: 'p0000000-0000-0000-0000-000000000002',
-      tenantId: 'a0000000-0000-0000-0000-000000000001',
-      name: 'Full-Stack Next.js Cloud Engineering',
-      sku: 'SAC-998313',
-      hsnCode: '998313',
-      description: 'Senior software architecture and implementation',
-      unitPrice: 4500,
-      unit: 'hour',
-      taxRate: 18,
-      isArchived: false,
-    },
-  ],
-};
-
-const DEMO_DOCUMENTS: Record<string, DocumentModel[]> = {
-  'a0000000-0000-0000-0000-000000000001': [
-    {
-      id: 'doc_demo_01',
-      tenantId: 'a0000000-0000-0000-0000-000000000001',
-      ownerUserId: 'usr_demo_01',
-      invoiceName: 'Q4 UI/UX Brand System Retainer',
-      type: 'invoice',
-      status: 'partially_paid',
-      documentNumber: 'INV-2026-00101',
-      issueDate: '2026-10-01',
-      dueDate: '2026-10-15',
-      currency: 'INR',
-      placeOfSupply: '27 - Maharashtra',
-      enableRoundOff: true,
-      roundingMode: 'nearest_integer',
-      decimalPrecision: 2,
-      sender: {
-        name: 'Acme Design Agency Pvt Ltd',
-        email: 'billing@acmedesign.io',
-        phone: '+91 22 4001 9200',
-        taxId: '27AABCU9603R1ZM',
-        address: {
-          street1: 'Level 8, One BKC, Bandra Kurla Complex',
-          city: 'Mumbai',
-          state: '27 - Maharashtra',
-          postalCode: '400051',
-          country: 'India',
-        },
-      },
-      client: DEMO_PARTIES['a0000000-0000-0000-0000-000000000001'][0],
-      items: [
-        {
-          id: 'item_1',
-          description: 'UI/UX Design & Brand System Sprint',
-          hsnCode: '998314',
-          quantity: 1,
-          unitPrice: 85000,
-          lineGross: 85000,
-          lineDiscount: 0,
-          lineNet: 85000,
-          taxAmount: 15300,
-          taxRate: 18,
-          cgstRate: 9,
-          cgstAmount: 7650,
-          sgstRate: 9,
-          sgstAmount: 7650,
-          igstRate: 0,
-          igstAmount: 0,
-          lineTotal: 100300,
-        },
-      ],
-      summary: {
-        subtotal: 85000,
-        discountTotal: 0,
-        taxableSubtotal: 85000,
-        totalTax: 15300,
-        gstSupplyType: 'intra',
-        cgstTotal: 7650,
-        sgstTotal: 7650,
-        igstTotal: 0,
-        taxBreakdown: [
-          {
-            rate: 18,
-            taxableAmount: 85000,
-            taxAmount: 15300,
-            cgstRate: 9,
-            cgstAmount: 7650,
-            sgstRate: 9,
-            sgstAmount: 7650,
-            igstRate: 0,
-            igstAmount: 0,
-          },
-        ],
-        shippingFee: 0,
-        extraCharges: 0,
-        totalBeforeRoundOff: 100300,
-        roundOffAmount: 0,
-        grandTotal: 100300,
-        amountPaid: 50000,
-        refundedAmount: 0,
-        netAmountPaid: 50000,
-        balanceDue: 50300,
-      },
-      templateId: 'cleartax_gst',
-      paymentConfig: DEFAULT_DEMO_PAYMENT_CONFIG,
-      paymentTerms: 'Net 15 Days',
-      paymentInstructions: 'NEFT / RTGS / IMPS / UPI accepted. Please quote invoice number in remarks.',
-      payments: [
-        {
-          id: 'pay_1',
-          documentId: 'doc_demo_01',
-          amount: 50000,
-          paymentDate: '2026-10-03',
-          paymentMethod: 'bank_transfer',
-          reference: 'NEFT-894102',
-          notes: '50% advance milestone payment',
-          createdAt: '2026-10-03T10:00:00Z',
-        },
-      ],
-      refunds: [],
-      auditHistory: [
-        {
-          id: 'aud_1',
-          action: 'INVOICE_CREATED',
-          description: 'Invoice INV-2026-00101 created and finalized for ₹1,00,300.00',
-          timestamp: '2026-10-01T09:00:00Z',
-        },
-        {
-          id: 'aud_2',
-          action: 'PAYMENT_RECORDED',
-          description: 'Recorded payment of ₹50,000.00 via Bank Transfer (Ref: NEFT-894102)',
-          timestamp: '2026-10-03T10:00:00Z',
-        },
-      ],
-      createdAt: '2026-10-01T09:00:00Z',
-      updatedAt: '2026-10-03T10:00:00Z',
-      finalizedAt: '2026-10-01T09:30:00Z',
-    },
-  ],
-};
+const DEMO_DOCUMENTS: Record<string, DocumentModel[]> = {};
 
 const DEMO_BRAND_SETTINGS: Record<string, TenantBrandSettings> = {
   'a0000000-0000-0000-0000-000000000001': {

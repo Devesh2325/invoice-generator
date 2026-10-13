@@ -57,4 +57,5 @@ export interface AdminTeam {
     plan: PlanId;
     status: 'active' | 'suspended';
     createdAt: string;
+    isWhiteLabel?: boolean;
 }

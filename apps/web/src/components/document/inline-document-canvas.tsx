@@ -26,7 +26,6 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from 'lucide-react';
-import { DocumentTypeSelector } from './document-type-selector';
 
 interface InlineDocumentCanvasProps {
   document: DocumentModel;
@@ -415,17 +414,15 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b" style={{ borderColor }}>
               <div>
                 <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight" style={{ color: effectiveAccent }}>
-                  {tpl.title}
+                  {document.type === 'purchase_order' ? 'PURCHASE ORDER' : document.type === 'estimate' ? 'ESTIMATE / QUOTE' : tpl.title}
                 </h2>
                 {tpl.subtitle && (
                   <p className="text-xs font-semibold opacity-70">{tpl.subtitle}</p>
                 )}
               </div>
-              <DocumentTypeSelector
-                value={document.type}
-                onChange={(newType) => onUpdateDoc('type', newType)}
-                primaryColor={effectiveAccent}
-              />
+              <div className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border" style={{ borderColor: effectiveAccent, color: effectiveAccent }}>
+                {document.type.replace('_', ' ')}
+              </div>
             </div>
 
             {/* Metadata line */}
@@ -510,12 +507,9 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   {tpl.subtitle && (
                     <p className="text-xs text-white/80 font-medium">{tpl.subtitle}</p>
                   )}
-                  <DocumentTypeSelector
-                    value={document.type}
-                    onChange={(newType) => onUpdateDoc('type', newType)}
-                    isBannerHeader
-                    primaryColor={effectiveAccent}
-                  />
+                  <div className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/20 text-white mt-1">
+                    {document.type.replace('_', ' ')}
+                  </div>
                 </div>
 
                 <div className="space-y-1.5 text-xs text-white/90 md:text-right">
@@ -595,11 +589,9 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     <h2 className="text-2xl font-black uppercase tracking-tight" style={{ color: effectiveAccent }}>
                       {tpl.title}
                     </h2>
-                    <DocumentTypeSelector
-                      value={document.type}
-                      onChange={(newType) => onUpdateDoc('type', newType)}
-                      primaryColor={effectiveAccent}
-                    />
+                    <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border" style={{ borderColor: effectiveAccent, color: effectiveAccent }}>
+                      {document.type.replace('_', ' ')}
+                    </span>
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-mono" style={{ color: mutedTextColor }}>
                     <div>
@@ -627,11 +619,9 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     <p className="text-sm font-bold opacity-75 mt-0.5">{tpl.subtitle}</p>
                   )}
                   <div className="mt-2">
-                    <DocumentTypeSelector
-                      value={document.type}
-                      onChange={(newType) => onUpdateDoc('type', newType)}
-                      primaryColor={effectiveAccent}
-                    />
+                    <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border inline-block" style={{ borderColor: effectiveAccent, color: effectiveAccent }}>
+                      {document.type.replace('_', ' ')}
+                    </span>
                   </div>
                 </div>
 
@@ -761,11 +751,9 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 {/* Right: Type & Meta */}
                 <div className="w-full md:w-5/12 text-left md:text-right space-y-2">
                   <div className="flex md:justify-end items-center">
-                    <DocumentTypeSelector
-                      value={document.type}
-                      onChange={(newType) => onUpdateDoc('type', newType)}
-                      primaryColor={effectiveAccent}
-                    />
+                    <span className="text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-lg border" style={{ borderColor: `${effectiveAccent}40`, color: effectiveAccent, backgroundColor: `${effectiveAccent}08` }}>
+                      {document.type.replace('_', ' ')}
+                    </span>
                   </div>
 
                   <div className="space-y-1.5 text-xs pt-1">

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Ban, CheckCircle, UserCheck, Shield } from 'lucide-react';
+import { Search, Ban, CheckCircle, UserCheck, Shield, Users } from 'lucide-react';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -79,19 +79,34 @@ export default function AdminUsersPage() {
 
       <Card className="border-slate-800 bg-slate-900 rounded-2xl overflow-hidden shadow-xs">
         <CardContent className="p-0">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-800/40 text-slate-400 uppercase text-[10px] font-semibold">
-                <th className="py-3 px-4">User</th>
-                <th className="py-3 px-4">Current Plan</th>
-                <th className="py-3 px-4">Invoices</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Joined</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {filtered.map((u) => (
+          {users.length === 0 ? (
+            <div className="p-12 text-center space-y-3">
+              <div className="h-12 w-12 rounded-xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400 border border-slate-700">
+                <Users className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-sm font-bold text-white">No Registered Users Yet</h3>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                Users who register via the sign-up page or get invited by team workspaces will appear here in real time.
+              </p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-400">
+              No users matching your search filters.
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800 bg-slate-800/40 text-slate-400 uppercase text-[10px] font-semibold">
+                  <th className="py-3 px-4">User</th>
+                  <th className="py-3 px-4">Current Plan</th>
+                  <th className="py-3 px-4">Invoices</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Joined</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                {filtered.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-800/30">
                   <td className="py-3 px-4 font-semibold text-white">
                     <div>{u.name}</div>
@@ -147,6 +162,7 @@ export default function AdminUsersPage() {
               ))}
             </tbody>
           </table>
+          )}
         </CardContent>
       </Card>
     </div>

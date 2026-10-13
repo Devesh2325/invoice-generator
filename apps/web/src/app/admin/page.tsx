@@ -136,41 +136,49 @@ export default function AdminDashboardPage() {
           </Link>
         </CardHeader>
         <CardContent className="p-0">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-800/40 text-slate-400 uppercase text-[10px] font-semibold">
-                <th className="py-2.5 px-4">User</th>
-                <th className="py-2.5 px-4">Plan Tier</th>
-                <th className="py-2.5 px-4">Status</th>
-                <th className="py-2.5 px-4">Invoices</th>
-                <th className="py-2.5 px-4">Signed Up</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {users.slice(0, 5).map((u) => (
-                <tr key={u.id} className="hover:bg-slate-800/30">
-                  <td className="py-3 px-4 font-semibold text-white">
-                    <div>{u.name}</div>
-                    <div className="text-[11px] text-slate-500 font-mono">{u.email}</div>
-                  </td>
-                  <td className="py-3 px-4 uppercase font-bold text-primary">{u.plan}</td>
-                  <td className="py-3 px-4">
-                    <Badge
-                      className={
-                        u.status === 'active'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-800 text-[10px]'
-                          : 'bg-rose-500/10 text-rose-400 border-rose-800 text-[10px]'
-                      }
-                    >
-                      {u.status}
-                    </Badge>
-                  </td>
-                  <td className="py-3 px-4 font-mono">{u.invoicesCount}</td>
-                  <td className="py-3 px-4 text-slate-400">{u.createdAt}</td>
+          {users.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-400">
+              <Users className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+              <div className="font-semibold text-slate-300">No registered users yet</div>
+              <p className="text-[11px] text-slate-500 mt-0.5">Real workspace users will appear here as they sign up.</p>
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800 bg-slate-800/40 text-slate-400 uppercase text-[10px] font-semibold">
+                  <th className="py-2.5 px-4">User</th>
+                  <th className="py-2.5 px-4">Plan Tier</th>
+                  <th className="py-2.5 px-4">Status</th>
+                  <th className="py-2.5 px-4">Invoices</th>
+                  <th className="py-2.5 px-4">Signed Up</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                {users.slice(0, 5).map((u) => (
+                  <tr key={u.id} className="hover:bg-slate-800/30">
+                    <td className="py-3 px-4 font-semibold text-white">
+                      <div>{u.name}</div>
+                      <div className="text-[11px] text-slate-500 font-mono">{u.email}</div>
+                    </td>
+                    <td className="py-3 px-4 uppercase font-bold text-primary">{u.plan}</td>
+                    <td className="py-3 px-4">
+                      <Badge
+                        className={
+                          u.status === 'active'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-800 text-[10px]'
+                            : 'bg-rose-500/10 text-rose-400 border-rose-800 text-[10px]'
+                        }
+                      >
+                        {u.status}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4 font-mono">{u.invoicesCount}</td>
+                    <td className="py-3 px-4 text-slate-400">{u.createdAt}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </CardContent>
       </Card>
     </div>

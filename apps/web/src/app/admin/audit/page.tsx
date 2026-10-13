@@ -12,6 +12,7 @@ import {
   Search,
   Download,
   Shield,
+  ShieldAlert,
   Activity,
   Terminal,
   RefreshCw,
@@ -117,64 +118,80 @@ export default function AdminAuditPage() {
 
       {/* Logs Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
-              <tr>
-                <th className="py-3.5 px-4">Timestamp (UTC/IST)</th>
-                <th className="py-3.5 px-4">Actor</th>
-                <th className="py-3.5 px-4">Action Event</th>
-                <th className="py-3.5 px-4">Target Resource</th>
-                <th className="py-3.5 px-4 text-right">Log ID</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
-              {filteredLogs.map((log) => {
-                const isSuperAdmin = log.actor === 'Super Admin';
-                return (
-                  <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
-                      {new Date(log.timestamp).toLocaleString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap font-sans font-semibold">
-                      <div className="flex items-center gap-1.5">
-                        {isSuperAdmin ? (
-                          <Shield className="h-3.5 w-3.5 text-primary" />
-                        ) : (
-                          <Activity className="h-3.5 w-3.5 text-amber-400" />
-                        )}
-                        <span className={isSuperAdmin ? 'text-primary' : 'text-slate-300'}>
-                          {log.actor}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <Badge
-                        variant="outline"
-                        className="bg-slate-950 border-slate-800 text-slate-200 text-[10px]"
-                      >
-                        {log.action}
-                      </Badge>
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap text-slate-300">
-                      {log.target}
-                    </td>
-                    <td className="py-3.5 px-4 text-right text-slate-500 text-[10px]">
-                      {log.id}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {logs.length === 0 ? (
+          <div className="p-12 text-center space-y-3">
+            <div className="h-12 w-12 rounded-xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400 border border-slate-700">
+              <ShieldAlert className="h-6 w-6 text-primary" />
+            </div>
+            <h3 className="text-sm font-bold text-white">No Audit Logs Yet</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              System events, workspace creations, plan upgrades, and admin actions will be recorded here automatically.
+            </p>
+          </div>
+        ) : filteredLogs.length === 0 ? (
+          <div className="p-8 text-center text-xs text-slate-400">
+            No audit logs matched &ldquo;{searchQuery}&rdquo;.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-300">
+              <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                <tr>
+                  <th className="py-3.5 px-4">Timestamp (UTC/IST)</th>
+                  <th className="py-3.5 px-4">Actor</th>
+                  <th className="py-3.5 px-4">Action Event</th>
+                  <th className="py-3.5 px-4">Target Resource</th>
+                  <th className="py-3.5 px-4 text-right">Log ID</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
+                {filteredLogs.map((log) => {
+                  const isSuperAdmin = log.actor === 'Super Admin';
+                  return (
+                    <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
+                        {new Date(log.timestamp).toLocaleString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap font-sans font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          {isSuperAdmin ? (
+                            <Shield className="h-3.5 w-3.5 text-primary" />
+                          ) : (
+                            <Activity className="h-3.5 w-3.5 text-amber-400" />
+                          )}
+                          <span className={isSuperAdmin ? 'text-primary' : 'text-slate-300'}>
+                            {log.actor}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <Badge
+                          variant="outline"
+                          className="bg-slate-950 border-slate-800 text-slate-200 text-[10px]"
+                        >
+                          {log.action}
+                        </Badge>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-300">
+                        {log.target}
+                      </td>
+                      <td className="py-3.5 px-4 text-right text-slate-500 text-[10px]">
+                        {log.id}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
