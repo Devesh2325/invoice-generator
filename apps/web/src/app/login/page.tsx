@@ -28,14 +28,42 @@ export default function LoginPage() {
       if (typeof window !== 'undefined') {
         const usersRaw = window.localStorage.getItem('billcraft_registered_users');
         const users = usersRaw ? JSON.parse(usersRaw) : [];
-        const matched = users.find((u: any) => u.email === normalizedEmail);
+        let matched = users.find((u: any) => u.email === normalizedEmail);
+
+        // If not found in registered_users, check workspaces created in Super Admin
+        if (!matched) {
+          const teamsRaw = window.localStorage.getItem('billcraft_admin_teams');
+          const teams = teamsRaw ? JSON.parse(teamsRaw) : [];
+          const foundTeam = teams.find((t: any) => t.ownerEmail?.trim().toLowerCase() === normalizedEmail);
+
+          if (foundTeam) {
+            matched = {
+              id: `usr_${foundTeam.id}`,
+              email: normalizedEmail,
+              name: foundTeam.companyDisplayName || foundTeam.name,
+              workspaceName: foundTeam.name,
+              tenantId: foundTeam.id,
+              password: foundTeam.ownerPassword || '',
+            };
+            users.push(matched);
+            window.localStorage.setItem('billcraft_registered_users', JSON.stringify(users));
+          }
+        }
 
         if (matched) {
           if (matched.password && matched.password !== password) {
-            setErrorMsg('Invalid password for this account.');
+            setErrorMsg('Invalid password for this account. Please verify and try again.');
             setLoading(false);
             return;
           }
+
+          // If no password was originally set on the workspace, set the entered password
+          if (!matched.password && password) {
+            matched.password = password;
+            const updatedUsers = users.map((u: any) => (u.email === normalizedEmail ? matched : u));
+            window.localStorage.setItem('billcraft_registered_users', JSON.stringify(updatedUsers));
+          }
+
           window.localStorage.setItem('billcraft_current_user', JSON.stringify(matched));
           window.localStorage.setItem('billcraft_current_user_id', matched.id);
           if (matched.tenantId) {
@@ -48,7 +76,7 @@ export default function LoginPage() {
         }
       }
 
-      setErrorMsg('No account found with this email. Please create a workspace first.');
+      setErrorMsg('No account found with this email. Please check your email or contact your administrator.');
       setLoading(false);
     } catch (err: any) {
       setErrorMsg('Authentication error. Please try again.');

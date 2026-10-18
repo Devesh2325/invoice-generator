@@ -46,6 +46,7 @@ export default function AdminTeamsPage() {
   const [editIsWhiteLabel, setEditIsWhiteLabel] = useState(false);
   const [editCompanyDisplayName, setEditCompanyDisplayName] = useState('');
   const [editLogoUrl, setEditLogoUrl] = useState('');
+  const [editOwnerPassword, setEditOwnerPassword] = useState('');
 
   const loadTeams = () => {
     setTeams(AdminApi.getTeams());
@@ -122,6 +123,7 @@ export default function AdminTeamsPage() {
     setEditIsWhiteLabel(Boolean(team.isWhiteLabel));
     setEditCompanyDisplayName(team.companyDisplayName || team.name);
     setEditLogoUrl(team.logoUrl || '');
+    setEditOwnerPassword(team.ownerPassword || '');
     setEditModalOpen(true);
   };
 
@@ -143,6 +145,7 @@ export default function AdminTeamsPage() {
       isWhiteLabel: editIsWhiteLabel,
       companyDisplayName: editCompanyDisplayName.trim(),
       logoUrl: editLogoUrl.trim(),
+      ...(editOwnerPassword.trim() && { ownerPassword: editOwnerPassword.trim() }),
     });
 
     loadTeams();
@@ -389,7 +392,9 @@ export default function AdminTeamsPage() {
                 autoComplete="new-password"
                 className="bg-slate-950 border-slate-800 text-white text-xs h-9"
               />
-              <p className="text-[10px] text-slate-500">Leave blank to send an invite email instead.</p>
+              <p className="text-[10px] text-slate-500">
+                Initial password. Workspace owner will sign in at <span className="font-mono text-indigo-400 font-semibold">/login</span>.
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -521,6 +526,23 @@ export default function AdminTeamsPage() {
                 required
                 className="bg-slate-950 border-slate-800 text-white text-xs h-9"
               />
+              <p className="text-[10px] text-slate-500">
+                Workspace owner logs in at <span className="font-mono text-indigo-400 font-semibold">/login</span>
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Owner Password (Optional Update)</label>
+              <Input
+                type="password"
+                value={editOwnerPassword}
+                onChange={(e) => setEditOwnerPassword(e.target.value)}
+                placeholder="Leave blank to keep existing password"
+                className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+              />
+              <p className="text-[10px] text-slate-500">
+                Used to authenticate the account at the workspace login portal.
+              </p>
             </div>
 
             <div className="space-y-1.5">

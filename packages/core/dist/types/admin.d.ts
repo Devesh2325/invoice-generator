@@ -60,4 +60,5 @@ export interface AdminTeam {
     isWhiteLabel?: boolean;
     companyDisplayName?: string;
     logoUrl?: string;
+    ownerPassword?: string;
 }

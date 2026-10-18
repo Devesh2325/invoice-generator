@@ -277,6 +277,7 @@ export class AdminApi {
             isWhiteLabel: Boolean(params.isWhiteLabel),
             companyDisplayName: params.companyDisplayName,
             logoUrl: params.logoUrl,
+            ownerPassword: params.ownerPassword,
         };
         const updated = [newTeam, ...teams];
         if (typeof window !== 'undefined') {
@@ -333,6 +334,29 @@ export class AdminApi {
                 }
                 catch { }
             }
+            // Synchronize with registered users so owner can immediately log in at /login
+            try {
+                const regRaw = localStorage.getItem('billcraft_registered_users');
+                const regUsers = regRaw ? JSON.parse(regRaw) : [];
+                const normalizedEmail = params.ownerEmail.trim().toLowerCase();
+                const existingIdx = regUsers.findIndex((u) => u.email === normalizedEmail);
+                const userObj = {
+                    id: existingIdx >= 0 ? regUsers[existingIdx].id : `usr_${Date.now()}`,
+                    email: normalizedEmail,
+                    name: params.companyDisplayName || params.name,
+                    workspaceName: params.name,
+                    tenantId: newTeam.id,
+                    password: params.ownerPassword || (existingIdx >= 0 ? regUsers[existingIdx].password : 'password123'),
+                };
+                if (existingIdx >= 0) {
+                    regUsers[existingIdx] = { ...regUsers[existingIdx], ...userObj };
+                }
+                else {
+                    regUsers.push(userObj);
+                }
+                localStorage.setItem('billcraft_registered_users', JSON.stringify(regUsers));
+            }
+            catch { }
             this.recordAuditLog('CREATE_WORKSPACE', `Team: ${newTeam.name} (${newTeam.id})${params.isWhiteLabel ? ' [White-Label]' : ''}`, 'Super Admin');
         }
         return newTeam;
@@ -377,6 +401,28 @@ export class AdminApi {
                 localStorage.setItem(brandKey, JSON.stringify(updatedBrand));
             }
             catch { }
+            // Sync with registered users
+            if (patch.ownerEmail || patch.ownerPassword || patch.companyDisplayName || patch.name) {
+                try {
+                    const regRaw = localStorage.getItem('billcraft_registered_users');
+                    if (regRaw) {
+                        const regUsers = JSON.parse(regRaw);
+                        const team = teams.find((t) => t.id === teamId);
+                        const targetEmail = (patch.ownerEmail || team?.ownerEmail || '').trim().toLowerCase();
+                        const idx = regUsers.findIndex((u) => u.tenantId === teamId || u.email === targetEmail);
+                        if (idx >= 0) {
+                            if (patch.ownerEmail)
+                                regUsers[idx].email = patch.ownerEmail.trim().toLowerCase();
+                            if (patch.ownerPassword)
+                                regUsers[idx].password = patch.ownerPassword;
+                            if (patch.companyDisplayName || patch.name)
+                                regUsers[idx].name = patch.companyDisplayName || patch.name;
+                            localStorage.setItem('billcraft_registered_users', JSON.stringify(regUsers));
+                        }
+                    }
+                }
+                catch { }
+            }
             this.recordAuditLog('UPDATE_WORKSPACE', `Team: ${teamId}`, 'Super Admin');
         }
         return true;

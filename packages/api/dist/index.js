@@ -112,11 +112,23 @@ export const TenantApi = {
             }));
             const all = [...customTenants, ...mergedDemo];
             if (userId) {
-                const userTenants = all.filter((t) => t.ownerUserId === userId);
+                let currentUserEmail = '';
+                if (typeof window !== 'undefined') {
+                    try {
+                        const uRaw = window.localStorage.getItem('billcraft_current_user');
+                        if (uRaw) {
+                            const u = JSON.parse(uRaw);
+                            currentUserEmail = u?.email?.toLowerCase() || '';
+                        }
+                    }
+                    catch { }
+                }
+                const userTenants = all.filter((t) => t.ownerUserId === userId ||
+                    (currentUserEmail && t.ownerUserId?.toLowerCase() === currentUserEmail));
                 if (userTenants.length > 0)
                     return userTenants;
             }
-            return mergedDemo;
+            return all.length > 0 ? all : mergedDemo;
         }
         const { data, error } = await supabase
             .from('tenant_members')
