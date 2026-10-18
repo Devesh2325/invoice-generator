@@ -1072,7 +1072,7 @@ export function mapCanonicalDocumentToTemplateInv(doc: CanonicalDocument): any {
         : doc.type === 'purchase_order'
         ? anyDoc.deliveryDate || doc.dueDate
         : doc.dueDate,
-    title: titles[doc.type] || 'Tax Invoice',
+    title: doc.customTerminology?.[doc.type] || titles[doc.type] || 'Tax Invoice',
     dueLabel: dueLabels[doc.type] || 'Due date',
     balanceLabel: balanceLabels[doc.type] || 'Balance due',
     currency: cur,

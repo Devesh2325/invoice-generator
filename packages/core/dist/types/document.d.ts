@@ -197,6 +197,7 @@ export interface DocumentModel {
         secondaryColor?: string;
         fontFamily?: 'sans' | 'serif' | 'mono';
     };
+    customTerminology?: Record<string, string>;
     paymentConfig?: DocumentPaymentConfig;
     notes?: string;
     paymentTerms?: string;

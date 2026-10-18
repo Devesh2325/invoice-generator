@@ -219,6 +219,22 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
     </div>
   );
 
+  const resolvedHeading = useMemo(() => {
+    if (document.customTerminology?.[document.type]) {
+      return document.customTerminology[document.type].toUpperCase();
+    }
+    if (document.type === 'purchase_order') return 'PURCHASE ORDER';
+    if (document.type === 'estimate') return 'ESTIMATE / QUOTE';
+    if (document.type === 'receipt') return 'PAYMENT RECEIPT';
+    if (document.type === 'credit_note') return 'CREDIT NOTE';
+    if (document.type === 'debit_note') return 'DEBIT NOTE';
+    if (document.type === 'pro_forma') return 'PRO FORMA INVOICE';
+    return tpl.title;
+  }, [document.customTerminology, document.type, tpl.title]);
+
+  const resolvedClientLabel = document.customTerminology?.clientLabel || 'Customer / Recipient';
+  const resolvedTypeBadge = document.customTerminology?.[document.type] || document.type.replace('_', ' ');
+
   return (
     <div
       className={`shadow-2xl overflow-hidden max-w-4xl mx-auto ${fontClass} relative transition-all border`}
@@ -345,7 +361,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             {/* Bill To in Sidebar */}
             <div className="pt-4 border-t border-white/20 space-y-2">
               <span className="text-[10px] font-black uppercase tracking-wider opacity-80 block">
-                Bill To (Customer)
+                Bill To ({resolvedClientLabel})
               </span>
               <input
                 type="text"
@@ -414,14 +430,14 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b" style={{ borderColor }}>
               <div>
                 <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight" style={{ color: effectiveAccent }}>
-                  {document.type === 'purchase_order' ? 'PURCHASE ORDER' : document.type === 'estimate' ? 'ESTIMATE / QUOTE' : tpl.title}
+                  {resolvedHeading}
                 </h2>
                 {tpl.subtitle && (
                   <p className="text-xs font-semibold opacity-70">{tpl.subtitle}</p>
                 )}
               </div>
               <div className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border" style={{ borderColor: effectiveAccent, color: effectiveAccent }}>
-                {document.type.replace('_', ' ')}
+                {resolvedTypeBadge}
               </div>
             </div>
 
@@ -496,7 +512,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">
-                      {tpl.title}
+                      {resolvedHeading}
                     </span>
                     {tpl.badge && (
                       <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
@@ -587,10 +603,10 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 <div className="pt-2 border-t w-full flex flex-col items-center gap-2" style={{ borderColor }}>
                   <div className="flex items-center gap-3">
                     <h2 className="text-2xl font-black uppercase tracking-tight" style={{ color: effectiveAccent }}>
-                      {tpl.title}
+                      {resolvedHeading}
                     </h2>
                     <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border" style={{ borderColor: effectiveAccent, color: effectiveAccent }}>
-                      {document.type.replace('_', ' ')}
+                      {resolvedTypeBadge}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-mono" style={{ color: mutedTextColor }}>
@@ -613,14 +629,14 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
               <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
                   <div className="text-4xl md:text-6xl font-black tracking-tight" style={{ color: effectiveAccent }}>
-                    {tpl.title}
+                    {resolvedHeading}
                   </div>
                   {tpl.subtitle && (
                     <p className="text-sm font-bold opacity-75 mt-0.5">{tpl.subtitle}</p>
                   )}
                   <div className="mt-2">
                     <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border inline-block" style={{ borderColor: effectiveAccent, color: effectiveAccent }}>
-                      {document.type.replace('_', ' ')}
+                      {resolvedTypeBadge}
                     </span>
                   </div>
                 </div>
@@ -752,7 +768,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 <div className="w-full md:w-5/12 text-left md:text-right space-y-2">
                   <div className="flex md:justify-end items-center">
                     <span className="text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-lg border" style={{ borderColor: `${effectiveAccent}40`, color: effectiveAccent, backgroundColor: `${effectiveAccent}08` }}>
-                      {document.type.replace('_', ' ')}
+                      {resolvedTypeBadge}
                     </span>
                   </div>
 
@@ -836,7 +852,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     style={{ color: effectiveAccent }}
                   >
                     <Users className="h-3.5 w-3.5" />
-                    Bill To (Customer / Recipient)
+                    Bill To ({resolvedClientLabel})
                   </span>
 
                   {onSelectCustomer && (

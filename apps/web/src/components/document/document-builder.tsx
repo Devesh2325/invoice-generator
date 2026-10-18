@@ -317,6 +317,32 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.signatoryName || brandSettings?.signatoryName || 'Authorized Director'
   );
 
+  // Terminology customization state (e.g. Tax Invoice vs Commercial Invoice, Client vs Customer)
+  const [customTerminology, setCustomTerminology] = useState<Record<string, string>>(() => {
+    if (initialDocument?.customTerminology) {
+      return initialDocument.customTerminology;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage.getItem('invoxa_custom_terminology');
+        if (stored) return JSON.parse(stored);
+      } catch {}
+    }
+    return { ...APP_CONFIG.defaultTerminology };
+  });
+
+  const handleUpdateTerminology = (key: string, value: string) => {
+    setCustomTerminology((prev) => {
+      const updated = { ...prev, [key]: value };
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem('invoxa_custom_terminology', JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
+  };
+
   // Saved Customers & Catalog Items for active workspace
   const [savedCustomers, setSavedCustomers] = useState<Party[]>([]);
   const [savedItems, setSavedItems] = useState<ProductCatalogItem[]>([]);
@@ -576,6 +602,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         primaryColor: customPrimaryColor,
         fontFamily: customFontFamily,
       },
+      customTerminology,
       paymentConfig,
       notes,
       paymentTerms,
@@ -630,6 +657,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     templateId,
     customPrimaryColor,
     customFontFamily,
+    customTerminology,
     paymentConfig,
     notes,
     paymentTerms,
@@ -1156,6 +1184,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             primaryColor={effectivePrimaryColor}
             compact
             align="left"
+            customLabels={customTerminology}
+            onUpdateTerminology={handleUpdateTerminology}
           />
 
           {/* Status Badge */}
@@ -1609,6 +1639,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             primaryColor={effectivePrimaryColor}
             compact
             align="right"
+            customLabels={customTerminology}
+            onUpdateTerminology={handleUpdateTerminology}
           />
 
           <Button
@@ -2173,13 +2205,13 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-bold flex items-center justify-between gap-2">
-                      <span>Bill To (Customer & Place of Supply)</span>
+                      <span>Bill To ({customTerminology.clientLabel || 'Customer'} & Place of Supply)</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2.5">
                     <div>
                       <label className="text-[11px] font-bold text-primary flex items-center gap-1 mb-1">
-                        <Users className="h-3.5 w-3.5" /> Select Saved Customer
+                        <Users className="h-3.5 w-3.5" /> Select Saved {customTerminology.clientLabel?.split('/')[0]?.trim() || 'Customer'}
                       </label>
                       <select
                         aria-label="Select Saved Customer"
