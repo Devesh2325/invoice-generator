@@ -317,12 +317,12 @@ export default function TenantSettingsPage() {
     <TenantLayout>
       <div className="p-6 lg:p-10 space-y-6 max-w-5xl mx-auto w-full">
         {/* Sticky Top Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs sticky top-4 z-20">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs sticky top-4 z-20">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
               Settings & Invoice Configuration
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Configure application-wide currency, payment methods (Bank, UPI, Verified QR), rounding rules, and invoice defaults.
             </p>
           </div>
@@ -346,17 +346,17 @@ export default function TenantSettingsPage() {
         </div>
 
         {validationError && (
-          <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-semibold flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-red-700 dark:text-red-400 font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
             <span>{validationError}</span>
           </div>
         )}
 
         {/* 1. Currency Configuration */}
-        <Card className="border-slate-200 bg-white">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <Globe className="h-4 w-4 text-indigo-600" /> Currency Configuration
+              <Globe className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> Currency Configuration
             </CardTitle>
             <CardDescription className="text-xs">
               Select the default currency used across Dashboard KPIs, Invoices, Customer Balances, Items, Payments, Reports, and PDFs.
@@ -365,7 +365,7 @@ export default function TenantSettingsPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Application Currency *
                 </label>
                 <select
@@ -378,7 +378,7 @@ export default function TenantSettingsPage() {
                       setDefaultLocale(meta.defaultLocale);
                     }
                   }}
-                  className="w-full h-10 rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900"
+                  className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs font-bold text-slate-900 dark:text-slate-100"
                 >
                   {Object.values(SUPPORTED_CURRENCIES).map((curr) => (
                     <option key={curr.code} value={curr.code}>
@@ -389,13 +389,13 @@ export default function TenantSettingsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Number & Currency Locale
                 </label>
                 <select
                   value={defaultLocale}
                   onChange={(e) => setDefaultLocale(e.target.value)}
-                  className="w-full h-10 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium"
+                  className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-3 text-xs font-medium"
                 >
                   <option value="en-IN">en-IN (Indian Grouping: 1,25,000.00)</option>
                   <option value="en-US">en-US (Standard Grouping: 125,000.00)</option>
@@ -405,11 +405,11 @@ export default function TenantSettingsPage() {
                 </select>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-center">
-                <span className="text-[10px] font-bold uppercase text-slate-400">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col justify-center">
+                <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500">
                   Live Currency Format Preview
                 </span>
-                <span className="text-lg font-black text-indigo-600 tabular-nums mt-0.5">
+                <span className="text-lg font-black text-indigo-600 dark:text-indigo-400 tabular-nums mt-0.5">
                   {formatCurrency(125450.75, defaultCurrency, {
                     locale: defaultLocale,
                     decimalPlaces: decimalPrecision,
@@ -421,10 +421,10 @@ export default function TenantSettingsPage() {
         </Card>
 
         {/* 2. Payment Settings (Bank Details, UPI ID, QR Code, Display Toggles) */}
-        <Card className="border-slate-200 bg-white">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <Landmark className="h-4 w-4 text-emerald-600" /> Payment Settings (Invoice Configuration)
+              <Landmark className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Payment Settings (Invoice Configuration)
             </CardTitle>
             <CardDescription className="text-xs">
               Configure structured bank accounts, UPI ID, and verified QR codes, and control which payment methods appear on generated invoices, previews, and PDFs.
@@ -432,9 +432,9 @@ export default function TenantSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Independent Invoice Display Controls */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Eye className="h-3.5 w-3.5 text-indigo-600" /> Invoice Payment Display Controls
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Eye className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> Invoice Payment Display Controls
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {[
@@ -446,7 +446,7 @@ export default function TenantSettingsPage() {
                 ].map((item) => (
                   <label
                     key={item.key}
-                    className="flex items-center gap-2 p-2.5 rounded-lg bg-white border border-slate-200 cursor-pointer hover:border-indigo-300 text-xs font-semibold text-slate-700"
+                    className="flex items-center gap-2 p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-indigo-300 text-xs font-semibold text-slate-700 dark:text-slate-300"
                   >
                     <input
                       type="checkbox"
@@ -471,10 +471,10 @@ export default function TenantSettingsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
                     Bank Accounts ({bankAccounts.length})
                   </h4>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     Enter individual bank fields instead of unstructured text. Supports multiple bank accounts.
                   </p>
                 </div>
@@ -501,10 +501,10 @@ export default function TenantSettingsPage() {
                 return (
                   <div
                     key={acct.id}
-                    className="p-4 rounded-xl border border-slate-200 bg-white space-y-3"
+                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <span className="text-xs font-bold text-slate-800">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Bank Account #{idx + 1}{' '}
                         {acct.bankName ? `— ${acct.bankName}` : ''}
                       </span>
@@ -512,7 +512,7 @@ export default function TenantSettingsPage() {
                         <button
                           type="button"
                           onClick={() => handleRemoveBank(idx)}
-                          className="text-xs text-red-600 hover:underline flex items-center gap-1"
+                          className="text-xs text-red-600 dark:text-red-400 hover:underline flex items-center gap-1"
                         >
                           <Trash2 className="h-3.5 w-3.5" /> Remove
                         </button>
@@ -521,13 +521,13 @@ export default function TenantSettingsPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           Country
                         </label>
                         <select
                           value={acct.country || 'India'}
                           onChange={(e) => handleUpdateBank(idx, { country: e.target.value })}
-                          className="w-full h-9 rounded-md border border-slate-300 bg-white px-2.5 text-xs"
+                          className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2.5 text-xs"
                         >
                           <option value="India">India (IFSC)</option>
                           <option value="United States">United States (ABA / Routing)</option>
@@ -540,7 +540,7 @@ export default function TenantSettingsPage() {
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           Account Holder Name *
                         </label>
                         <Input
@@ -554,7 +554,7 @@ export default function TenantSettingsPage() {
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           Bank Name *
                         </label>
                         <Input
@@ -566,7 +566,7 @@ export default function TenantSettingsPage() {
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           Account Number *
                         </label>
                         <Input
@@ -580,7 +580,7 @@ export default function TenantSettingsPage() {
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           Confirm Account Number *
                         </label>
                         <Input
@@ -594,14 +594,14 @@ export default function TenantSettingsPage() {
                           }`}
                         />
                         {accountMismatch && (
-                          <span className="text-[10px] text-red-600 font-semibold">
+                          <span className="text-[10px] text-red-600 dark:text-red-400 font-semibold">
                             Account numbers do not match
                           </span>
                         )}
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           {isIndia ? 'IFSC Code *' : 'Routing / Sort Code / IBAN *'}
                         </label>
                         <Input
@@ -617,7 +617,7 @@ export default function TenantSettingsPage() {
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           Branch Name
                         </label>
                         <Input
@@ -631,7 +631,7 @@ export default function TenantSettingsPage() {
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           Account Type
                         </label>
                         <select
@@ -639,7 +639,7 @@ export default function TenantSettingsPage() {
                           onChange={(e) =>
                             handleUpdateBank(idx, { accountType: e.target.value as any })
                           }
-                          className="w-full h-9 rounded-md border border-slate-300 bg-white px-2.5 text-xs"
+                          className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2.5 text-xs"
                         >
                           <option value="current">Current Account</option>
                           <option value="savings">Savings Account</option>
@@ -650,7 +650,7 @@ export default function TenantSettingsPage() {
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           SWIFT / BIC Code (Optional)
                         </label>
                         <Input
@@ -671,13 +671,13 @@ export default function TenantSettingsPage() {
             </div>
 
             {/* UPI & QR Code Configuration */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-4">
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                    <QrCode className="h-4 w-4 text-indigo-600" /> UPI & Payment QR Code
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <QrCode className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> UPI & Payment QR Code
                   </h4>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     Configure a verified UPI ID / VPA or upload a custom payment QR code. QR codes are never generated from incomplete or unverified details.
                   </p>
                 </div>
@@ -687,23 +687,23 @@ export default function TenantSettingsPage() {
                 <div className="md:col-span-2 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                      <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                         UPI ID / VPA
                       </label>
                       <Input
                         value={upiId}
                         onChange={(e) => setUpiId(e.target.value.trim())}
                         placeholder="merchant@okaxis or 9876543210@upi"
-                        className="h-9 text-xs font-mono bg-white"
+                        className="h-9 text-xs font-mono bg-white dark:bg-slate-950"
                       />
                       {!upiValidation.empty && (
                         <div className="mt-1 text-[11px]">
                           {upiValidation.valid ? (
-                            <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                               <CheckCircle2 className="h-3 w-3" /> Verified VPA format
                             </span>
                           ) : (
-                            <span className="text-red-600 font-semibold flex items-center gap-1">
+                            <span className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1">
                               <AlertTriangle className="h-3 w-3" /> {upiValidation.error}
                             </span>
                           )}
@@ -712,23 +712,23 @@ export default function TenantSettingsPage() {
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                      <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                         UPI Payee / Merchant Name
                       </label>
                       <Input
                         value={upiPayeeName}
                         onChange={(e) => setUpiPayeeName(e.target.value)}
                         placeholder="Acme Solutions Pvt Ltd"
-                        className="h-9 text-xs bg-white"
+                        className="h-9 text-xs bg-white dark:bg-slate-950"
                       />
                     </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3 pt-1">
-                    <label className="text-xs font-semibold text-slate-700">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       QR Code Source:
                     </label>
-                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer text-slate-800 dark:text-slate-200">
                       <input
                         type="radio"
                         checked={qrMode === 'auto_upi'}
@@ -736,7 +736,7 @@ export default function TenantSettingsPage() {
                       />
                       <span>Auto-generate from verified UPI ID</span>
                     </label>
-                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer text-slate-800 dark:text-slate-200">
                       <input
                         type="radio"
                         checked={qrMode === 'uploaded'}
@@ -750,15 +750,15 @@ export default function TenantSettingsPage() {
                         type="file"
                         accept="image/*"
                         onChange={handleUploadQrImage}
-                        className="text-xs"
+                        className="text-xs text-slate-700 dark:text-slate-300"
                       />
                     )}
                   </div>
                 </div>
 
                 {/* Live QR Preview Box */}
-                <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col items-center justify-center text-center min-h-[150px]">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 mb-2">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-center min-h-[150px]">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-2">
                     QR Code Preview
                   </span>
                   {verifiedQrPreviewUrl ? (
@@ -766,15 +766,15 @@ export default function TenantSettingsPage() {
                       <img
                         src={verifiedQrPreviewUrl}
                         alt="Verified Payment QR Preview"
-                        className="h-28 w-28 object-contain border border-slate-100 rounded p-1"
+                        className="h-28 w-28 object-contain border border-slate-100 dark:border-slate-800 bg-white rounded p-1"
                       />
-                      <span className="text-[10px] text-emerald-600 font-semibold mt-1.5">
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1.5">
                         ✓ Verified & Ready for Invoices
                       </span>
                     </>
                   ) : (
-                    <div className="text-[11px] text-slate-400 py-4 px-2">
-                      Enter a valid UPI ID (e.g. <code className="text-slate-600">name@bank</code>) and Payee Name or upload an image to preview QR code.
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 py-4 px-2">
+                      Enter a valid UPI ID (e.g. <code className="text-slate-600 dark:text-slate-300">name@bank</code>) and Payee Name or upload an image to preview QR code.
                     </div>
                   )}
                 </div>
@@ -784,17 +784,17 @@ export default function TenantSettingsPage() {
         </Card>
 
         {/* 3. Rounding & Calculation Configuration */}
-        <Card className="border-slate-200 bg-white">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <Calculator className="h-4 w-4 text-amber-600" /> Rounding & Invoice Calculation Settings
+              <Calculator className="h-4 w-4 text-amber-600 dark:text-amber-400" /> Rounding & Invoice Calculation Settings
             </CardTitle>
             <CardDescription className="text-xs">
               Configure default round-off behavior, rounding rules, and decimal precision for new invoices.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50">
+            <div className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
               <input
                 type="checkbox"
                 id="enableRoundOffToggle"
@@ -802,19 +802,19 @@ export default function TenantSettingsPage() {
                 onChange={(e) => setEnableRoundOff(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 text-indigo-600"
               />
-              <label htmlFor="enableRoundOffToggle" className="text-xs font-bold text-slate-800 cursor-pointer">
+              <label htmlFor="enableRoundOffToggle" className="text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
                 Enable Round-Off Adjustment by Default
               </label>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                 Rounding Rule
               </label>
               <select
                 value={roundingMode}
                 onChange={(e) => setRoundingMode(e.target.value as RoundingMode)}
-                className="w-full h-10 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium"
+                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-3 text-xs font-medium"
               >
                 <option value="nearest_integer">Nearest Whole Currency Unit (0.5 rounds up)</option>
                 <option value="half_up">Standard Half-Up (Precision Bound)</option>
@@ -825,13 +825,13 @@ export default function TenantSettingsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                 Decimal Precision
               </label>
               <select
                 value={decimalPrecision}
                 onChange={(e) => setDecimalPrecision(Number(e.target.value))}
-                className="w-full h-10 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium"
+                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-3 text-xs font-medium"
               >
                 <option value={2}>2 Decimal Places (0.00)</option>
                 <option value={0}>0 Decimal Places (Whole Units)</option>
@@ -842,10 +842,10 @@ export default function TenantSettingsPage() {
         </Card>
 
         {/* 4. Company Profile, Logo & Invoice Numbering Defaults */}
-        <Card className="border-slate-200 bg-white">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-blue-600" /> Company Profile, Logo & Invoice Defaults
+              <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" /> Company Profile, Logo & Invoice Defaults
             </CardTitle>
             <CardDescription className="text-xs">
               Upload your Company Logo and configure default seller details, GST state, numbering prefix, payment terms, and instructions automatically applied to new invoices.
@@ -853,10 +853,10 @@ export default function TenantSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Company Logo Upload Box */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 {sellerLogoUrl ? (
-                  <div className="relative bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                  <div className="relative bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
                     <img
                       src={sellerLogoUrl}
                       alt="Company Logo Preview"
@@ -864,15 +864,15 @@ export default function TenantSettingsPage() {
                     />
                   </div>
                 ) : (
-                  <div className="h-14 w-24 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-[11px] font-semibold text-slate-400">
+                  <div className="h-14 w-24 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                     No Logo
                   </div>
                 )}
                 <div>
-                  <div className="text-xs font-bold text-slate-900">
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
                     Company Logo (Invoice Header)
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     PNG, JPG, or SVG (max 2MB). Automatically displayed on all generated invoices, previews, and PDFs.
                   </p>
                 </div>
@@ -895,7 +895,7 @@ export default function TenantSettingsPage() {
                     variant="outline"
                     size="sm"
                     onClick={handleRemoveCompanyLogo}
-                    className="text-xs text-red-600 border-red-200 hover:bg-red-50"
+                    className="text-xs text-red-600 dark:text-red-400 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40"
                   >
                     <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
                   </Button>
@@ -905,7 +905,7 @@ export default function TenantSettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Company / Seller Name
                 </label>
                 <Input
@@ -916,7 +916,7 @@ export default function TenantSettingsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Company Tax ID / GSTIN
                 </label>
                 <Input
@@ -927,13 +927,13 @@ export default function TenantSettingsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Seller GST State
                 </label>
                 <select
                   value={sellerGstState}
                   onChange={(e) => setSellerGstState(e.target.value)}
-                  className="w-full h-10 rounded-md border border-slate-300 bg-white px-2.5 text-xs"
+                  className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2.5 text-xs"
                 >
                   {INDIAN_STATES.map((st) => (
                     <option key={st.code} value={st.label}>
@@ -943,7 +943,7 @@ export default function TenantSettingsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Street Address
                 </label>
                 <Input
@@ -954,7 +954,7 @@ export default function TenantSettingsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   City
                 </label>
                 <Input
@@ -965,7 +965,7 @@ export default function TenantSettingsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Country
                 </label>
                 <Input
@@ -976,7 +976,7 @@ export default function TenantSettingsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Support / Billing Email
                 </label>
                 <Input
@@ -987,7 +987,7 @@ export default function TenantSettingsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Phone Number
                 </label>
                 <Input
@@ -999,7 +999,7 @@ export default function TenantSettingsPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                     Invoice Prefix
                   </label>
                   <Input
@@ -1010,7 +1010,7 @@ export default function TenantSettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                     Next Sequence #
                   </label>
                   <Input
@@ -1025,7 +1025,7 @@ export default function TenantSettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Default Payment Terms
                 </label>
                 <Input
@@ -1035,7 +1035,7 @@ export default function TenantSettingsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Default Payment Instructions
                 </label>
                 <Input
@@ -1045,7 +1045,7 @@ export default function TenantSettingsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Default Invoice Footer Notes
                 </label>
                 <Input
@@ -1059,7 +1059,7 @@ export default function TenantSettingsPage() {
         </Card>
 
         {/* 5. Local-to-Cloud Import Section */}
-        <Card className="border-slate-200 bg-white">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <CloudUpload className="h-4 w-4 text-primary" /> Offline Device Migration
@@ -1069,10 +1069,10 @@ export default function TenantSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-blue-50/50 border border-blue-200 rounded-lg gap-3">
-              <div className="text-xs text-slate-700">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg gap-3">
+              <div className="text-xs text-slate-700 dark:text-slate-300">
                 Scan and import local IndexedDB invoices into{' '}
-                <strong>{activeTenant?.name}</strong> with conflict verification.
+                <strong className="text-slate-900 dark:text-slate-100">{activeTenant?.name}</strong> with conflict verification.
               </div>
               <Button
                 size="sm"
@@ -1086,7 +1086,7 @@ export default function TenantSettingsPage() {
         </Card>
 
         {/* 6. Email & Resend Transactional Settings */}
-        <Card className="border-slate-200 bg-white">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <Mail className="h-4 w-4 text-primary" /> Transactional Email Delivery
@@ -1098,11 +1098,11 @@ export default function TenantSettingsPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Resend API Key
                 </label>
                 <div className="relative">
-                  <Key className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <Key className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     type="password"
                     placeholder="re_123456789..."
@@ -1114,7 +1114,7 @@ export default function TenantSettingsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   From Email Address
                 </label>
                 <Input

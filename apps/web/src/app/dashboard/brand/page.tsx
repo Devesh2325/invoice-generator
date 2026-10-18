@@ -100,10 +100,10 @@ export default function TenantBrandStudioPage() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
               Brand Studio & White-Label
             </h1>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Customize company logo, palette, typography, default terms, and custom domains.
             </p>
           </div>
@@ -117,7 +117,7 @@ export default function TenantBrandStudioPage() {
 
         <form onSubmit={handleSave} className="space-y-6">
           {/* Custom Domains & White-label foundation */}
-          <Card className="border-slate-200 bg-white">
+          <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Globe className="h-4 w-4 text-primary" /> Verified Custom Domain
@@ -127,12 +127,12 @@ export default function TenantBrandStudioPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg gap-2">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg gap-2">
                 <div>
-                  <div className="text-xs font-bold text-slate-800">
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
                     {activeTenant?.custom_domain || 'billing.yourdomain.com'}
                   </div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
                     CNAME target: <code className="font-mono text-primary">cname.billcraft.app</code>
                   </div>
                 </div>
@@ -150,17 +150,17 @@ export default function TenantBrandStudioPage() {
           </Card>
 
           {/* Color & Typography Styling */}
-          <Card className="border-slate-200 bg-white">
+          <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Palette className="h-4 w-4 text-primary" /> Company Logo, Brand Palette & Visual Identity
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2 p-4 rounded-xl bg-slate-50 border border-dashed border-slate-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="sm:col-span-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   {logoUrl ? (
-                    <div className="bg-white p-2 rounded-lg border border-slate-200">
+                    <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-800">
                       <img
                         src={logoUrl}
                         alt="Company Logo"
@@ -168,13 +168,13 @@ export default function TenantBrandStudioPage() {
                       />
                     </div>
                   ) : (
-                    <div className="h-14 w-24 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-[11px] font-semibold text-slate-400">
+                    <div className="h-14 w-24 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                       No Logo
                     </div>
                   )}
                   <div>
-                    <div className="text-xs font-bold text-slate-900">Company Logo</div>
-                    <p className="text-[11px] text-slate-500">
+                    <div className="text-xs font-bold text-slate-900 dark:text-slate-100">Company Logo</div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       Appears in the header of all invoices, estimates, and receipts.
                     </p>
                   </div>
@@ -196,7 +196,7 @@ export default function TenantBrandStudioPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => setLogoUrl('')}
-                      className="text-xs text-red-600 border-red-200 hover:bg-red-50"
+                      className="text-xs text-red-600 dark:text-red-400 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40"
                     >
                       <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
                     </Button>
@@ -205,7 +205,7 @@ export default function TenantBrandStudioPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Primary Accent Color
                 </label>
                 <div className="flex items-center gap-2">
@@ -213,7 +213,7 @@ export default function TenantBrandStudioPage() {
                     type="color"
                     value={primaryColor}
                     onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="h-9 w-12 rounded border border-slate-300 cursor-pointer p-0.5"
+                    className="h-9 w-12 rounded border border-slate-300 dark:border-slate-700 cursor-pointer p-0.5"
                   />
                   <Input
                     value={primaryColor}
@@ -224,7 +224,7 @@ export default function TenantBrandStudioPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Secondary Text Color
                 </label>
                 <div className="flex items-center gap-2">
@@ -232,7 +232,7 @@ export default function TenantBrandStudioPage() {
                     type="color"
                     value={secondaryColor}
                     onChange={(e) => setSecondaryColor(e.target.value)}
-                    className="h-9 w-12 rounded border border-slate-300 cursor-pointer p-0.5"
+                    className="h-9 w-12 rounded border border-slate-300 dark:border-slate-700 cursor-pointer p-0.5"
                   />
                   <Input
                     value={secondaryColor}
@@ -243,13 +243,13 @@ export default function TenantBrandStudioPage() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Document Font Family
                 </label>
                 <select
                   value={fontFamily}
                   onChange={(e) => setFontFamily(e.target.value)}
-                  className="w-full text-xs border border-slate-300 rounded-md p-2 bg-white"
+                  className="w-full text-xs border border-slate-300 dark:border-slate-700 rounded-md p-2 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200"
                 >
                   <option value="sans">Inter / Modern Sans-Serif</option>
                   <option value="serif">Merriweather / Classic Serif</option>
@@ -260,13 +260,13 @@ export default function TenantBrandStudioPage() {
           </Card>
 
           {/* Default Terms & Instructions */}
-          <Card className="border-slate-200 bg-white">
+          <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-bold">Standard Invoicing Terms & Notes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Default Payment Terms
                 </label>
                 <Input
@@ -277,7 +277,7 @@ export default function TenantBrandStudioPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Default Payment Instructions / Bank Details
                 </label>
                 <Textarea
@@ -289,7 +289,7 @@ export default function TenantBrandStudioPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Document Footer Notice
                 </label>
                 <Input

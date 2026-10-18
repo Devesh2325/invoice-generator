@@ -19,6 +19,7 @@ import {
   Plus,
   Sparkles,
   Layers,
+  Edit3,
 } from 'lucide-react';
 
 export default function AdminTeamsPage() {
@@ -30,8 +31,21 @@ export default function AdminTeamsPage() {
   // New Workspace form state
   const [newTeamName, setNewTeamName] = useState('');
   const [newOwnerEmail, setNewOwnerEmail] = useState('');
+  const [newOwnerPassword, setNewOwnerPassword] = useState('');
   const [newPlan, setNewPlan] = useState<PlanId>('starter');
   const [isWhiteLabel, setIsWhiteLabel] = useState(false);
+  const [newCompanyDisplayName, setNewCompanyDisplayName] = useState('');
+  const [newLogoUrl, setNewLogoUrl] = useState('');
+
+  // Edit Workspace form state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState('');
+  const [editTeamName, setEditTeamName] = useState('');
+  const [editOwnerEmail, setEditOwnerEmail] = useState('');
+  const [editPlan, setEditPlan] = useState<PlanId>('starter');
+  const [editIsWhiteLabel, setEditIsWhiteLabel] = useState(false);
+  const [editCompanyDisplayName, setEditCompanyDisplayName] = useState('');
+  const [editLogoUrl, setEditLogoUrl] = useState('');
 
   const loadTeams = () => {
     setTeams(AdminApi.getTeams());
@@ -57,14 +71,20 @@ export default function AdminTeamsPage() {
       ownerEmail: newOwnerEmail.trim().toLowerCase(),
       plan: newPlan,
       isWhiteLabel,
+      ...(newOwnerPassword.trim() && { ownerPassword: newOwnerPassword.trim() }),
+      ...(newCompanyDisplayName.trim() && { companyDisplayName: newCompanyDisplayName.trim() }),
+      ...(newLogoUrl.trim() && { logoUrl: newLogoUrl.trim() }),
     });
 
     loadTeams();
     setCreateModalOpen(false);
     setNewTeamName('');
     setNewOwnerEmail('');
+    setNewOwnerPassword('');
     setNewPlan('starter');
     setIsWhiteLabel(false);
+    setNewCompanyDisplayName('');
+    setNewLogoUrl('');
 
     toast({
       title: 'Workspace Created',
@@ -91,6 +111,45 @@ export default function AdminTeamsPage() {
       title: 'Workspace Status Updated',
       description: `Workspace is now marked as ${nextStatus}.`,
       variant: nextStatus === 'suspended' ? 'destructive' : 'default',
+    });
+  };
+
+  const handleOpenEditModal = (team: AdminTeam) => {
+    setEditingTeamId(team.id);
+    setEditTeamName(team.name);
+    setEditOwnerEmail(team.ownerEmail);
+    setEditPlan(team.plan);
+    setEditIsWhiteLabel(Boolean(team.isWhiteLabel));
+    setEditCompanyDisplayName(team.companyDisplayName || team.name);
+    setEditLogoUrl(team.logoUrl || '');
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEditWorkspace = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTeamName.trim() || !editOwnerEmail.trim()) {
+      toast({
+        title: 'Missing Required Fields',
+        description: 'Please provide both workspace name and owner email.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    AdminApi.updateTeam(editingTeamId, {
+      name: editTeamName.trim(),
+      ownerEmail: editOwnerEmail.trim().toLowerCase(),
+      plan: editPlan,
+      isWhiteLabel: editIsWhiteLabel,
+      companyDisplayName: editCompanyDisplayName.trim(),
+      logoUrl: editLogoUrl.trim(),
+    });
+
+    loadTeams();
+    setEditModalOpen(false);
+    toast({
+      title: 'Workspace Updated',
+      description: `Workspace "${editTeamName}" and white-label settings updated successfully.`,
     });
   };
 
@@ -254,18 +313,28 @@ export default function AdminTeamsPage() {
                         </Badge>
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleStatus(team.id, team.status)}
-                          className={`h-7 px-2.5 text-[11px] ${
-                            isActive
-                              ? 'bg-rose-950/20 border-rose-800/40 text-rose-300 hover:bg-rose-950/40'
-                              : 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300 hover:bg-emerald-950/40'
-                          }`}
-                        >
-                          {isActive ? 'Suspend' : 'Activate'}
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenEditModal(team)}
+                            className="h-7 px-2.5 text-[11px] bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800"
+                          >
+                            <Edit3 className="h-3 w-3 mr-1 text-primary" /> Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleStatus(team.id, team.status)}
+                            className={`h-7 px-2.5 text-[11px] ${
+                              isActive
+                                ? 'bg-rose-950/20 border-rose-800/40 text-rose-300 hover:bg-rose-950/40'
+                                : 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300 hover:bg-emerald-950/40'
+                            }`}
+                          >
+                            {isActive ? 'Suspend' : 'Activate'}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -311,6 +380,19 @@ export default function AdminTeamsPage() {
             </div>
 
             <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Owner Password</label>
+              <Input
+                type="password"
+                value={newOwnerPassword}
+                onChange={(e) => setNewOwnerPassword(e.target.value)}
+                placeholder="Set initial login password"
+                autoComplete="new-password"
+                className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+              />
+              <p className="text-[10px] text-slate-500">Leave blank to send an invite email instead.</p>
+            </div>
+
+            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-300">Subscription Tier</label>
               <select
                 value={newPlan}
@@ -342,6 +424,51 @@ export default function AdminTeamsPage() {
               </p>
             </div>
 
+            {/* White-Label Branding Fields — show when toggled on */}
+            {isWhiteLabel && (
+              <div className="space-y-3 p-3.5 rounded-xl border border-indigo-800/40 bg-indigo-950/20">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5" />
+                  White-Label Brand Settings
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Company Display Name</label>
+                  <Input
+                    value={newCompanyDisplayName}
+                    onChange={(e) => setNewCompanyDisplayName(e.target.value)}
+                    placeholder="e.g. Acme Invoicing"
+                    className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+                  />
+                  <p className="text-[10px] text-slate-500">Replaces &ldquo;BillCraft&rdquo; everywhere in the app for this workspace.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Logo URL</label>
+                  <Input
+                    type="url"
+                    value={newLogoUrl}
+                    onChange={(e) => setNewLogoUrl(e.target.value)}
+                    placeholder="https://example.com/logo.png"
+                    className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+                  />
+                  <p className="text-[10px] text-slate-500">Direct link to the company logo (PNG/SVG, max 512×512px recommended).</p>
+                </div>
+
+                {newLogoUrl.trim() && (
+                  <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <img
+                      src={newLogoUrl}
+                      alt="Logo preview"
+                      className="h-10 w-10 object-contain rounded border border-slate-700"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <span className="text-[11px] text-slate-400">Logo preview</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <DialogFooter className="pt-2">
               <Button
                 type="button"
@@ -356,6 +483,137 @@ export default function AdminTeamsPage() {
                 className="bg-primary hover:bg-primary-hover text-white text-xs font-bold"
               >
                 Create Workspace
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Workspace & White-Label Settings Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="max-w-md bg-slate-900 border-slate-800 text-white z-[100]">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+              <Edit3 className="h-5 w-5 text-primary" />
+              Edit Workspace &amp; White-Label
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveEditWorkspace} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Workspace / Company Name</label>
+              <Input
+                value={editTeamName}
+                onChange={(e) => setEditTeamName(e.target.value)}
+                placeholder="e.g. Acme Studio Pvt Ltd"
+                required
+                className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Owner Email Address</label>
+              <Input
+                type="email"
+                value={editOwnerEmail}
+                onChange={(e) => setEditOwnerEmail(e.target.value)}
+                placeholder="e.g. founder@acmestudio.io"
+                required
+                className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Subscription Tier</label>
+              <select
+                value={editPlan}
+                onChange={(e) => setEditPlan(e.target.value as PlanId)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+              >
+                <option value="starter">Starter — Free</option>
+                <option value="pro">Pro Plan — ₹799/month</option>
+                <option value="enterprise">Enterprise Plan — ₹2,499/month</option>
+              </select>
+            </div>
+
+            {/* Set as White-Label Toggle */}
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editIsWhiteLabel}
+                  onChange={(e) => setEditIsWhiteLabel(e.target.checked)}
+                  className="rounded border-slate-700 bg-slate-900 text-primary h-4 w-4"
+                />
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  White-Label Workspace Active
+                </span>
+              </label>
+              <p className="text-[11px] text-slate-400 pl-6 leading-relaxed">
+                When enabled, BillCraft branding is replaced by the custom company display name and logo across invoices, PDFs, and client emails.
+              </p>
+            </div>
+
+            {/* White-Label Branding Fields */}
+            {editIsWhiteLabel && (
+              <div className="space-y-3 p-3.5 rounded-xl border border-indigo-800/40 bg-indigo-950/20">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5" />
+                  White-Label Brand Settings
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Company Display Name</label>
+                  <Input
+                    value={editCompanyDisplayName}
+                    onChange={(e) => setEditCompanyDisplayName(e.target.value)}
+                    placeholder="e.g. Acme Invoicing"
+                    className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+                  />
+                  <p className="text-[10px] text-slate-500">Replaces &ldquo;BillCraft&rdquo; everywhere in the app for this workspace.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Logo URL</label>
+                  <Input
+                    type="url"
+                    value={editLogoUrl}
+                    onChange={(e) => setEditLogoUrl(e.target.value)}
+                    placeholder="https://example.com/logo.png"
+                    className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+                  />
+                  <p className="text-[10px] text-slate-500">Direct link to the company logo (PNG/SVG, max 512×512px recommended).</p>
+                </div>
+
+                {editLogoUrl.trim() && (
+                  <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <img
+                      src={editLogoUrl}
+                      alt="Logo preview"
+                      className="h-10 w-10 object-contain rounded border border-slate-700"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <span className="text-[11px] text-slate-400">Logo preview</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditModalOpen(false)}
+                className="border-slate-800 text-slate-300 hover:bg-slate-800 text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-primary-hover text-white text-xs font-bold"
+              >
+                Save Changes
               </Button>
             </DialogFooter>
           </form>

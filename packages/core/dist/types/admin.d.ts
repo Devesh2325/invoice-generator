@@ -58,4 +58,6 @@ export interface AdminTeam {
     status: 'active' | 'suspended';
     createdAt: string;
     isWhiteLabel?: boolean;
+    companyDisplayName?: string;
+    logoUrl?: string;
 }

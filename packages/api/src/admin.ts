@@ -288,9 +288,12 @@ export class AdminApi {
   static createTeam(params: {
     name: string;
     ownerEmail: string;
+    ownerPassword?: string;
     plan?: PlanId;
     currency?: string;
     isWhiteLabel?: boolean;
+    companyDisplayName?: string;
+    logoUrl?: string;
   }): AdminTeam {
     const teams = this.getTeams();
     const newTeam: AdminTeam = {
@@ -303,6 +306,8 @@ export class AdminApi {
       status: 'active',
       createdAt: new Date().toISOString().split('T')[0],
       isWhiteLabel: Boolean(params.isWhiteLabel),
+      companyDisplayName: params.companyDisplayName,
+      logoUrl: params.logoUrl,
     };
     const updated = [newTeam, ...teams];
     if (typeof window !== 'undefined') {
@@ -319,19 +324,92 @@ export class AdminApi {
           role: 'owner',
           currency: params.currency || 'INR',
           isWhiteLabel: Boolean(params.isWhiteLabel),
+          plan: params.plan || 'starter',
         };
         localStorage.setItem('billcraft_custom_tenants', JSON.stringify([newTenant, ...existingTenants]));
       } catch {}
-      this.recordAuditLog('CREATE_WORKSPACE', `Team: ${newTeam.name} (${newTeam.id})`, 'Super Admin');
+      // Store white-label brand settings if provided
+      if (params.isWhiteLabel && (params.companyDisplayName || params.logoUrl)) {
+        try {
+          const brandKey = `billcraft_brand_${newTeam.id}`;
+          const brandSettings = {
+            tenantId: newTeam.id,
+            businessName: params.companyDisplayName || params.name,
+            logoUrl: params.logoUrl || '',
+            whiteLabelEnabled: true,
+            primaryColor: '#3B82F6',
+            secondaryColor: '#64748B',
+            fontFamily: 'Inter',
+          };
+          localStorage.setItem(brandKey, JSON.stringify(brandSettings));
+        } catch {}
+      }
+      // Store owner credentials if password provided
+      if (params.ownerPassword) {
+        try {
+          const usersRaw = localStorage.getItem('billcraft_admin_users');
+          const users = usersRaw ? JSON.parse(usersRaw) : [];
+          users.push({
+            id: `usr_${Date.now()}`,
+            name: params.name,
+            email: params.ownerEmail,
+            plan: params.plan || 'starter',
+            invoicesCount: 0,
+            status: 'active',
+            createdAt: newTeam.createdAt,
+          });
+          localStorage.setItem('billcraft_admin_users', JSON.stringify(users));
+        } catch {}
+      }
+      this.recordAuditLog('CREATE_WORKSPACE', `Team: ${newTeam.name} (${newTeam.id})${params.isWhiteLabel ? ' [White-Label]' : ''}`, 'Super Admin');
     }
     return newTeam;
   }
 
-  static updateTeam(teamId: string, patch: Partial<AdminTeam>): boolean {
+  static updateTeam(
+    teamId: string,
+    patch: Partial<AdminTeam> & { ownerPassword?: string; companyDisplayName?: string; logoUrl?: string }
+  ): boolean {
     const teams = this.getTeams();
     const updated = teams.map((t) => (t.id === teamId ? { ...t, ...patch } : t));
     if (typeof window !== 'undefined') {
       localStorage.setItem('billcraft_admin_teams', JSON.stringify(updated));
+
+      // Sync custom tenants
+      try {
+        const existingTenantsRaw = localStorage.getItem('billcraft_custom_tenants');
+        if (existingTenantsRaw) {
+          const tenants = JSON.parse(existingTenantsRaw);
+          const nextTenants = tenants.map((t: any) => {
+            if (t.id === teamId) {
+              return {
+                ...t,
+                name: patch.name || t.name,
+                isWhiteLabel: patch.isWhiteLabel !== undefined ? patch.isWhiteLabel : t.isWhiteLabel,
+                plan: patch.plan || t.plan,
+              };
+            }
+            return t;
+          });
+          localStorage.setItem('billcraft_custom_tenants', JSON.stringify(nextTenants));
+        }
+      } catch {}
+
+      // Sync brand settings
+      try {
+        const brandKey = `billcraft_brand_${teamId}`;
+        const existingBrand = localStorage.getItem(brandKey);
+        const currentBrand = existingBrand ? JSON.parse(existingBrand) : {};
+        const updatedBrand = {
+          ...currentBrand,
+          tenantId: teamId,
+          businessName: patch.companyDisplayName || patch.name || currentBrand.businessName,
+          logoUrl: patch.logoUrl !== undefined ? patch.logoUrl : currentBrand.logoUrl,
+          whiteLabelEnabled: patch.isWhiteLabel !== undefined ? patch.isWhiteLabel : currentBrand.whiteLabelEnabled,
+        };
+        localStorage.setItem(brandKey, JSON.stringify(updatedBrand));
+      } catch {}
+
       this.recordAuditLog('UPDATE_WORKSPACE', `Team: ${teamId}`, 'Super Admin');
     }
     return true;

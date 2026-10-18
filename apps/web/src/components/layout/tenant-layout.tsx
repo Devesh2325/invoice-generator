@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Breadcrumbs, BreadcrumbItem } from '@/components/ui/breadcrumbs';
 import { NotificationCenter } from '@/components/ui/notification-center';
 import { PlanBadge } from '@/components/ui/plan-badge';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useTheme } from '@/lib/theme/theme-provider';
 import {
   LayoutDashboard,
@@ -113,6 +114,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <PlanBadge />
+          <LanguageSwitcher />
           <button
             onClick={toggleTheme}
             className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -263,9 +265,6 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
           <Breadcrumbs items={getBreadcrumbs()} />
 
           <div className="flex items-center gap-3">
-            {/* Active Plan Badge (Silver, Diamond, Star) */}
-            <PlanBadge />
-
             {/* Command Palette Trigger */}
             <button
               onClick={handleOpenSearch}
@@ -280,6 +279,12 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
 
             {/* Notification Center */}
             <NotificationCenter />
+
+            {/* Active Plan Badge or Upgrade Icon */}
+            <PlanBadge />
+
+            {/* Language Switcher */}
+            <LanguageSwitcher />
 
             {/* Dark / Light Theme Toggle */}
             <button

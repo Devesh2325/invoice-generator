@@ -24,9 +24,18 @@ export const PlanBadge: React.FC = () => {
   // Derive active plan
   const plan = activeTenant?.plan || 'starter';
 
-  // Hidden for free/starter users
+  // For free/starter users — show an upgrade icon (like Image 5 reference)
   if (plan === 'starter' || !plan) {
-    return null;
+    return (
+      <Link
+        href="/dashboard/billing"
+        className="px-2.5 py-1 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20 shadow-xs ring-1 ring-amber-500/20"
+        title="Upgrade your plan"
+      >
+        <Gem className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+        <span className="tracking-wide uppercase text-[11px] font-extrabold hidden sm:inline">Upgrade</span>
+      </Link>
+    );
   }
 
   // Plan metadata mapping: Silver (Pro), Diamond (Enterprise), Star (VIP/Custom)

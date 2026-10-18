@@ -30,11 +30,18 @@ export declare class AdminApi {
     static createTeam(params: {
         name: string;
         ownerEmail: string;
+        ownerPassword?: string;
         plan?: PlanId;
         currency?: string;
         isWhiteLabel?: boolean;
+        companyDisplayName?: string;
+        logoUrl?: string;
     }): AdminTeam;
-    static updateTeam(teamId: string, patch: Partial<AdminTeam>): boolean;
+    static updateTeam(teamId: string, patch: Partial<AdminTeam> & {
+        ownerPassword?: string;
+        companyDisplayName?: string;
+        logoUrl?: string;
+    }): boolean;
     static getInquiries(): AdminInquiry[];
     static updateInquiry(inquiryId: string, status: 'new' | 'in_progress' | 'resolved', notes?: string): boolean;
     static deleteInquiry(inquiryId: string): boolean;
