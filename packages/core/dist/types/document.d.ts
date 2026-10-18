@@ -1,3 +1,7 @@
+export declare class TenantAccessDeniedError extends Error {
+    status: number;
+    constructor(message?: string);
+}
 export type DocumentType = 'invoice' | 'estimate' | 'purchase_order' | 'receipt' | 'credit_note' | 'debit_note' | 'pro_forma';
 export type DocumentStatus = 'draft' | 'pending' | 'finalized' | 'sent' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled' | 'refunded' | 'archived';
 export type DiscountType = 'percentage' | 'fixed';
@@ -43,6 +47,7 @@ export interface Address {
 }
 export interface Party {
     id: string;
+    tenantId?: string;
     type: 'customer' | 'vendor';
     name: string;
     email?: string;
@@ -142,6 +147,7 @@ export interface RefundRecord {
 }
 export interface AuditHistoryEntry {
     id: string;
+    tenantId?: string;
     action: string;
     description: string;
     actor?: string;

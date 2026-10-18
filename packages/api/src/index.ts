@@ -10,7 +10,11 @@ import {
   computeEffectiveInvoiceStatus,
   AuditHistoryEntry,
   generateVerifiedUpiQrSvgDataUrl,
+  TenantAccessDeniedError,
+  APP_CONFIG,
 } from '@invoice/core';
+
+export { TenantAccessDeniedError, APP_CONFIG };
 
 export interface Tenant {
   id: string;
@@ -104,24 +108,44 @@ export function getSupabase(): SupabaseClient | null {
   return supabaseClient;
 }
 
-// Helper for browser storage persistence per user/tenant
-function getLocalStore<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
+// Universal storage persistence (browser localStorage + memory fallback for test/SSR)
+const memoryStore: Record<string, string> = {};
+
+export function resetApiMemoryStore(): void {
+  for (const k in memoryStore) {
+    delete memoryStore[k];
   }
 }
 
-function setLocalStore<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error('localStorage write error:', e);
+function getLocalStore<T>(key: string, fallback: T): T {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(fallback));
+    } catch {
+      return JSON.parse(JSON.stringify(fallback));
+    }
   }
+  if (memoryStore[key] !== undefined) {
+    try {
+      return JSON.parse(memoryStore[key]);
+    } catch {
+      return JSON.parse(JSON.stringify(fallback));
+    }
+  }
+  return JSON.parse(JSON.stringify(fallback));
+}
+
+function setLocalStore<T>(key: string, value: T): void {
+  const serialized = JSON.stringify(value);
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(key, serialized);
+    } catch (e) {
+      console.error('localStorage write error:', e);
+    }
+  }
+  memoryStore[key] = serialized;
 }
 
 const DEFAULT_DEMO_BANK_ACCOUNT: BankAccountDetails = {
@@ -290,8 +314,68 @@ export const TenantApi = {
   },
 
   async getDocumentById(tenantId: string, docId: string): Promise<DocumentModel | null> {
-    const docs = await this.getDocuments(tenantId);
-    return docs.find((d) => d.id === docId) || null;
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', docId)
+        .single();
+      if (error || !data) return null;
+      if (data.tenant_id !== tenantId) {
+        throw new TenantAccessDeniedError(`Access Denied (403): Document ${docId} belongs to another workspace.`);
+      }
+      return data;
+    }
+
+    const storeDocs = getLocalStore<Record<string, DocumentModel[]>>(
+      'billcraft_tenant_documents',
+      DEMO_DOCUMENTS
+    );
+    const tenantDocs = storeDocs[tenantId] || [];
+    const matched = tenantDocs.find((d) => d.id === docId);
+    if (matched) {
+      return {
+        ...matched,
+        status: computeEffectiveInvoiceStatus(matched),
+      };
+    }
+
+    // Cross-tenant tamper detection: If the document exists in any other tenant, block access
+    for (const [otherTenantId, otherDocs] of Object.entries(storeDocs)) {
+      if (otherTenantId !== tenantId) {
+        const crossMatch = otherDocs.find((d) => d.id === docId);
+        if (crossMatch) {
+          throw new TenantAccessDeniedError(
+            `Access Denied (403): Document ${docId} belongs to another workspace.`
+          );
+        }
+      }
+    }
+
+    return null;
+  },
+
+  async deleteDocument(tenantId: string, docId: string): Promise<boolean> {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', docId)
+        .eq('tenant_id', tenantId);
+      return !error;
+    }
+
+    const storeDocs = getLocalStore<Record<string, DocumentModel[]>>(
+      'billcraft_tenant_documents',
+      DEMO_DOCUMENTS
+    );
+    if (!storeDocs[tenantId]) return false;
+    const initialLen = storeDocs[tenantId].length;
+    storeDocs[tenantId] = storeDocs[tenantId].filter((d) => d.id !== docId);
+    setLocalStore('billcraft_tenant_documents', storeDocs);
+    return storeDocs[tenantId].length < initialLen;
   },
 
   async saveDocument(tenantId: string, doc: DocumentModel): Promise<DocumentModel> {
@@ -393,20 +477,84 @@ export const TenantApi = {
     return data;
   },
 
+  async getPartyById(tenantId: string, partyId: string): Promise<Party | null> {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('parties')
+        .select('*')
+        .eq('id', partyId)
+        .single();
+      if (error || !data) return null;
+      if (data.tenant_id !== tenantId) {
+        throw new TenantAccessDeniedError(`Access Denied (403): Customer ${partyId} belongs to another workspace.`);
+      }
+      return data;
+    }
+
+    const storeParties = getLocalStore<Record<string, Party[]>>(
+      'billcraft_tenant_parties',
+      DEMO_PARTIES
+    );
+    const tenantParties = storeParties[tenantId] || [];
+    const matched = tenantParties.find((p) => p.id === partyId);
+    if (matched) return matched;
+
+    for (const [otherTenantId, otherParties] of Object.entries(storeParties)) {
+      if (otherTenantId !== tenantId) {
+        const cross = otherParties.find((p) => p.id === partyId);
+        if (cross) {
+          throw new TenantAccessDeniedError(
+            `Access Denied (403): Customer ${partyId} belongs to another workspace.`
+          );
+        }
+      }
+    }
+
+    return null;
+  },
+
+  async deleteParty(tenantId: string, partyId: string): Promise<boolean> {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { error } = await supabase
+        .from('parties')
+        .delete()
+        .eq('id', partyId)
+        .eq('tenant_id', tenantId);
+      return !error;
+    }
+
+    const storeParties = getLocalStore<Record<string, Party[]>>(
+      'billcraft_tenant_parties',
+      DEMO_PARTIES
+    );
+    if (!storeParties[tenantId]) return false;
+    const initialLen = storeParties[tenantId].length;
+    storeParties[tenantId] = storeParties[tenantId].filter((p) => p.id !== partyId);
+    setLocalStore('billcraft_tenant_parties', storeParties);
+    return storeParties[tenantId].length < initialLen;
+  },
+
   async saveParty(tenantId: string, party: Party): Promise<Party> {
+    const enrichedParty: Party = {
+      ...party,
+      tenantId,
+      updatedAt: new Date().toISOString(),
+    };
     const storeParties = getLocalStore<Record<string, Party[]>>(
       'billcraft_tenant_parties',
       DEMO_PARTIES
     );
     if (!storeParties[tenantId]) storeParties[tenantId] = [];
-    const idx = storeParties[tenantId].findIndex((p) => p.id === party.id);
+    const idx = storeParties[tenantId].findIndex((p) => p.id === enrichedParty.id);
     if (idx >= 0) {
-      storeParties[tenantId][idx] = party;
+      storeParties[tenantId][idx] = enrichedParty;
     } else {
-      storeParties[tenantId].push(party);
+      storeParties[tenantId].push(enrichedParty);
     }
     setLocalStore('billcraft_tenant_parties', storeParties);
-    return party;
+    return enrichedParty;
   },
 
   async importPartiesBatch(
@@ -477,20 +625,59 @@ export const TenantApi = {
     return storeProducts[tenantId] || [];
   },
 
+  async getProductById(tenantId: string, productId: string): Promise<ProductCatalogItem | null> {
+    const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>(
+      'billcraft_tenant_products',
+      DEMO_PRODUCTS
+    );
+    const tenantProducts = storeProducts[tenantId] || [];
+    const matched = tenantProducts.find((p) => p.id === productId);
+    if (matched) return matched;
+
+    for (const [otherTenantId, otherProds] of Object.entries(storeProducts)) {
+      if (otherTenantId !== tenantId) {
+        const cross = otherProds.find((p) => p.id === productId);
+        if (cross) {
+          throw new TenantAccessDeniedError(
+            `Access Denied (403): Product ${productId} belongs to another workspace.`
+          );
+        }
+      }
+    }
+
+    return null;
+  },
+
+  async deleteProduct(tenantId: string, productId: string): Promise<boolean> {
+    const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>(
+      'billcraft_tenant_products',
+      DEMO_PRODUCTS
+    );
+    if (!storeProducts[tenantId]) return false;
+    const initialLen = storeProducts[tenantId].length;
+    storeProducts[tenantId] = storeProducts[tenantId].filter((p) => p.id !== productId);
+    setLocalStore('billcraft_tenant_products', storeProducts);
+    return storeProducts[tenantId].length < initialLen;
+  },
+
   async saveProduct(tenantId: string, product: ProductCatalogItem): Promise<ProductCatalogItem> {
+    const enrichedProduct: ProductCatalogItem = {
+      ...product,
+      tenantId,
+    };
     const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>(
       'billcraft_tenant_products',
       DEMO_PRODUCTS
     );
     if (!storeProducts[tenantId]) storeProducts[tenantId] = [];
-    const idx = storeProducts[tenantId].findIndex((p) => p.id === product.id);
+    const idx = storeProducts[tenantId].findIndex((p) => p.id === enrichedProduct.id);
     if (idx >= 0) {
-      storeProducts[tenantId][idx] = product;
+      storeProducts[tenantId][idx] = enrichedProduct;
     } else {
-      storeProducts[tenantId].push(product);
+      storeProducts[tenantId].push(enrichedProduct);
     }
     setLocalStore('billcraft_tenant_products', storeProducts);
-    return product;
+    return enrichedProduct;
   },
 
   async getBrandSettings(tenantId: string): Promise<TenantBrandSettings> {
@@ -771,6 +958,81 @@ export const TenantApi = {
       });
     });
     return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  },
+
+  async deleteTenant(tenantId: string): Promise<boolean> {
+    const customTenants = getLocalStore<Tenant[]>('billcraft_custom_tenants', []);
+    setLocalStore(
+      'billcraft_custom_tenants',
+      customTenants.filter((t) => t.id !== tenantId)
+    );
+
+    const storeDocs = getLocalStore<Record<string, DocumentModel[]>>('billcraft_tenant_documents', {});
+    delete storeDocs[tenantId];
+    setLocalStore('billcraft_tenant_documents', storeDocs);
+
+    const storeParties = getLocalStore<Record<string, Party[]>>('billcraft_tenant_parties', {});
+    delete storeParties[tenantId];
+    setLocalStore('billcraft_tenant_parties', storeParties);
+
+    const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>('billcraft_tenant_products', {});
+    delete storeProducts[tenantId];
+    setLocalStore('billcraft_tenant_products', storeProducts);
+
+    const storeBrand = getLocalStore<Record<string, TenantBrandSettings>>('billcraft_tenant_brand', {});
+    delete storeBrand[tenantId];
+    setLocalStore('billcraft_tenant_brand', storeBrand);
+
+    return true;
+  },
+
+  async getTenantMetrics(tenantId: string) {
+    const docs = await this.getDocuments(tenantId);
+    const parties = await this.getParties(tenantId);
+    const products = await this.getProducts(tenantId);
+
+    const totalBilled = docs.reduce((sum, d) => sum + Number(d.summary?.grandTotal || 0), 0);
+    const totalCollected = docs.reduce((sum, d) => sum + Number(d.summary?.amountPaid || 0), 0);
+    const totalOutstanding = docs.reduce((sum, d) => sum + Number(d.summary?.balanceDue || 0), 0);
+
+    return {
+      documentsCount: docs.length,
+      customersCount: parties.filter((p) => p.type === 'customer').length,
+      vendorsCount: parties.filter((p) => p.type === 'vendor').length,
+      productsCount: products.length,
+      totalBilled: Number(totalBilled.toFixed(2)),
+      totalCollected: Number(totalCollected.toFixed(2)),
+      totalOutstanding: Number(totalOutstanding.toFixed(2)),
+    };
+  },
+
+  async searchTenantData(tenantId: string, query: string) {
+    const q = query.trim().toLowerCase();
+    if (!q) return { documents: [], customers: [], products: [] };
+
+    const docs = await this.getDocuments(tenantId);
+    const parties = await this.getParties(tenantId);
+    const products = await this.getProducts(tenantId);
+
+    return {
+      documents: docs.filter(
+        (d) =>
+          d.documentNumber.toLowerCase().includes(q) ||
+          d.client.name.toLowerCase().includes(q) ||
+          (d.invoiceName && d.invoiceName.toLowerCase().includes(q))
+      ),
+      customers: parties.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.email && p.email.toLowerCase().includes(q)) ||
+          (p.taxId && p.taxId.toLowerCase().includes(q))
+      ),
+      products: products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.sku && p.sku.toLowerCase().includes(q))
+      ),
+    };
   },
 };
 

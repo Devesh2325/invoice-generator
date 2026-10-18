@@ -11,6 +11,7 @@ import { NotificationCenter } from '@/components/ui/notification-center';
 import { PlanBadge } from '@/components/ui/plan-badge';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useTheme } from '@/lib/theme/theme-provider';
+import { APP_CONFIG } from '@invoice/core';
 import {
   LayoutDashboard,
   FileText,
@@ -47,12 +48,12 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
   const isWhiteLabel = Boolean(activeTenant?.isWhiteLabel || brandSettings?.whiteLabelEnabled);
   const brandName = isWhiteLabel
     ? brandSettings?.businessName || activeTenant?.name || 'Workspace Studio'
-    : 'BillCraft';
+    : APP_CONFIG.brandName;
 
   useEffect(() => {
-    if (isWhiteLabel && (brandSettings?.businessName || activeTenant?.name)) {
-      document.title = `${brandSettings?.businessName || activeTenant?.name} — Invoicing Studio`;
-    }
+    document.title = isWhiteLabel
+      ? `${brandSettings?.businessName || activeTenant?.name} — Invoicing Studio`
+      : `${APP_CONFIG.brandName} — Financial Operations & Invoicing`;
   }, [isWhiteLabel, brandSettings?.businessName, activeTenant?.name]);
 
   const navLinks = [

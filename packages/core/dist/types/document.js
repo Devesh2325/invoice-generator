@@ -1,4 +1,12 @@
 import { renderQrSvgDataUrl } from '../calculations/qr-encoder';
+export class TenantAccessDeniedError extends Error {
+    status;
+    constructor(message = 'Access Denied (403): You do not have permission to view or access data belonging to another workspace.') {
+        super(message);
+        this.name = 'TenantAccessDeniedError';
+        this.status = 403;
+    }
+}
 export const INDIAN_STATES = [
     { code: '27', name: 'Maharashtra', label: '27 - Maharashtra' },
     { code: '29', name: 'Karnataka', label: '29 - Karnataka' },

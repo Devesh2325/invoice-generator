@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Sparkles, Building, Mail, Lock, User, CheckCircle2, AlertCircle } from 'lucide-react';
+import { APP_CONFIG } from '@invoice/core';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -105,7 +106,7 @@ export default function SignUpPage() {
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 font-black text-2xl text-primary tracking-tight">
             <Sparkles className="h-6 w-6 text-primary" />
-            <span>BillCraft</span>
+            <span>{APP_CONFIG.brandName}</span>
           </Link>
           <h2 className="text-xl font-bold text-slate-900">Create your Business Workspace</h2>
           <p className="text-xs text-slate-500">

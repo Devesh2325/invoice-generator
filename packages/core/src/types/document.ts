@@ -1,5 +1,14 @@
 import { renderQrSvgDataUrl } from '../calculations/qr-encoder';
 
+export class TenantAccessDeniedError extends Error {
+  status: number;
+  constructor(message = 'Access Denied (403): You do not have permission to view or access data belonging to another workspace.') {
+    super(message);
+    this.name = 'TenantAccessDeniedError';
+    this.status = 403;
+  }
+}
+
 export type DocumentType =
   | 'invoice'
   | 'estimate'
@@ -88,6 +97,7 @@ export interface Address {
 
 export interface Party {
   id: string;
+  tenantId?: string;
   type: 'customer' | 'vendor';
   name: string;
   email?: string;
@@ -222,6 +232,7 @@ export interface RefundRecord {
 
 export interface AuditHistoryEntry {
   id: string;
+  tenantId?: string;
   action: string;
   description: string;
   actor?: string;
