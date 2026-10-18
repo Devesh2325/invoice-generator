@@ -42,6 +42,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const [containerWidth, setContainerWidth] = useState<number>(820);
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [fitToWidth, setFitToWidth] = useState<boolean>(true);
+  const [iframeHeight, setIframeHeight] = useState<number>(1140);
 
   // Template ID with backward compatibility
   const templateId = document.templateId || 'in-gst';
@@ -251,7 +252,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
       <div
         className="relative w-full flex justify-center overflow-x-hidden overflow-y-auto py-1"
         style={{
-          minHeight: `${Math.round(1140 * effectiveScale)}px`,
+          minHeight: `${Math.round(iframeHeight * effectiveScale)}px`,
         }}
       >
         <div
@@ -259,17 +260,28 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             width: '794px',
             transform: effectiveScale !== 1 ? `scale(${effectiveScale})` : undefined,
             transformOrigin: 'top center',
-            height: `${Math.round(1140 * effectiveScale)}px`,
+            height: `${Math.round(iframeHeight * effectiveScale)}px`,
           }}
         >
-          <div className="w-[794px] min-h-[1123px] bg-white rounded-lg shadow-2xl overflow-hidden border border-slate-300 ring-1 ring-black/5">
+          <div className="w-[794px] min-h-[1123px] bg-white rounded-lg shadow-2xl overflow-visible border border-slate-300 ring-1 ring-black/5">
             <iframe
               title="Invoice Document Preview"
               srcDoc={fullHtmlDocument}
-              className="w-full min-h-[1140px] border-0 block bg-white"
+              onLoad={(e) => {
+                try {
+                  const iframe = e.currentTarget;
+                  if (iframe.contentWindow?.document?.body) {
+                    const scrollH = iframe.contentWindow.document.body.scrollHeight;
+                    if (scrollH > 500) {
+                      setIframeHeight(Math.max(1140, scrollH + 30));
+                    }
+                  }
+                } catch {}
+              }}
+              className="w-full border-0 block bg-white"
               style={{
                 width: '794px',
-                height: '1140px',
+                height: `${iframeHeight}px`,
                 display: 'block',
                 border: 0,
               }}

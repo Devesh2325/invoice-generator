@@ -440,7 +440,7 @@ const card = (x, html, extra = '') => d({
     box: `border:1px solid ${x.t.ink};padding:12px;`,
     plain: `border-top:2px solid ${x.t.accent};padding:10px 0 0;`,
     fill: `background:${x.t.tint};border-radius:4px;padding:14px;`,
-}[x.t.card] + extra, html, 'inv-card');
+}[x.t.card] + 'box-sizing:border-box;overflow:visible;word-break:break-word;' + extra, html, 'inv-card');
 const party = (x, p = {}, size) => {
     const addr = []
         .concat(p.address || [])
@@ -586,7 +586,7 @@ const bank = (x, narrow = false) => {
         ? d(`font-size:10px;margin-top:10px;padding-top:8px;border-top:1px solid ${t.line};`, `<b>${esc(p.vpaLabel ?? t.vpaLabel)}:</b> ${esc(p.vpa)}`)
         : '';
     return card(x, lab('Bank account details (transfer)') +
-        d('display:flex;gap:14px;' + (narrow ? 'flex-direction:column;' : ''), d('flex:1;', d(`display:grid;grid-template-columns:${narrow ? '1fr' : '1fr 1fr'};gap:8px 12px;font-size:10px;`, f('Account holder', p.accountName) +
+        d('display:flex;gap:14px;' + (narrow ? 'flex-direction:column;' : ''), d('flex:1;', d(`display:grid;grid-template-columns:${narrow ? '1fr' : '1fr 1fr'};gap:8px 12px;font-size:10px;line-height:1.4;word-break:break-word;overflow:visible;`, f('Account holder', p.accountName) +
             f('Bank name', p.bankName) +
             f('Account no.', p.accountNo) +
             f(t.routingLabel, p.routingValue) +
@@ -606,7 +606,7 @@ const terms = (x) => {
         lab('Terms & conditions / notes') +
         notes.map((n, i) => d('', `${i + 1}. ${esc(n)}`)).join(''));
 };
-const wrap = (t, inner) => d(`width:794px;min-height:1123px;box-sizing:border-box;position:relative;font-family:${t.font};font-size:11px;background:${t.paper};color:${t.ink};${t.strip ? `border-top:10px solid ${t.accent};` : ''}`, inner, 'inv');
+const wrap = (t, inner) => d(`width:794px;min-height:1123px;height:auto;overflow:visible;box-sizing:border-box;position:relative;font-family:${t.font};font-size:11px;background:${t.paper};color:${t.ink};${t.strip ? `border-top:10px solid ${t.accent};` : ''}`, inner, 'inv');
 /* ---------- public render functions ---------- */
 export function renderInvoice(inv, templateId = 'in-gst', opts = {}) {
     const t = { ...getInvoiceTemplate(templateId), ...(opts.override || {}) };
@@ -669,7 +669,7 @@ export function renderInvoiceDocument(inv, templateId = 'in-gst', opts = {}) {
         ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${t.googleFont}&amp;display=swap">`
         : '';
     return (`<!doctype html><html lang="${esc(inv.lang || 'en')}"><head><meta charset="utf-8"><title>${esc(inv.number || 'Invoice')}</title>${fontLink}` +
-        '<style>@page{size:A4;margin:0}html,body{margin:0;background:#e5e7eb}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.inv{margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,0.08);background:#fff}.inv-card,.inv-row{break-inside:avoid}@media print{html,body{background:none}.inv{box-shadow:none}}</style>' +
+        '<style>@page{size:A4;margin:0}html,body{margin:0;padding:0;background:#e5e7eb}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.inv{margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,0.08);background:#fff;min-height:1123px;height:auto;overflow:visible}.inv-card,.inv-row{break-inside:avoid}@media print{html,body{background:none}.inv{box-shadow:none}}</style>' +
         `</head><body>${renderInvoice(inv, templateId, opts)}</body></html>`);
 }
 /* ---------- Mapper: CanonicalDocument -> InvoiceData ---------- */

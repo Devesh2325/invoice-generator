@@ -9,6 +9,19 @@ export class TenantAccessDeniedError extends Error {
   }
 }
 
+export class PlanLimitReachedError extends Error {
+  status: number;
+  limit: number;
+  current: number;
+  constructor(message = 'Free trial limit reached: 7/7 invoices created. Upgrade to Pro for unlimited invoices.', limit = 7, current = 7) {
+    super(message);
+    this.name = 'PlanLimitReachedError';
+    this.status = 402;
+    this.limit = limit;
+    this.current = current;
+  }
+}
+
 export type DocumentType =
   | 'invoice'
   | 'estimate'

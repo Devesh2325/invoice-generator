@@ -11,10 +11,12 @@ import {
   AuditHistoryEntry,
   generateVerifiedUpiQrSvgDataUrl,
   TenantAccessDeniedError,
+  PlanLimitReachedError,
   APP_CONFIG,
+  isTemplateAllowedForPlan,
 } from '@invoice/core';
 
-export { TenantAccessDeniedError, APP_CONFIG };
+export { TenantAccessDeniedError, PlanLimitReachedError, APP_CONFIG, isTemplateAllowedForPlan };
 
 export interface Tenant {
   id: string;
@@ -39,17 +41,40 @@ export interface Tenant {
   plan?: string;
 }
 
+export type StockMovementType = 'in' | 'out' | 'adjustment' | 'invoice_deduction';
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  tenantId: string;
+  type: StockMovementType;
+  quantity: number;
+  previousStock: number;
+  newStock: number;
+  reference?: string;
+  reason?: string;
+  timestamp: string;
+}
+
 export interface ProductCatalogItem {
   id: string;
   tenantId: string;
   name: string;
+  category?: string;
   sku: string;
+  barcode?: string;
   hsnCode?: string;
   description: string;
   unitPrice: number;
   unit: string;
   taxRate: number;
+  taxInclusive?: boolean;
+  stockQuantity: number;
+  minStockThreshold: number;
   isArchived: boolean;
+  stockMovements?: StockMovement[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TenantBrandSettings {
@@ -289,6 +314,38 @@ export const TenantApi = {
     return null;
   },
 
+  async getTenantById(tenantId: string): Promise<Tenant | null> {
+    const tenants = await this.getTenants();
+    return tenants.find((t) => t.id === tenantId) || null;
+  },
+
+  async getTenantUsage(tenantId: string): Promise<{
+    plan: string;
+    invoiceCount: number;
+    invoiceLimit: number;
+    isLimitReached: boolean;
+    remaining: number;
+    warningThresholdHit: boolean;
+  }> {
+    const tenant = await this.getTenantById(tenantId);
+    const plan = tenant?.plan || 'starter';
+    const docs = await this.getDocuments(tenantId);
+    const invoiceCount = docs.length;
+    const limit = plan === 'pro' || plan === 'enterprise' ? Infinity : APP_CONFIG.trialInvoiceLimit;
+    const isLimitReached = invoiceCount >= limit;
+    const remaining = limit === Infinity ? Infinity : Math.max(0, limit - invoiceCount);
+    const warningThresholdHit = APP_CONFIG.trialWarningThresholds.includes(invoiceCount);
+
+    return {
+      plan,
+      invoiceCount,
+      invoiceLimit: limit,
+      isLimitReached,
+      remaining,
+      warningThresholdHit,
+    };
+  },
+
   async getDocuments(tenantId: string): Promise<DocumentModel[]> {
     const supabase = getSupabase();
     if (!supabase) {
@@ -379,6 +436,32 @@ export const TenantApi = {
   },
 
   async saveDocument(tenantId: string, doc: DocumentModel): Promise<DocumentModel> {
+    const tenant = await this.getTenantById(tenantId);
+    const tenantPlan = tenant?.plan || 'starter';
+
+    // 1. Template gating enforcement on backend
+    if (doc.templateId && !isTemplateAllowedForPlan(tenantPlan, doc.templateId)) {
+      throw new PlanLimitReachedError(
+        `Template "${doc.templateId}" is a Pro/Enterprise feature. Please upgrade your plan to unlock premium templates.`
+      );
+    }
+
+    // 2. Free trial 7-invoice creation limit enforcement on backend
+    const planConfig = APP_CONFIG.plans[tenantPlan as keyof typeof APP_CONFIG.plans];
+    const invoiceLimit = planConfig ? planConfig.invoiceLimit : APP_CONFIG.trialInvoiceLimit;
+
+    if (invoiceLimit !== Infinity) {
+      const existingDocs = await this.getDocuments(tenantId);
+      const isNew = !existingDocs.some((d) => d.id === doc.id);
+      if (isNew && existingDocs.length >= invoiceLimit) {
+        throw new PlanLimitReachedError(
+          `Free trial limit reached: ${invoiceLimit}/${invoiceLimit} invoices created. Upgrade to Pro for unlimited invoices.`,
+          invoiceLimit,
+          existingDocs.length
+        );
+      }
+    }
+
     const effectiveStatus = computeEffectiveInvoiceStatus(doc);
     const enrichedDoc: DocumentModel = {
       ...doc,
@@ -401,6 +484,14 @@ export const TenantApi = {
         storeDocs[tenantId].unshift(enrichedDoc);
       }
       setLocalStore('billcraft_tenant_documents', storeDocs);
+
+      // Auto-deduct inventory stock for finalized/paid invoices
+      if (enrichedDoc.status === 'finalized' || enrichedDoc.status === 'paid') {
+        try {
+          await this.deductStockForInvoice(tenantId, enrichedDoc);
+        } catch {}
+      }
+
       return enrichedDoc;
     }
 
@@ -664,6 +755,9 @@ export const TenantApi = {
     const enrichedProduct: ProductCatalogItem = {
       ...product,
       tenantId,
+      stockQuantity: typeof product.stockQuantity === 'number' ? product.stockQuantity : 0,
+      minStockThreshold: typeof product.minStockThreshold === 'number' ? product.minStockThreshold : 5,
+      updatedAt: new Date().toISOString(),
     };
     const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>(
       'billcraft_tenant_products',
@@ -678,6 +772,85 @@ export const TenantApi = {
     }
     setLocalStore('billcraft_tenant_products', storeProducts);
     return enrichedProduct;
+  },
+
+  async recordStockMovement(
+    tenantId: string,
+    productId: string,
+    movement: {
+      type: StockMovementType;
+      quantity: number;
+      reference?: string;
+      reason?: string;
+    }
+  ): Promise<StockMovement | null> {
+    const product = await this.getProductById(tenantId, productId);
+    if (!product) return null;
+
+    const previousStock = Number(product.stockQuantity) || 0;
+    const qty = Number(movement.quantity) || 0;
+    let newStock = previousStock;
+
+    if (movement.type === 'in') {
+      newStock = previousStock + qty;
+    } else if (movement.type === 'out' || movement.type === 'invoice_deduction') {
+      newStock = Math.max(0, previousStock - qty);
+    } else if (movement.type === 'adjustment') {
+      newStock = qty;
+    }
+
+    const entry: StockMovement = {
+      id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      productId,
+      tenantId,
+      type: movement.type,
+      quantity: qty,
+      previousStock,
+      newStock,
+      reference: movement.reference,
+      reason: movement.reason,
+      timestamp: new Date().toISOString(),
+    };
+
+    const updatedProduct: ProductCatalogItem = {
+      ...product,
+      stockQuantity: newStock,
+      stockMovements: [entry, ...(product.stockMovements || [])].slice(0, 50),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.saveProduct(tenantId, updatedProduct);
+    return entry;
+  },
+
+  async deductStockForInvoice(tenantId: string, doc: DocumentModel): Promise<void> {
+    if (!doc.items || !Array.isArray(doc.items)) return;
+    const allProducts = await this.getProducts(tenantId);
+    if (allProducts.length === 0) return;
+
+    for (const item of doc.items) {
+      const match =
+        allProducts.find((p) => p.id === item.productId) ||
+        allProducts.find((p) => item.hsnCode && p.sku && p.sku.toLowerCase() === item.hsnCode.toLowerCase()) ||
+        allProducts.find((p) => item.description && p.name.toLowerCase() === item.description.trim().toLowerCase());
+
+      if (match) {
+        const qty = Number(item.quantity) || 1;
+        await this.recordStockMovement(tenantId, match.id, {
+          type: 'invoice_deduction',
+          quantity: qty,
+          reference: `Invoice #${doc.documentNumber}`,
+          reason: `Auto-deducted for ${doc.client?.name || 'Customer'}`,
+        });
+      }
+    }
+  },
+
+  async getLowStockProducts(tenantId: string): Promise<ProductCatalogItem[]> {
+    const products = await this.getProducts(tenantId);
+    return products.filter(
+      (p) => !p.isArchived && (Number(p.stockQuantity) || 0) <= (Number(p.minStockThreshold) || 5)
+    );
   },
 
   async getBrandSettings(tenantId: string): Promise<TenantBrandSettings> {

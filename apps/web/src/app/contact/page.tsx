@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sparkles, Mail, MessageSquare, CheckCircle2, Phone, MapPin } from 'lucide-react';
+import { Sparkles, Mail, MessageSquare, CheckCircle2, Phone, MapPin, ArrowRight, FilePlus } from 'lucide-react';
+import { APP_CONFIG } from '@invoice/core';
+import { PublicHeader } from '@/components/layout/public-header';
 
 export default function ContactPage() {
   const [name, setName] = useState('');
@@ -34,10 +36,10 @@ export default function ContactPage() {
     };
 
     try {
-      const stored = localStorage.getItem('billcraft_inquiries');
+      const stored = localStorage.getItem('invoxa_inquiries');
       const list = stored ? JSON.parse(stored) : [];
       list.unshift(inquiry);
-      localStorage.setItem('billcraft_inquiries', JSON.stringify(list));
+      localStorage.setItem('invoxa_inquiries', JSON.stringify(list));
     } catch (err) {
       console.error('Failed to save inquiry:', err);
     }
@@ -54,17 +56,7 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border px-6 lg:px-12 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-black text-xl text-primary tracking-tight">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <span>BillCraft</span>
-        </Link>
-        <div className="flex items-center gap-3">
-          <Link href="/create">
-            <Button size="sm" className="text-xs font-bold">Create Invoice</Button>
-          </Link>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-8 py-16 space-y-12">
         <div className="text-center space-y-3 max-w-xl mx-auto">
@@ -85,7 +77,7 @@ export default function ContactPage() {
               <div className="space-y-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2.5">
                   <Mail className="h-4 w-4 text-primary shrink-0" />
-                  <span>support@billcraft.io</span>
+                  <span>{APP_CONFIG.supportEmail}</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <Phone className="h-4 w-4 text-primary shrink-0" />
@@ -171,10 +163,30 @@ export default function ContactPage() {
             )}
           </Card>
         </div>
+        <div className="p-8 rounded-2xl bg-muted/40 border border-border text-center space-y-3">
+          <p className="text-xs text-muted-foreground">Looking to explore features or start creating invoices right away?</p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link href="/create">
+              <Button size="sm" className="font-bold text-xs bg-primary text-primary-foreground">
+                <FilePlus className="w-3.5 h-3.5 mr-1.5" /> Create Invoice Free
+              </Button>
+            </Link>
+            <Link href="/demo">
+              <Button variant="outline" size="sm" className="font-bold text-xs">
+                Launch Interactive Demo
+              </Button>
+            </Link>
+            <Link href="/pricing">
+              <Button variant="ghost" size="sm" className="font-bold text-xs">
+                View Pricing
+              </Button>
+            </Link>
+          </div>
+        </div>
       </main>
 
       <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 BillCraft Invoicing. Direct enterprise support.
+        © 2026 {APP_CONFIG.brandName} Cloud Technologies. Direct enterprise support.
       </footer>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AdminApi } from '@invoice/api';
-import { AdminTeam, PlanId } from '@invoice/core';
+import { AdminTeam, PlanId, APP_CONFIG } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -425,7 +425,7 @@ export default function AdminTeamsPage() {
                 </span>
               </label>
               <p className="text-[11px] text-slate-400 pl-6 leading-relaxed">
-                When enabled, all &ldquo;Powered by BillCraft&rdquo; watermarks, logos, and public tags are removed, and custom workspace branding is used across invoices, PDFs, and client emails.
+                When enabled, all &ldquo;Powered by {APP_CONFIG.brandName}&rdquo; watermarks, logos, and public tags are removed, and custom workspace branding is used across invoices, PDFs, and client emails.
               </p>
             </div>
 
@@ -445,7 +445,7 @@ export default function AdminTeamsPage() {
                     placeholder="e.g. Acme Invoicing"
                     className="bg-slate-950 border-slate-800 text-white text-xs h-9"
                   />
-                  <p className="text-[10px] text-slate-500">Replaces &ldquo;BillCraft&rdquo; everywhere in the app for this workspace.</p>
+                  <p className="text-[10px] text-slate-500">Replaces &ldquo;{APP_CONFIG.brandName}&rdquo; everywhere in the app for this workspace.</p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -573,7 +573,7 @@ export default function AdminTeamsPage() {
                 </span>
               </label>
               <p className="text-[11px] text-slate-400 pl-6 leading-relaxed">
-                When enabled, BillCraft branding is replaced by the custom company display name and logo across invoices, PDFs, and client emails.
+                When enabled, {APP_CONFIG.brandName} branding is replaced by the custom company display name and logo across invoices, PDFs, and client emails.
               </p>
             </div>
 
@@ -593,7 +593,7 @@ export default function AdminTeamsPage() {
                     placeholder="e.g. Acme Invoicing"
                     className="bg-slate-950 border-slate-800 text-white text-xs h-9"
                   />
-                  <p className="text-[10px] text-slate-500">Replaces &ldquo;BillCraft&rdquo; everywhere in the app for this workspace.</p>
+                  <p className="text-[10px] text-slate-500">Replaces &ldquo;{APP_CONFIG.brandName}&rdquo; everywhere in the app for this workspace.</p>
                 </div>
 
                 <div className="space-y-1.5">

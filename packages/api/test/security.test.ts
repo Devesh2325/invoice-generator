@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TenantApi, resetApiMemoryStore, TenantAccessDeniedError } from '../src/index';
+import { TenantApi, resetApiMemoryStore, TenantAccessDeniedError, PlanLimitReachedError } from '../src/index';
 import { DocumentModel, Party } from '@invoice/core';
 
 function createMockInvoice(id: string, tenantId: string, docNumber: string, clientName: string, amount = 1000): DocumentModel {
@@ -249,5 +249,70 @@ describe('Multi-Tenant Access Control & Isolation Engine', () => {
     // Audit log isolation verification
     const auditLogsA = await TenantApi.getAuditLogs(tenantA);
     expect(auditLogsA.every((log) => log.docNumber.startsWith('INV-A'))).toBe(true);
+  });
+
+  // g) Free trial invoice limit enforcement (max 7 invoices on starter plan)
+  it('g) Enforces 7-invoice free trial limit on starter plan and blocks 8th creation with PlanLimitReachedError', async () => {
+    const trialTenant = 'tenant_trial_starter';
+    await TenantApi.createTenant({
+      id: trialTenant,
+      name: 'Trial User Co',
+      slug: 'trial-user',
+      plan: 'starter',
+      createdAt: '2026-10-18T00:00:00.000Z',
+    });
+
+    // Create 7 invoices successfully
+    for (let i = 1; i <= 7; i++) {
+      const inv = createMockInvoice(`inv_trial_${i}`, trialTenant, `INV-${i}`, `Customer ${i}`);
+      await TenantApi.saveDocument(trialTenant, inv);
+    }
+
+    const docs = await TenantApi.getDocuments(trialTenant);
+    expect(docs.length).toBe(7);
+
+    const usage = await TenantApi.getTenantUsage(trialTenant);
+    expect(usage.invoiceCount).toBe(7);
+    expect(usage.isLimitReached).toBe(true);
+    expect(usage.remaining).toBe(0);
+
+    // Attempting to create an 8th invoice must throw PlanLimitReachedError
+    const extraInv = createMockInvoice('inv_trial_8', trialTenant, 'INV-8', 'Customer 8');
+    await expect(TenantApi.saveDocument(trialTenant, extraInv)).rejects.toThrow(
+      PlanLimitReachedError
+    );
+
+    // Updating an existing invoice (e.g. inv_trial_1) must still be permitted
+    const existing = await TenantApi.getDocumentById(trialTenant, 'inv_trial_1');
+    expect(existing).not.toBeNull();
+    if (existing) {
+      existing.notes = 'Updated notes on existing invoice';
+      const updated = await TenantApi.saveDocument(trialTenant, existing);
+      expect(updated.notes).toBe('Updated notes on existing invoice');
+    }
+  });
+
+  // h) Template gating enforcement
+  it('h) Blocks free trial user from using Pro/Enterprise-only template with PlanLimitReachedError', async () => {
+    const trialTenant = 'tenant_trial_starter_template';
+    await TenantApi.createTenant({
+      id: trialTenant,
+      name: 'Trial Template Test',
+      slug: 'trial-template',
+      plan: 'starter',
+      createdAt: '2026-10-18T00:00:00.000Z',
+    });
+
+    // Allowed template ('cleartax_gst') succeeds
+    const allowedInv = createMockInvoice('inv_allowed', trialTenant, 'INV-OK', 'Cust OK');
+    allowedInv.templateId = 'cleartax_gst';
+    await expect(TenantApi.saveDocument(trialTenant, allowedInv)).resolves.toBeDefined();
+
+    // Pro-only template ('modern_minimalist' or 'executive_gold') fails
+    const proInv = createMockInvoice('inv_pro_blocked', trialTenant, 'INV-PRO', 'Cust Pro');
+    proInv.templateId = 'modern_minimalist';
+    await expect(TenantApi.saveDocument(trialTenant, proInv)).rejects.toThrow(
+      PlanLimitReachedError
+    );
   });
 });

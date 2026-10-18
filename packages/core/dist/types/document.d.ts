@@ -2,6 +2,12 @@ export declare class TenantAccessDeniedError extends Error {
     status: number;
     constructor(message?: string);
 }
+export declare class PlanLimitReachedError extends Error {
+    status: number;
+    limit: number;
+    current: number;
+    constructor(message?: string, limit?: number, current?: number);
+}
 export type DocumentType = 'invoice' | 'estimate' | 'purchase_order' | 'receipt' | 'credit_note' | 'debit_note' | 'pro_forma';
 export type DocumentStatus = 'draft' | 'pending' | 'finalized' | 'sent' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled' | 'refunded' | 'archived';
 export type DiscountType = 'percentage' | 'fixed';

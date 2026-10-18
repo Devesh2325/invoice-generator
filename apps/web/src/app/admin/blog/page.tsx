@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BlogApi } from '@invoice/api';
-import { BlogPost } from '@invoice/core';
+import { BlogPost, APP_CONFIG } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -48,7 +48,7 @@ export default function AdminBlogPage() {
       category: 'GST & Taxes',
       tags: ['Invoicing'],
       author: {
-        name: 'BillCraft Editorial',
+        name: `${APP_CONFIG.brandName} Editorial`,
         role: 'Tax & Product Specialist',
       },
       publishedAt: new Date().toISOString().split('T')[0],

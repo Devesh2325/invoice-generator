@@ -1,22 +1,16 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
-
-export const metadata = {
-  title: 'Terms of Service — BillCraft',
-  description: 'BillCraft Terms of Service governing platform usage, team subscriptions, and document generation.',
-};
+import { APP_CONFIG } from '@invoice/core';
+import { PublicHeader } from '@/components/layout/public-header';
+import { Button } from '@/components/ui/button';
+import { Sparkles, FilePlus, ArrowRight } from 'lucide-react';
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border px-6 lg:px-12 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-black text-xl text-primary tracking-tight">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <span>BillCraft</span>
-        </Link>
-        <Link href="/" className="text-xs font-semibold hover:underline">Back to Home</Link>
-      </header>
+      <PublicHeader />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-8 py-16 space-y-8 text-xs sm:text-sm text-foreground/90 leading-relaxed">
         <div className="space-y-2 border-b border-border pb-6">
@@ -27,34 +21,56 @@ export default function TermsPage() {
         <section className="space-y-3">
           <h2 className="text-base font-bold text-foreground">1. Acceptance of Terms</h2>
           <p>
-            By accessing or utilizing BillCraft, you agree to comply with and be legally bound by these Terms of Service. If you disagree with any portion of these terms, please do not use the application.
+            By accessing or utilizing {APP_CONFIG.brandName}, you agree to comply with and be legally bound by these Terms of Service. If you disagree with any portion of these terms, please discontinue using the platform.
           </p>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-base font-bold text-foreground">2. Responsible Use & Accuracy</h2>
           <p>
-            You are solely responsible for ensuring the accuracy of all taxpayer identification numbers (GSTIN, PAN, VAT, SSN/EIN), billing amounts, and bank account information entered on invoices generated through BillCraft.
+            You are solely responsible for ensuring the accuracy of all taxpayer identification numbers (GSTIN, PAN, VAT, SSN/EIN), billing rates, quantities, and bank account information entered on invoices generated through {APP_CONFIG.brandName}.
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold text-foreground">3. Subscriptions & Billing</h2>
+          <h2 className="text-base font-bold text-foreground">3. Subscriptions, Invoicing Limits & White-Label Provisions</h2>
           <p>
-            Paid plans are billed on a recurring monthly or annual basis. You may cancel your subscription at any time through the in-app Billing dashboard. Upon cancellation, access remains active until the end of your billing cycle.
+            Free trial accounts are subject to a maximum allowance of {APP_CONFIG.trialInvoiceLimit} generated invoices. Pro and Enterprise subscribers enjoy unlimited document creation, full inventory management, and white-label multi-tenant workspace isolation.
           </p>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-base font-bold text-foreground">4. Limitation of Liability</h2>
           <p>
-            BillCraft is provided "as is" without warranty of any kind. In no event shall BillCraft be liable for tax penalties, missed payments, or commercial disputes arising from invoice inaccuracies.
+            {APP_CONFIG.brandName} is provided "as is" without warranty of any kind. In no event shall {APP_CONFIG.brandName} be liable for tax penalties, missed payments, or commercial disputes arising from invoice inaccuracies.
           </p>
         </section>
+
+        {/* Clear Next-Step Action Banner */}
+        <div className="p-8 rounded-2xl bg-muted/40 border border-border text-center space-y-3">
+          <p className="text-xs text-muted-foreground">Ready to start invoicing with precision and style?</p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link href="/create">
+              <Button size="sm" className="font-bold text-xs bg-primary text-primary-foreground">
+                <FilePlus className="w-3.5 h-3.5 mr-1.5" /> Start Free Invoicing
+              </Button>
+            </Link>
+            <Link href="/demo">
+              <Button variant="outline" size="sm" className="font-bold text-xs">
+                Interactive Sandbox Demo
+              </Button>
+            </Link>
+            <Link href="/pricing">
+              <Button variant="ghost" size="sm" className="font-bold text-xs">
+                View Pricing & Plans
+              </Button>
+            </Link>
+          </div>
+        </div>
       </main>
 
       <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 BillCraft Invoicing.
+        © 2026 {APP_CONFIG.brandName} Cloud Technologies. All rights reserved.
       </footer>
     </div>
   );

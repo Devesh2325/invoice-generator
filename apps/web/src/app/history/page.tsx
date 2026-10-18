@@ -16,6 +16,7 @@ import {
   formatDocumentNumber,
   computeEffectiveInvoiceStatus,
   formatInvoiceStatusLabel,
+  APP_CONFIG,
 } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,7 +116,7 @@ export default function DocumentHistoryPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `billcraft-invoices-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `${APP_CONFIG.brandName.toLowerCase()}-invoices-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };

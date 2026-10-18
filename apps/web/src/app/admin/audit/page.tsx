@@ -36,7 +36,7 @@ export default function AdminAuditPage() {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(logs, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `billcraft_audit_logs_${Date.now()}.json`);
+    downloadAnchor.setAttribute('download', `invoxa_audit_logs_${Date.now()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();

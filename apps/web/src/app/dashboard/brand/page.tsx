@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TenantApi, TenantBrandSettings } from '@invoice/api';
+import { APP_CONFIG } from '@invoice/core';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -133,7 +134,7 @@ export default function TenantBrandStudioPage() {
                     {activeTenant?.custom_domain || 'billing.yourdomain.com'}
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                    CNAME target: <code className="font-mono text-primary">cname.billcraft.app</code>
+                    CNAME target: <code className="font-mono text-primary">cname.{APP_CONFIG.brandDomain}</code>
                   </div>
                 </div>
                 {activeTenant?.is_domain_verified ? (

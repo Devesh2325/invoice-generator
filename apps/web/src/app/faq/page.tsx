@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Search, ChevronDown, MessageSquare } from 'lucide-react';
+import { Sparkles, Search, ChevronDown, MessageSquare, FilePlus } from 'lucide-react';
+import { APP_CONFIG } from '@invoice/core';
+import { PublicHeader } from '@/components/layout/public-header';
 
 export default function FaqPage() {
   const [search, setSearch] = useState('');
@@ -15,23 +17,23 @@ export default function FaqPage() {
   const faqItems = [
     {
       category: 'General & Pricing',
-      q: 'Is BillCraft really free to use?',
-      a: 'Yes! You can generate, customize, preview, and download invoices without creating an account or providing a credit card. All invoices are stored in your local browser storage (IndexedDB). Paid subscriptions unlock multi-member cloud collaboration, custom domains, and extra premium templates.',
+      q: `Is ${APP_CONFIG.brandName} really free to try?`,
+      a: `Yes! Free trial accounts include up to ${APP_CONFIG.trialInvoiceLimit} complete invoices with India GST calculation, verified UPI QR generation, and full PDF export without requiring a credit card. Pro and Enterprise upgrades provide unlimited invoices and multi-tenant white-label power.`,
     },
     {
       category: 'GST & Taxes',
       q: 'How does India GST auto-calculation work?',
-      a: 'BillCraft cross-references the Supplier State against the Customer Place of Supply. When states match, Intra-State tax (CGST + SGST split equally) is levied. When states differ, Inter-State tax (IGST) is levied. Indian state codes (e.g., 27 - Maharashtra) and HSN/SAC codes are printed accurately.',
+      a: `${APP_CONFIG.brandName} cross-references the Supplier State against the Customer Place of Supply. When states match, Intra-State tax (CGST + SGST split equally) is levied. When states differ, Inter-State tax (IGST) is levied. Indian state codes (e.g., 27 - Maharashtra) and HSN/SAC codes are printed accurately.`,
     },
     {
       category: 'Payments & UPI',
       q: 'How does the UPI QR code work on generated invoices?',
-      a: 'BillCraft encodes your verified UPI ID, registered payee name, invoice number, and exact balance due into a standardized NPCI URI (upi://pay) formatted as an ISO/IEC 18004 SVG QR code. Clients scanning with Google Pay, PhonePe, Paytm, or BHIM have the exact payment amount pre-filled.',
+      a: `${APP_CONFIG.brandName} encodes your verified UPI ID, registered payee name, invoice number, and exact balance due into a standardized NPCI URI (upi://pay) formatted as an ISO/IEC 18004 SVG QR code. Clients scanning with Google Pay, PhonePe, Paytm, or BHIM have the exact payment amount pre-filled.`,
     },
     {
       category: 'Workflow & Conversion',
       q: 'Can I convert an Estimate or Quote to an Invoice?',
-      a: 'Yes. Every estimate features a one-click "Convert to Invoice" action. BillCraft duplicates all client information, items, pricing, and taxes into a new sequential Tax Invoice automatically.',
+      a: `Yes. Every estimate features a one-click "Convert to Invoice" action. ${APP_CONFIG.brandName} duplicates all client information, items, pricing, and taxes into a new sequential Tax Invoice automatically.`,
     },
     {
       category: 'Data & Privacy',
@@ -46,7 +48,7 @@ export default function FaqPage() {
     {
       category: 'Team & Collaboration',
       q: 'How do team permissions work?',
-      a: 'BillCraft features 4 granular roles: Owner (full administrative & billing control), Admin (can invite members & change settings), Editor (can create and edit invoices, items, and clients), and Viewer (read-only access to documents and reports).',
+      a: `${APP_CONFIG.brandName} features 4 granular roles: Owner (full administrative & billing control), Admin (can invite members & change settings), Editor (can create and edit invoices, items, and clients), and Viewer (read-only access to documents and reports).`,
     },
   ];
 
@@ -65,20 +67,7 @@ export default function FaqPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border px-6 lg:px-12 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-black text-xl text-primary tracking-tight">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <span>BillCraft</span>
-        </Link>
-        <div className="flex items-center gap-3">
-          <Link href="/contact">
-            <Button variant="ghost" size="sm" className="text-xs font-semibold">Contact Support</Button>
-          </Link>
-          <Link href="/create">
-            <Button size="sm" className="text-xs font-bold">Create Invoice</Button>
-          </Link>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-8 py-16 space-y-12">
         <div className="text-center space-y-3 max-w-xl mx-auto">
@@ -157,16 +146,23 @@ export default function FaqPage() {
             <h3 className="font-bold text-sm text-foreground">Still need assistance?</h3>
             <p className="text-xs text-muted-foreground">Our support team is available during business hours to assist you.</p>
           </div>
-          <Link href="/contact">
-            <Button size="sm" variant="outline" className="text-xs font-semibold">
-              <MessageSquare className="h-3.5 w-3.5 mr-1.5" /> Submit Support Ticket
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/create">
+              <Button size="sm" className="text-xs font-bold bg-primary text-primary-foreground">
+                <FilePlus className="h-3.5 w-3.5 mr-1.5" /> Start Free
+              </Button>
+            </Link>
+            <Link href="/contact">
+              <Button size="sm" variant="outline" className="text-xs font-semibold">
+                <MessageSquare className="h-3.5 w-3.5 mr-1.5" /> Submit Support Ticket
+              </Button>
+            </Link>
+          </div>
         </div>
       </main>
 
       <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 BillCraft Help Center.
+        © 2026 {APP_CONFIG.brandName} Help Center & Support. All rights reserved.
       </footer>
     </div>
   );

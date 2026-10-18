@@ -1,0 +1,78 @@
+{
+  "exportedAt": "2026-10-18T13:54:33.389Z",
+  "superAdminAccount": {
+    "email": "admin@billcraft.com",
+    "role": "super_admin",
+    "preserved": true
+  },
+  "brandName": "Invoxa",
+  "trialInvoiceLimit": 7,
+  "data": {
+    "tenants": [
+      {
+        "id": "tenant_old_demo_01",
+        "name": "Legacy Test Workspace A",
+        "isSuperAdmin": false
+      },
+      {
+        "id": "tenant_old_demo_02",
+        "name": "Temporary Staging Studio",
+        "isSuperAdmin": false
+      }
+    ],
+    "documents": [
+      {
+        "id": "doc_old_01",
+        "number": "INV-TEST-001",
+        "tenantId": "tenant_old_demo_01",
+        "reason": "Old test data"
+      },
+      {
+        "id": "doc_old_02",
+        "number": "INV-TEST-002",
+        "tenantId": "tenant_old_demo_01",
+        "reason": "Old test data"
+      },
+      {
+        "id": "doc_old_03",
+        "number": "INV-STAGING-99",
+        "tenantId": "tenant_old_demo_02",
+        "reason": "Staging run"
+      }
+    ],
+    "parties": [
+      {
+        "id": "party_old_01",
+        "name": "Mock Test Client Alpha",
+        "tenantId": "tenant_old_demo_01",
+        "reason": "Test customer"
+      },
+      {
+        "id": "party_old_02",
+        "name": "Staging Vendor Beta",
+        "tenantId": "tenant_old_demo_02",
+        "reason": "Test vendor"
+      }
+    ],
+    "products": [
+      {
+        "id": "prod_old_01",
+        "name": "Sample Mock Widget",
+        "sku": "WIDGET-01",
+        "reason": "Old product seed"
+      },
+      {
+        "id": "prod_old_02",
+        "name": "Test Consulting Hour",
+        "sku": "CONSULT-01",
+        "reason": "Old product seed"
+      }
+    ],
+    "cacheKeys": [
+      "billcraft_inquiries",
+      "billcraft_current_user",
+      "billcraft_tenant_cache",
+      "billcraft_recent_searches"
+    ]
+  }
+}

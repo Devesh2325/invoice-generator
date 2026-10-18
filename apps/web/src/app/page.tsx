@@ -32,17 +32,25 @@ import {
   FileText,
   FileCheck,
   Building,
+  PlayCircle,
 } from 'lucide-react';
 import { TEMPLATES } from '@invoice/theme';
+import { APP_CONFIG } from '@invoice/core';
+import { useTenant } from '@/lib/auth/tenant-context';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 
 export default function LandingPage() {
+  const { brandSettings } = useTenant();
   const { theme, toggleTheme, resolvedTheme } = useTheme();
   const { t } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
+  const brandName = brandSettings?.whiteLabelEnabled && brandSettings?.businessName
+    ? brandSettings.businessName
+    : APP_CONFIG.brandName;
   const [activeSection, setActiveSection] = useState<string>('');
 
   useEffect(() => {
@@ -84,28 +92,28 @@ export default function LandingPage() {
 
   const faqs = [
     {
-      q: 'Is BillCraft truly free to use without signing up?',
-      a: 'Yes! You can immediately create, customize, and download high-resolution PDF invoices without creating an account. All documents are stored offline in your browser using IndexedDB. When you want cloud sync, team collaboration, and automated numbering, you can create a free account.',
+      q: `Is ${APP_CONFIG.brandName} truly free to try without payment info?`,
+      a: `Yes! You can immediately create, customize, and download high-resolution PDF invoices without submitting payment details. Free accounts receive a trial allowance of ${APP_CONFIG.trialInvoiceLimit} complete invoices with India GST calculation, verified UPI QR codes, and multi-channel sharing.`,
     },
     {
       q: 'How does India GST (CGST, SGST, IGST) calculation work?',
-      a: 'BillCraft automatically cross-references the Supplier State against the Customer Place of Supply. If both states match, it automatically applies Intra-State taxation (splitting the tax evenly into CGST and SGST). If the states differ, it automatically applies Inter-State taxation (IGST). State codes and HSN/SAC codes are printed accurately on all PDFs.',
+      a: `${APP_CONFIG.brandName} automatically cross-references the Supplier State against the Customer Place of Supply. If both states match, it automatically applies Intra-State taxation (splitting the tax evenly into CGST and SGST). If the states differ, it automatically applies Inter-State taxation (IGST). State codes and HSN/SAC codes are printed accurately on all PDFs.`,
     },
     {
       q: 'Will the generated UPI QR code scan on PhonePe, Google Pay, and Paytm?',
-      a: 'Absolutely. BillCraft incorporates a full ISO/IEC 18004 QR encoder that embeds verified NPCI UPI deep-links (upi://pay) with your VPA, legal Payee Name, Invoice Number, and exact Balance Due. Any UPI-compliant app scans it instantly for zero-fee payment settlements.',
+      a: `Absolutely. ${APP_CONFIG.brandName} incorporates a full ISO/IEC 18004 QR encoder that embeds verified NPCI UPI deep-links (upi://pay) with your VPA, legal Payee Name, Invoice Number, and exact Balance Due. Any UPI-compliant app scans it instantly for zero-fee payment settlements.`,
     },
     {
       q: 'Can I convert an Estimate or Quote into an Invoice with one click?',
-      a: 'Yes! When you or your client approves an Estimate or Quote, click "Convert to Invoice". BillCraft automatically copies all line items, rates, customer details, and taxes to a new Tax Invoice with sequential numbering.',
+      a: `Yes! When you or your client approves an Estimate or Quote, click "Convert to Invoice". ${APP_CONFIG.brandName} automatically copies all line items, rates, customer details, and taxes to a new Tax Invoice with sequential numbering.`,
     },
     {
       q: 'Can I invite accountants or team members with restricted permissions?',
-      a: 'Yes. BillCraft supports role-based team management (Owner, Admin, Editor, Viewer). You can invite team members by email and control who can finalize invoices, record payments, issue refunds, or only view reports.',
+      a: `Yes. ${APP_CONFIG.brandName} supports role-based team management (Owner, Admin, Editor, Viewer). You can invite team members by email and control who can finalize invoices, record payments, issue refunds, or only view reports.`,
     },
     {
-      q: 'Does BillCraft prevent floating-point calculation errors?',
-      a: 'Yes. BillCraft runs on a financial engine built with decimal.js. Every subtotal, line-item discount, tax rate, round-off adjustment, and balance due is calculated with arbitrary decimal precision, eliminating the IEEE 754 floating-point rounding errors typical of spreadsheets.',
+      q: `Does ${APP_CONFIG.brandName} prevent floating-point calculation errors?`,
+      a: `Yes. ${APP_CONFIG.brandName} runs on a financial engine built with decimal.js. Every subtotal, line-item discount, tax rate, round-off adjustment, and balance due is calculated with arbitrary decimal precision, eliminating the IEEE 754 floating-point rounding errors typical of spreadsheets.`,
     },
   ];
 
@@ -118,10 +126,10 @@ export default function LandingPage() {
             <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <Sparkles className="h-5 w-5 text-primary" />
             </div>
-            <span>BillCraft</span>
+            <span>{brandName}</span>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold text-muted-foreground">
+          <nav className="hidden md:flex items-center gap-2.5 lg:gap-6 text-xs font-semibold text-muted-foreground">
             <a
               href="#features"
               onClick={(e) => handleNavClick(e, '#features')}
@@ -149,6 +157,15 @@ export default function LandingPage() {
             >
               {t('nav.pricing', 'Pricing')}
             </a>
+            <Link
+              href="/demo"
+              className="text-primary font-bold hover:underline flex items-center gap-1.5"
+            >
+              <span>Demo</span>
+              <span className="text-[9px] uppercase px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-extrabold animate-pulse">
+                Sandbox
+              </span>
+            </Link>
             <Link href="/blog" className="hover:text-primary transition-colors">
               {t('nav.blog', 'Blog')}
             </Link>
@@ -197,17 +214,18 @@ export default function LandingPage() {
           {/* Mobile Hamburger Toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 focus:outline-hidden"
+            className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted/60 focus:outline-hidden text-xs font-medium"
             aria-label="Toggle Mobile Menu"
           >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            <span>Menu</span>
           </button>
         </div>
       </header>
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-x-0 top-[57px] bg-background border-b border-border shadow-xl z-40 p-4 space-y-3 animate-in slide-in-from-top-2">
+        <div className="md:hidden fixed inset-x-0 top-[57px] bg-background border-b border-border shadow-xl z-40 p-4 space-y-3 animate-in slide-in-from-top-2">
           <nav className="flex flex-col space-y-2 text-xs font-semibold text-muted-foreground">
             <a
               href="#features"
@@ -249,7 +267,7 @@ export default function LandingPage() {
               onClick={() => setMobileMenuOpen(false)}
               className="p-2 rounded-md hover:bg-muted/50 hover:text-foreground"
             >
-              {t('nav.about', 'About BillCraft')}
+              {t('nav.about', `About ${brandName}`)}
             </Link>
             <Link
               href="/contact"
@@ -295,9 +313,9 @@ export default function LandingPage() {
               <FileText className="h-4 w-4" /> Create Invoice Now <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-          <Link href="/dashboard">
-            <Button variant="outline" size="lg" className="h-12 px-6 text-sm font-semibold">
-              <Building className="h-4 w-4 mr-2 text-muted-foreground" /> Open Workspace Demo
+          <Link href="/demo">
+            <Button variant="outline" size="lg" className="h-12 px-6 text-sm font-semibold border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40">
+              <PlayCircle className="h-4 w-4 mr-2" /> Launch Interactive Demo
             </Button>
           </Link>
         </div>
@@ -308,7 +326,7 @@ export default function LandingPage() {
             <div className="flex flex-wrap items-center justify-between border-b border-border pb-4 mb-6 gap-3">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground font-black text-lg flex items-center justify-center shadow-xs">
-                  BC
+                  {brandName.slice(0, 2).toUpperCase()}
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-foreground">Apex Digital Solutions Pvt Ltd</h3>
@@ -440,7 +458,7 @@ export default function LandingPage() {
             Everything You Need for Effortless Financial Invoicing
           </h2>
           <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-            From precision calculations to client directories and instant UPI payments, BillCraft simplifies your entire billing cycle.
+            From precision calculations to client directories and instant UPI payments, {brandName} simplifies your entire billing cycle.
           </p>
         </div>
 
@@ -733,7 +751,7 @@ export default function LandingPage() {
                   </div>
                   <div className="flex items-center gap-2 pt-2">
                     <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Remove BillCraft Watermark</span>
+                    <span>Remove {brandName} Watermark</span>
                   </div>
                   <div className="flex items-center gap-2 pt-2">
                     <Check className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -827,7 +845,7 @@ export default function LandingPage() {
               ))}
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed italic">
-              "Most invoice generators just change font colors. BillCraft has genuinely different layouts. The Corporate layout gives our enterprise clients exactly what their finance departments need."
+              &quot;Most invoice generators just change font colors. {brandName} has genuinely different layouts. The Corporate layout gives our enterprise clients exactly what their finance departments need.&quot;
             </p>
             <div className="flex items-center gap-3 pt-2 border-t border-border">
               <div className="h-9 w-9 rounded-full bg-indigo-500/20 text-indigo-600 font-bold text-xs flex items-center justify-center">
@@ -908,7 +926,7 @@ export default function LandingPage() {
             Ready to Upgrade Your Invoicing Experience?
           </h2>
           <p className="text-sm sm:text-base text-white/95 max-w-xl mx-auto select-text font-medium leading-relaxed">
-            Join thousands of modern businesses using BillCraft for accurate, beautifully branded GST invoices and instant payments.
+            Join thousands of modern businesses using {brandName} for accurate, beautifully branded GST invoices and instant payments.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link href="/create">
@@ -916,9 +934,9 @@ export default function LandingPage() {
                 Create Your First Invoice Free
               </Button>
             </Link>
-            <Link href="/signup">
+            <Link href="/demo">
               <Button size="lg" variant="outline" className="h-12 px-6 text-sm font-bold border-white/60 bg-transparent text-white hover:bg-white/10 hover:text-white active:bg-white/20 active:text-white focus-visible:ring-2 focus-visible:ring-white transition-all">
-                Register Workspace
+                Try Interactive Demo
               </Button>
             </Link>
           </div>
@@ -932,13 +950,13 @@ export default function LandingPage() {
           <div className="col-span-2 space-y-3">
             <Link href="/" className="flex items-center gap-2 font-black text-lg text-primary tracking-tight">
               <Sparkles className="h-5 w-5 text-primary" />
-              <span>BillCraft</span>
+              <span>{brandName}</span>
             </Link>
             <p className="text-xs max-w-xs leading-relaxed">
               Production-ready invoicing engine for freelancers, startups, and enterprises. Built with decimal-safe calculations, verified UPI QR codes, and multi-tenant security.
             </p>
             <div className="text-[11px] font-mono text-muted-foreground/60 pt-2">
-              © 2026 BillCraft Invoicing Inc. All rights reserved.
+              © 2026 {brandName} Cloud Technologies. All rights reserved.
             </div>
           </div>
 
@@ -947,6 +965,7 @@ export default function LandingPage() {
             <div className="font-bold text-foreground text-xs uppercase tracking-wider">Product</div>
             <div className="flex flex-col space-y-1.5">
               <Link href="/create" className="hover:text-foreground transition-colors">Invoice Generator</Link>
+              <Link href="/demo" className="hover:text-foreground transition-colors font-bold text-primary">Interactive Demo</Link>
               <Link href="/create?type=estimate" className="hover:text-foreground transition-colors">Estimate Creator</Link>
               <Link href="/create?type=purchase_order" className="hover:text-foreground transition-colors">Purchase Orders</Link>
               <Link href="/templates" className="hover:text-foreground transition-colors">Template Gallery</Link>

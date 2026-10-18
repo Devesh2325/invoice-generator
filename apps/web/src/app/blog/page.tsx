@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sparkles, Search, Clock, ArrowRight, User } from 'lucide-react';
+import { Sparkles, Search, Clock, ArrowRight, User, FilePlus } from 'lucide-react';
+import { APP_CONFIG } from '@invoice/core';
+import { PublicHeader } from '@/components/layout/public-header';
 
 export default function BlogIndexPage() {
   const [posts, setPosts] = useState<BlogPost[]>(() => {
@@ -40,21 +42,11 @@ export default function BlogIndexPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border px-6 lg:px-12 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-black text-xl text-primary tracking-tight">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <span>BillCraft</span>
-        </Link>
-        <div className="flex items-center gap-3">
-          <Link href="/create">
-            <Button size="sm" className="text-xs font-bold">Create Invoice</Button>
-          </Link>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-8 py-16 space-y-12">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
-          <Badge variant="outline" className="text-xs">BillCraft Knowledge Base</Badge>
+          <Badge variant="outline" className="text-xs">{APP_CONFIG.brandName} Knowledge Base</Badge>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground">
             Invoicing, Tax Compliance & Fintech Guides
           </h1>
@@ -175,10 +167,30 @@ export default function BlogIndexPage() {
             </Card>
           ))}
         </div>
+
+        {/* Clear Next-Step Action Banner */}
+        <div className="p-8 sm:p-10 rounded-3xl bg-muted/30 border border-border text-center space-y-4">
+          <h2 className="text-2xl font-black text-foreground">Put these guides into practice</h2>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto">
+            Create high-precision GST invoices with automatic tax splitting and verified UPI QR codes right now.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link href="/create">
+              <Button size="sm" className="font-bold text-xs bg-primary text-primary-foreground">
+                <FilePlus className="w-3.5 h-3.5 mr-1.5" /> Create Invoice Free
+              </Button>
+            </Link>
+            <Link href="/demo">
+              <Button variant="outline" size="sm" className="font-bold text-xs text-indigo-600 border-indigo-200 dark:border-indigo-800">
+                Interactive Sandbox Demo
+              </Button>
+            </Link>
+          </div>
+        </div>
       </main>
 
       <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 BillCraft Knowledge Hub. Educational tax and business resources.
+        © 2026 {APP_CONFIG.brandName} Knowledge Hub. Educational tax and business resources.
       </footer>
     </div>
   );

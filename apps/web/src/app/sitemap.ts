@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next';
+import { APP_CONFIG } from '@invoice/core';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://billcraft.io';
+  const baseUrl = `https://${APP_CONFIG.brandDomain}`;
   const routes = [
     '',
     '/features',

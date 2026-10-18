@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TenantApi } from '@invoice/api';
-import { CURRENCIES, INDIAN_STATES } from '@invoice/core';
+import { CURRENCIES, INDIAN_STATES, APP_CONFIG } from '@invoice/core';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,7 +93,7 @@ export default function OnboardingPage() {
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 font-black text-2xl text-primary tracking-tight">
             <Sparkles className="h-6 w-6 text-primary" />
-            <span>BillCraft Onboarding</span>
+            <span>{APP_CONFIG.brandName} Onboarding</span>
           </div>
           <h2 className="text-xl font-bold text-slate-900">Configure Your GST & Business Profile</h2>
           <div className="flex items-center justify-center gap-2 pt-2">

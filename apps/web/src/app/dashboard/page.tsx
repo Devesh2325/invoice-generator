@@ -14,6 +14,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { TrialCounterBadge } from '@/components/ui/trial-counter-badge';
+import { UpgradePlanModal } from '@/components/modals/upgrade-plan-modal';
 import {
   DollarSign,
   CheckCircle2,
@@ -36,7 +38,10 @@ export default function TenantDashboardPage() {
   const [documents, setDocuments] = useState<CanonicalDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const isPaidPlan = Boolean(activeTenant?.plan && activeTenant.plan !== 'starter');
+  const invoiceCount = documents.length;
+  const isLimitReached = !isPaidPlan && invoiceCount >= 7;
 
   useEffect(() => {
     async function loadData() {
@@ -165,17 +170,43 @@ export default function TenantDashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link href="/create">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <TrialCounterBadge
+              invoiceCount={invoiceCount}
+              plan={activeTenant?.plan || 'starter'}
+              compact
+              onUpgradeClick={() => setUpgradeModalOpen(true)}
+            />
+
+            {isLimitReached ? (
               <Button
                 size="sm"
-                className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-sm flex items-center gap-1.5"
+                onClick={() => setUpgradeModalOpen(true)}
+                className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus className="h-4 w-4" /> Create Invoice
               </Button>
-            </Link>
+            ) : (
+              <Link href="/create">
+                <Button
+                  size="sm"
+                  className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-sm flex items-center gap-1.5"
+                >
+                  <Plus className="h-4 w-4" /> Create Invoice
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
+
+        {/* Free Trial Progress Card (visible only for free starter tenants) */}
+        {!isPaidPlan && (
+          <TrialCounterBadge
+            invoiceCount={invoiceCount}
+            plan={activeTenant?.plan || 'starter'}
+            onUpgradeClick={() => setUpgradeModalOpen(true)}
+          />
+        )}
 
         {/* Upgraded Plan Celebration Banner */}
         {isPaidPlan && !bannerDismissed && (
@@ -551,6 +582,12 @@ export default function TenantDashboardPage() {
           </Card>
         </div>
       </div>
+
+      <UpgradePlanModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        currentCount={invoiceCount}
+      />
     </TenantLayout>
   );
 }

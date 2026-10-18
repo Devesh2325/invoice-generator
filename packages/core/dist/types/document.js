@@ -7,6 +7,18 @@ export class TenantAccessDeniedError extends Error {
         this.status = 403;
     }
 }
+export class PlanLimitReachedError extends Error {
+    status;
+    limit;
+    current;
+    constructor(message = 'Free trial limit reached: 7/7 invoices created. Upgrade to Pro for unlimited invoices.', limit = 7, current = 7) {
+        super(message);
+        this.name = 'PlanLimitReachedError';
+        this.status = 402;
+        this.limit = limit;
+        this.current = current;
+    }
+}
 export const INDIAN_STATES = [
     { code: '27', name: 'Maharashtra', label: '27 - Maharashtra' },
     { code: '29', name: 'Karnataka', label: '29 - Karnataka' },

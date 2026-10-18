@@ -25,6 +25,8 @@ import {
   validateUpiId,
   validateBankAccount,
   generateVerifiedUpiQrSvgDataUrl,
+  APP_CONFIG,
+  isTemplateAllowedForPlan,
 } from '@invoice/core';
 import { getTemplate, getTemplatesByCategory, getInvoiceTemplate } from '@invoice/theme';
 import { TenantApi, ProductCatalogItem } from '@invoice/api';
@@ -35,6 +37,8 @@ import { exportDocumentToPdf, triggerPrint } from '@/lib/pdf/export-pdf';
 import { DocumentPreview } from './document-preview';
 import { InlineDocumentCanvas } from './inline-document-canvas';
 import { DocumentTypeSelector } from './document-type-selector';
+import { ShareInvoiceModal } from '@/components/modals/share-invoice-modal';
+import { UpgradePlanModal } from '@/components/modals/upgrade-plan-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -414,6 +418,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState<string>('');
 
   // New Bank Account form inside Payment Settings Modal
   const [editingBank, setEditingBank] = useState<BankAccountDetails>({
@@ -838,8 +844,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       setIsPersisted(true);
       setSaveStatus('saved');
       if (onSaved) onSaved(documentModel);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save invoice:', err);
+      if (err?.name === 'PlanLimitReachedError' || err?.message?.includes('Plan Limit') || err?.message?.includes('upgrade')) {
+        setUpgradeReason(err.message || 'Free trial limit reached. Upgrade to Pro for unlimited invoices.');
+        setUpgradeModalOpen(true);
+      }
     }
   };
 
@@ -864,9 +874,16 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       }
       setIsPersisted(true);
       setSaveStatus('saved');
+      setShareModalOpen(true);
       if (onSaved) onSaved(updated);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to finalize invoice:', err);
+      if (err?.name === 'PlanLimitReachedError' || err?.message?.includes('Plan Limit') || err?.message?.includes('upgrade')) {
+        setUpgradeReason(err.message || 'Free trial limit reached. Upgrade to Pro for unlimited invoices.');
+        setUpgradeModalOpen(true);
+      } else {
+        alert(err?.message || 'Failed to finalize invoice.');
+      }
     }
   };
 
@@ -1113,7 +1130,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
           <Link href="/" className="font-black text-lg text-primary tracking-tight flex items-center gap-1.5 shrink-0">
             <Sparkles className="h-5 w-5 text-primary" />
-            <span>BillCraft</span>
+            <span>{APP_CONFIG.brandName}</span>
           </Link>
 
           {/* Invoice Name Input */}
@@ -1254,18 +1271,28 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 <select
                   value={templateId}
                   onChange={(e) => {
-                    setTemplateId(e.target.value);
+                    const selected = e.target.value;
+                    const allowed = isTemplateAllowedForPlan(activeTenant?.plan || 'starter', selected);
+                    if (!allowed) {
+                      setUpgradeReason(`The "${selected}" template is an exclusive Pro/Enterprise design. Upgrade to unlock all premium templates.`);
+                      setUpgradeModalOpen(true);
+                      return;
+                    }
+                    setTemplateId(selected);
                     setCustomPrimaryColor(undefined);
                   }}
                   className="w-full text-xs font-bold bg-muted/60 border border-border rounded-lg px-2.5 py-2 text-foreground cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-primary/20"
                 >
                   {categorizedTemplates.map((group) => (
                     <optgroup key={group.category} label={group.label} className="bg-popover text-foreground">
-                      {group.templates.map((tmpl) => (
-                        <option key={tmpl.id} value={tmpl.id}>
-                          {tmpl.name} ({tmpl.competitorStyle})
-                        </option>
-                      ))}
+                      {group.templates.map((tmpl) => {
+                        const isAllowed = isTemplateAllowedForPlan(activeTenant?.plan || 'starter', tmpl.id);
+                        return (
+                          <option key={tmpl.id} value={tmpl.id}>
+                            {tmpl.name} ({tmpl.competitorStyle}){isAllowed ? '' : ' 🔒 [PRO]'}
+                          </option>
+                        );
+                      })}
                     </optgroup>
                   ))}
                 </select>
@@ -1779,7 +1806,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             </div>
 
             <div className="pt-4 border-t border-border text-center text-[10px] text-muted-foreground">
-              BillCraft Invoice Studio
+              {APP_CONFIG.brandName} Invoice Studio
             </div>
           </div>
         </div>
@@ -3470,83 +3497,24 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       )}
 
       {/* ==================================================================== */}
-      {/* MODAL 4: SEND OR SHARE INVOICE */}
+      {/* MODAL 4: SEND OR SHARE INVOICE (Complete Multi-Channel & Tokenized Link) */}
       {/* ==================================================================== */}
-      {shareModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
-          <Card className="w-full max-w-md bg-white border-slate-200 shadow-2xl">
-            <div className="p-6 space-y-4">
-              <div className="flex justify-between items-center border-b pb-3">
-                <h3 className="font-bold text-base text-slate-900">
-                  Send or Share Invoice #{docNumber}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShareModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 font-bold"
-                >
-                  ✕
-                </button>
-              </div>
+      <ShareInvoiceModal
+        open={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        document={documentModel}
+        onDownloadPdf={handleDownloadPdf}
+        onPrint={triggerPrint}
+      />
 
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">
-                    Recipient Email
-                  </label>
-                  <Input defaultValue={clientEmail} placeholder="customer@company.com" />
-                </div>
-                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 font-mono text-[11px] space-y-1">
-                  <div>
-                    <strong>Invoice:</strong> {invoiceName} (#{docNumber})
-                  </div>
-                  <div>
-                    <strong>Customer:</strong> {clientName}
-                  </div>
-                  <div>
-                    <strong>Payable Amount:</strong>{' '}
-                    {formatCurrency(calculated.summary.grandTotal, currency)}
-                  </div>
-                  <div>
-                    <strong>Due Date:</strong> {dueDate || 'On Receipt'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between gap-2 pt-3 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    navigator.clipboard?.writeText(
-                      `Invoice #${docNumber} (${invoiceName}) for ${formatCurrency(
-                        calculated.summary.grandTotal,
-                        currency
-                      )} — Due ${dueDate}`
-                    );
-                    alert('Invoice summary copied to clipboard!');
-                  }}
-                >
-                  <Copy className="h-3.5 w-3.5 mr-1" /> Copy Summary
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    if (status === 'draft') setStatus('pending');
-                    setShareModalOpen(false);
-                    alert(`Invoice #${docNumber} queued for dispatch to ${clientEmail || clientName}!`);
-                  }}
-                  className="bg-primary text-white font-semibold"
-                >
-                  Send Invoice Email
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
+      {/* ==================================================================== */}
+      {/* UPGRADE PLAN MODAL (For Plan Limits & Premium Templates) */}
+      {/* ==================================================================== */}
+      <UpgradePlanModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        reason={upgradeReason}
+      />
 
       {/* ==================================================================== */}
       {/* DEDICATED CLEAN A4 PRINT & PDF CAPTURE SHEET (Always Rendered Cleanly) */}

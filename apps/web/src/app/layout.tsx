@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { APP_CONFIG } from '@invoice/core';
 import { TenantProvider } from '@/lib/auth/tenant-context';
 import { ThemeProvider } from '@/lib/theme/theme-provider';
 import { I18nProvider } from '@/lib/i18n/i18n-context';
@@ -7,9 +8,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { CommandPalette } from '@/components/ui/command-palette';
 
 export const metadata: Metadata = {
-  title: 'BillCraft — Professional Invoice, PO & Estimate Studio',
+  title: `${APP_CONFIG.brandName} — Modern Invoice & Inventory Studio`,
   description:
-    'Production-ready SaaS for creating Invoices, Purchase Orders & Estimates with decimal-safe calculations, 8+ structural templates, UPI QR codes, and multi-tenant teams.',
+    `Production-ready SaaS for creating Invoices, Purchase Orders & Estimates with decimal-safe calculations, multi-tenant white-label workspaces, and UPI payment rails.`,
   keywords: [
     'invoice generator',
     'gst invoice',
@@ -19,19 +20,19 @@ export const metadata: Metadata = {
     'saas billing',
     'pdf invoice',
   ],
-  authors: [{ name: 'BillCraft Team' }],
-  metadataBase: new URL('https://billcraft.io'),
+  authors: [{ name: `${APP_CONFIG.brandName} Team` }],
+  metadataBase: new URL(`https://${APP_CONFIG.brandDomain}`),
   openGraph: {
-    title: 'BillCraft — Professional Invoice, PO & Estimate Studio',
+    title: `${APP_CONFIG.brandName} — Modern Invoice & Inventory Studio`,
     description:
       'Fast, modern, decimal-safe invoicing with GST compliance, scannable UPI QR codes, and 8+ designer templates.',
-    url: 'https://billcraft.io',
-    siteName: 'BillCraft',
+    url: `https://${APP_CONFIG.brandDomain}`,
+    siteName: APP_CONFIG.brandName,
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BillCraft — Professional Invoice Studio',
+    title: `${APP_CONFIG.brandName} — Modern Invoice Studio`,
     description: 'Fast, modern, decimal-safe invoicing with GST compliance and designer templates.',
   },
 };

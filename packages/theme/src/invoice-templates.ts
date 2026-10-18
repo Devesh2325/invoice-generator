@@ -536,7 +536,7 @@ const card = (x: any, html: string, extra: string = '') =>
       box: `border:1px solid ${x.t.ink};padding:12px;`,
       plain: `border-top:2px solid ${x.t.accent};padding:10px 0 0;`,
       fill: `background:${x.t.tint};border-radius:4px;padding:14px;`,
-    } as any)[x.t.card] + extra,
+    } as any)[x.t.card] + 'box-sizing:border-box;overflow:visible;word-break:break-word;' + extra,
     html,
     'inv-card'
   );
@@ -792,7 +792,7 @@ const bank = (x: any, narrow: boolean = false) => {
         d(
           'flex:1;',
           d(
-            `display:grid;grid-template-columns:${narrow ? '1fr' : '1fr 1fr'};gap:8px 12px;font-size:10px;`,
+            `display:grid;grid-template-columns:${narrow ? '1fr' : '1fr 1fr'};gap:8px 12px;font-size:10px;line-height:1.4;word-break:break-word;overflow:visible;`,
             f('Account holder', p.accountName) +
               f('Bank name', p.bankName) +
               f('Account no.', p.accountNo) +
@@ -835,7 +835,7 @@ const terms = (x: any) => {
 
 const wrap = (t: TemplatePreset, inner: string) =>
   d(
-    `width:794px;min-height:1123px;box-sizing:border-box;position:relative;font-family:${t.font};font-size:11px;background:${t.paper};color:${t.ink};${
+    `width:794px;min-height:1123px;height:auto;overflow:visible;box-sizing:border-box;position:relative;font-family:${t.font};font-size:11px;background:${t.paper};color:${t.ink};${
       t.strip ? `border-top:10px solid ${t.accent};` : ''
     }`,
     inner,
@@ -947,7 +947,7 @@ export function renderInvoiceDocument(
     `<!doctype html><html lang="${esc(inv.lang || 'en')}"><head><meta charset="utf-8"><title>${esc(
       inv.number || 'Invoice'
     )}</title>${fontLink}` +
-    '<style>@page{size:A4;margin:0}html,body{margin:0;background:#e5e7eb}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.inv{margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,0.08);background:#fff}.inv-card,.inv-row{break-inside:avoid}@media print{html,body{background:none}.inv{box-shadow:none}}</style>' +
+    '<style>@page{size:A4;margin:0}html,body{margin:0;padding:0;background:#e5e7eb}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.inv{margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,0.08);background:#fff;min-height:1123px;height:auto;overflow:visible}.inv-card,.inv-row{break-inside:avoid}@media print{html,body{background:none}.inv{box-shadow:none}}</style>' +
     `</head><body>${renderInvoice(inv, templateId, opts)}</body></html>`
   );
 }

@@ -1,7 +1,11 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { APP_CONFIG } from '@invoice/core';
+import { PublicHeader } from '@/components/layout/public-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Sparkles,
@@ -18,13 +22,11 @@ import {
   Printer,
   RotateCcw,
   Layers,
+  Package,
+  Building2,
+  FilePlus,
+  Share2,
 } from 'lucide-react';
-
-export const metadata = {
-  title: 'Features — BillCraft Invoicing & Payment Studio',
-  description:
-    'Explore the deep feature set of BillCraft: decimal-safe financial calculations, GST intra/inter-state automation, verified UPI QR codes, multi-currency, and 8+ templates.',
-};
 
 export default function FeaturesPage() {
   const featureList = [
@@ -37,79 +39,65 @@ export default function FeaturesPage() {
     },
     {
       icon: FileCheck,
-      title: 'Automated India GST (CGST/SGST vs. IGST)',
+      title: 'Automated India GST & HSN Codes',
       description:
         'Zero manual state code checks. Place of Supply is cross-checked against Supplier State. Same state automatically splits tax into CGST and SGST; different state automatically levies IGST.',
       badge: 'Tax Compliance',
+    },
+    {
+      icon: Package,
+      title: 'Products & Inventory Management',
+      description:
+        'Manage product catalogs, SKU codes, and auto-generated barcodes. Automatically deducts inventory when invoices are finalized, with real-time stock movement history and low-stock alerts.',
+      badge: 'Inventory Control',
+    },
+    {
+      icon: Building2,
+      title: 'Multi-Tenant White-Label Isolation',
+      description:
+        'Each tenant gets their own brand logo, company name, custom colors, domain, admin panel, and customers. Strict database-level isolation guarantees zero cross-tenant data leaks.',
+      badge: 'White-Label Multi-Tenant',
     },
     {
       icon: QrCode,
       title: 'Verified NPCI UPI QR Codes',
       description:
         'Generates real vector SVG QR codes encoding NPCI-compliant UPI deep links with your VPA, verified payee name, invoice number, and exact balance due for zero-fee instant customer settlements.',
-      badge: 'Fintech',
+      badge: 'Fintech Rail',
+    },
+    {
+      icon: Share2,
+      title: 'Multi-Channel Instant Sharing',
+      description:
+        'One-click sharing via prefilled WhatsApp (wa.me), prefilled email, Telegram, SMS, and secure tokenized unguessable public invoice links with print and payment support.',
+      badge: 'Omni-Share',
     },
     {
       icon: Palette,
       title: '8+ Structurally Diverse Layouts',
       description:
-        'Not just color palette swaps. Templates vary in fundamental layout structure: Classic, Modern, Minimal, Bold Header, Corporate, Creative, Compact, and Elegant.',
+        'Not just color swaps. Choose between Classic Tax, Modern Tech, ClearTax GST, Tally Prime, Zoho Minimal, and Executive templates designed for pixel-perfect PDF rendering.',
       badge: 'Design System',
     },
     {
-      icon: Layers,
-      title: 'Unified Invoices, POs & Estimates',
-      description:
-        'Create Tax Invoices (INV-), Purchase Orders (PO-), and Estimates / Quotes (EST-). Convert an approved Estimate into an Invoice with a single click, transferring all line items and customer records.',
-      badge: 'Workflow',
-    },
-    {
       icon: Users,
-      title: 'Multi-Tenant Teams & Role Hierarchy',
+      title: 'Customer Financial Ledger & Activity',
       description:
-        'Collaborate with team members across Owner, Admin, Editor, and Viewer roles. Grant access to accountants or staff while protecting sensitive settings and preserving an immutable audit trail.',
-      badge: 'Collaboration',
+        'Dedicated customer profiles featuring total invoiced, total collected, outstanding balance, invoice status filters, payment history, and quotes with one-click statements.',
+      badge: 'CRM & Accounting',
     },
     {
-      icon: Database,
-      title: 'Offline-First IndexedDB Persistence',
+      icon: ShieldCheck,
+      title: 'Server-Enforced Plans & Limits',
       description:
-        'Work uninterrupted with zero connectivity. Documents are persisted locally in browser IndexedDB storage and seamlessly synchronized with cloud workspaces when online.',
-      badge: 'Reliability',
-    },
-    {
-      icon: Globe,
-      title: 'Multi-Currency & International Locales',
-      description:
-        'Native formatting for INR (₹), USD ($), EUR (€), GBP (£), AED, SGD, and more with locale-sensitive number grouping (e.g., Indian lakhs/crores or Western millions).',
-      badge: 'Global Commerce',
-    },
-    {
-      icon: RotateCcw,
-      title: 'Round-Off & Precision Controls',
-      description:
-        'Configure configurable round-off adjustment (nearest whole unit, banker’s rounding, floor, ceiling) and decimal precision from 0 to 4 places.',
-      badge: 'Accounting',
+        'Free trial 7-invoice allowance with real-time live usage counters and soft warnings. Upgrade to Pro or Enterprise unlocks unlimited generation and premium template access.',
+      badge: 'Cloud Architecture',
     },
   ];
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-      {/* Top Header */}
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border px-6 lg:px-12 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-black text-xl text-primary tracking-tight">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <span>BillCraft</span>
-        </Link>
-        <div className="flex items-center gap-3">
-          <Link href="/pricing">
-            <Button variant="ghost" size="sm" className="text-xs font-semibold">Pricing</Button>
-          </Link>
-          <Link href="/create">
-            <Button size="sm" className="text-xs font-bold">Create Invoice</Button>
-          </Link>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-8 py-16 space-y-16">
         <div className="text-center space-y-3 max-w-3xl mx-auto">
@@ -118,7 +106,7 @@ export default function FeaturesPage() {
             Built for Modern Commerce & Financial Precision
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Every feature in BillCraft is designed to eliminate manual data entry, prevent accounting discrepancies, and accelerate customer payments.
+            Every feature in {APP_CONFIG.brandName} is designed to eliminate manual data entry, prevent accounting discrepancies, and accelerate customer payments.
           </p>
         </div>
 
@@ -142,17 +130,28 @@ export default function FeaturesPage() {
           })}
         </div>
 
+        {/* Clear Next-Step Action Banner */}
         <div className="p-8 sm:p-12 rounded-3xl bg-muted/30 border border-border text-center space-y-6">
           <h2 className="text-2xl sm:text-3xl font-black text-foreground">
-            Experience the Invoicing Difference
+            Experience the {APP_CONFIG.brandName} Difference
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto">
-            Test the live generator in your browser. No sign-up required to create and download your first invoice.
+            Test the live generator in your browser or explore the interactive sandbox demo.
           </p>
-          <div className="flex justify-center gap-3">
+          <div className="flex flex-wrap justify-center gap-3">
             <Link href="/create">
-              <Button size="lg" className="text-xs font-bold px-6">
-                Open Invoice Studio <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+              <Button size="lg" className="text-xs font-bold px-6 bg-primary text-primary-foreground shadow-sm">
+                <FilePlus className="w-4 h-4 mr-1.5" /> Open Invoice Studio Free
+              </Button>
+            </Link>
+            <Link href="/demo">
+              <Button size="lg" variant="outline" className="text-xs font-bold px-6 text-indigo-600 border-indigo-200 dark:border-indigo-800">
+                Explore Interactive Demo
+              </Button>
+            </Link>
+            <Link href="/pricing">
+              <Button size="lg" variant="ghost" className="text-xs font-bold px-6">
+                Compare Plans
               </Button>
             </Link>
           </div>
@@ -160,7 +159,7 @@ export default function FeaturesPage() {
       </main>
 
       <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 BillCraft Invoicing. Built for high-reliability financial workflows.
+        © 2026 {APP_CONFIG.brandName} Cloud Technologies. Built for high-reliability financial workflows.
       </footer>
     </div>
   );

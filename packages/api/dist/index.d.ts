@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { DocumentModel, Party, DocumentPaymentConfig, RoundingMode, PaymentMethod, DocumentStatus, AuditHistoryEntry, TenantAccessDeniedError, APP_CONFIG } from '@invoice/core';
-export { TenantAccessDeniedError, APP_CONFIG };
+import { DocumentModel, Party, DocumentPaymentConfig, RoundingMode, PaymentMethod, DocumentStatus, AuditHistoryEntry, TenantAccessDeniedError, PlanLimitReachedError, APP_CONFIG, isTemplateAllowedForPlan } from '@invoice/core';
+export { TenantAccessDeniedError, PlanLimitReachedError, APP_CONFIG, isTemplateAllowedForPlan };
 export interface Tenant {
     id: string;
     name: string;
@@ -23,17 +23,38 @@ export interface Tenant {
     isWhiteLabel?: boolean;
     plan?: string;
 }
+export type StockMovementType = 'in' | 'out' | 'adjustment' | 'invoice_deduction';
+export interface StockMovement {
+    id: string;
+    productId: string;
+    tenantId: string;
+    type: StockMovementType;
+    quantity: number;
+    previousStock: number;
+    newStock: number;
+    reference?: string;
+    reason?: string;
+    timestamp: string;
+}
 export interface ProductCatalogItem {
     id: string;
     tenantId: string;
     name: string;
+    category?: string;
     sku: string;
+    barcode?: string;
     hsnCode?: string;
     description: string;
     unitPrice: number;
     unit: string;
     taxRate: number;
+    taxInclusive?: boolean;
+    stockQuantity: number;
+    minStockThreshold: number;
     isArchived: boolean;
+    stockMovements?: StockMovement[];
+    createdAt?: string;
+    updatedAt?: string;
 }
 export interface TenantBrandSettings {
     tenantId: string;
@@ -73,6 +94,15 @@ export declare const TenantApi: {
     getTenants(userId?: string): Promise<Tenant[]>;
     createTenant(tenant: Tenant): Promise<Tenant>;
     updateTenant(tenantId: string, patch: Partial<Tenant>): Promise<Tenant | null>;
+    getTenantById(tenantId: string): Promise<Tenant | null>;
+    getTenantUsage(tenantId: string): Promise<{
+        plan: string;
+        invoiceCount: number;
+        invoiceLimit: number;
+        isLimitReached: boolean;
+        remaining: number;
+        warningThresholdHit: boolean;
+    }>;
     getDocuments(tenantId: string): Promise<DocumentModel[]>;
     getDocumentById(tenantId: string, docId: string): Promise<DocumentModel | null>;
     deleteDocument(tenantId: string, docId: string): Promise<boolean>;
@@ -91,6 +121,14 @@ export declare const TenantApi: {
     getProductById(tenantId: string, productId: string): Promise<ProductCatalogItem | null>;
     deleteProduct(tenantId: string, productId: string): Promise<boolean>;
     saveProduct(tenantId: string, product: ProductCatalogItem): Promise<ProductCatalogItem>;
+    recordStockMovement(tenantId: string, productId: string, movement: {
+        type: StockMovementType;
+        quantity: number;
+        reference?: string;
+        reason?: string;
+    }): Promise<StockMovement | null>;
+    deductStockForInvoice(tenantId: string, doc: DocumentModel): Promise<void>;
+    getLowStockProducts(tenantId: string): Promise<ProductCatalogItem[]>;
     getBrandSettings(tenantId: string): Promise<TenantBrandSettings>;
     updateBrandSettings(tenantId: string, settings: Partial<TenantBrandSettings>): Promise<TenantBrandSettings>;
     recordPayment(tenantId: string, docId: string, amount: number, method: PaymentMethod, reference?: string, notes?: string, paymentDate?: string): Promise<DocumentModel | null>;

@@ -4,6 +4,8 @@ import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
 import { BlogApi, SEEDED_BLOG_POSTS } from '@invoice/api';
+import { APP_CONFIG } from '@invoice/core';
+import { PublicHeader } from '@/components/layout/public-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -47,25 +49,18 @@ export default function BlogPostPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border px-6 lg:px-12 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/blog" className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
+      <PublicHeader />
+
+      <div className="border-b border-border bg-muted/20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between text-xs">
+          <Link href="/blog" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground font-semibold transition-colors">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to all articles
           </Link>
-          <Link href="/" className="flex items-center gap-2 font-black text-xl text-primary tracking-tight">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <span>BillCraft</span>
-          </Link>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleShare} className="text-xs">
-            <Share2 className="h-3.5 w-3.5 mr-1.5" /> Share
+          <Button variant="outline" size="sm" onClick={handleShare} className="h-7 text-xs font-semibold gap-1.5">
+            <Share2 className="h-3.5 w-3.5" /> Share Article
           </Button>
-          <Link href="/create">
-            <Button size="sm" className="text-xs font-bold">Create Invoice</Button>
-          </Link>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-8 py-12 space-y-10">
         {/* Article Header */}
@@ -108,7 +103,7 @@ export default function BlogPostPage() {
         <div className="p-6 sm:p-8 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="space-y-1 text-center sm:text-left">
             <h3 className="font-bold text-base text-foreground">
-              Put this knowledge to work with BillCraft
+              Put this knowledge to work with {APP_CONFIG.brandName}
             </h3>
             <p className="text-xs text-muted-foreground">
               Generate 100% compliant GST invoices with automated CGST/SGST splits and scannable UPI QR codes in 60 seconds.
@@ -141,7 +136,7 @@ export default function BlogPostPage() {
       </main>
 
       <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 BillCraft Knowledge Hub. Educational tax and business resources.
+        © 2026 {APP_CONFIG.brandName} Knowledge Hub. Educational tax and business resources.
       </footer>
     </div>
   );

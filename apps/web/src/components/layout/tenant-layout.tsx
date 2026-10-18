@@ -60,7 +60,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Invoices', href: '/dashboard/documents', icon: FileText },
     { label: 'Customers', href: '/dashboard/parties', icon: Users },
-    { label: 'Items', href: '/dashboard/products', icon: Package },
+    { label: 'Products & Inventory', href: '/dashboard/products', icon: Package },
     { label: 'Payments', href: '/dashboard/payments', icon: CreditCard },
     { label: 'Reports', href: '/dashboard/reports', icon: BarChart3 },
     { label: 'Brand Studio', href: '/dashboard/brand', icon: Palette },
@@ -74,7 +74,10 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
     if (!pathname || pathname === '/dashboard') return [];
     if (pathname === '/dashboard/documents') return [{ label: 'Invoices' }];
     if (pathname === '/dashboard/parties') return [{ label: 'Customers' }];
-    if (pathname === '/dashboard/products') return [{ label: 'Items' }];
+    if (pathname.startsWith('/dashboard/parties/')) {
+      return [{ label: 'Customers', href: '/dashboard/parties' }, { label: 'Customer Profile' }];
+    }
+    if (pathname === '/dashboard/products') return [{ label: 'Products & Inventory' }];
     if (pathname === '/dashboard/payments') return [{ label: 'Payments' }];
     if (pathname === '/dashboard/reports') return [{ label: 'Reports' }];
     if (pathname === '/dashboard/brand') return [{ label: 'Brand Studio' }];

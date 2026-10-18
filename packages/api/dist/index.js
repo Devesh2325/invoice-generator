@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { computeEffectiveInvoiceStatus, TenantAccessDeniedError, APP_CONFIG, } from '@invoice/core';
-export { TenantAccessDeniedError, APP_CONFIG };
+import { computeEffectiveInvoiceStatus, TenantAccessDeniedError, PlanLimitReachedError, APP_CONFIG, isTemplateAllowedForPlan, } from '@invoice/core';
+export { TenantAccessDeniedError, PlanLimitReachedError, APP_CONFIG, isTemplateAllowedForPlan };
 // 1. Client initialization
 let supabaseClient = null;
 export function getSupabase() {
@@ -182,6 +182,28 @@ export const TenantApi = {
         }
         return null;
     },
+    async getTenantById(tenantId) {
+        const tenants = await this.getTenants();
+        return tenants.find((t) => t.id === tenantId) || null;
+    },
+    async getTenantUsage(tenantId) {
+        const tenant = await this.getTenantById(tenantId);
+        const plan = tenant?.plan || 'starter';
+        const docs = await this.getDocuments(tenantId);
+        const invoiceCount = docs.length;
+        const limit = plan === 'pro' || plan === 'enterprise' ? Infinity : APP_CONFIG.trialInvoiceLimit;
+        const isLimitReached = invoiceCount >= limit;
+        const remaining = limit === Infinity ? Infinity : Math.max(0, limit - invoiceCount);
+        const warningThresholdHit = APP_CONFIG.trialWarningThresholds.includes(invoiceCount);
+        return {
+            plan,
+            invoiceCount,
+            invoiceLimit: limit,
+            isLimitReached,
+            remaining,
+            warningThresholdHit,
+        };
+    },
     async getDocuments(tenantId) {
         const supabase = getSupabase();
         if (!supabase) {
@@ -255,6 +277,22 @@ export const TenantApi = {
         return storeDocs[tenantId].length < initialLen;
     },
     async saveDocument(tenantId, doc) {
+        const tenant = await this.getTenantById(tenantId);
+        const tenantPlan = tenant?.plan || 'starter';
+        // 1. Template gating enforcement on backend
+        if (doc.templateId && !isTemplateAllowedForPlan(tenantPlan, doc.templateId)) {
+            throw new PlanLimitReachedError(`Template "${doc.templateId}" is a Pro/Enterprise feature. Please upgrade your plan to unlock premium templates.`);
+        }
+        // 2. Free trial 7-invoice creation limit enforcement on backend
+        const planConfig = APP_CONFIG.plans[tenantPlan];
+        const invoiceLimit = planConfig ? planConfig.invoiceLimit : APP_CONFIG.trialInvoiceLimit;
+        if (invoiceLimit !== Infinity) {
+            const existingDocs = await this.getDocuments(tenantId);
+            const isNew = !existingDocs.some((d) => d.id === doc.id);
+            if (isNew && existingDocs.length >= invoiceLimit) {
+                throw new PlanLimitReachedError(`Free trial limit reached: ${invoiceLimit}/${invoiceLimit} invoices created. Upgrade to Pro for unlimited invoices.`, invoiceLimit, existingDocs.length);
+            }
+        }
         const effectiveStatus = computeEffectiveInvoiceStatus(doc);
         const enrichedDoc = {
             ...doc,
@@ -275,6 +313,13 @@ export const TenantApi = {
                 storeDocs[tenantId].unshift(enrichedDoc);
             }
             setLocalStore('billcraft_tenant_documents', storeDocs);
+            // Auto-deduct inventory stock for finalized/paid invoices
+            if (enrichedDoc.status === 'finalized' || enrichedDoc.status === 'paid') {
+                try {
+                    await this.deductStockForInvoice(tenantId, enrichedDoc);
+                }
+                catch { }
+            }
             return enrichedDoc;
         }
         const { error } = await supabase
@@ -479,6 +524,9 @@ export const TenantApi = {
         const enrichedProduct = {
             ...product,
             tenantId,
+            stockQuantity: typeof product.stockQuantity === 'number' ? product.stockQuantity : 0,
+            minStockThreshold: typeof product.minStockThreshold === 'number' ? product.minStockThreshold : 5,
+            updatedAt: new Date().toISOString(),
         };
         const storeProducts = getLocalStore('billcraft_tenant_products', DEMO_PRODUCTS);
         if (!storeProducts[tenantId])
@@ -492,6 +540,68 @@ export const TenantApi = {
         }
         setLocalStore('billcraft_tenant_products', storeProducts);
         return enrichedProduct;
+    },
+    async recordStockMovement(tenantId, productId, movement) {
+        const product = await this.getProductById(tenantId, productId);
+        if (!product)
+            return null;
+        const previousStock = Number(product.stockQuantity) || 0;
+        const qty = Number(movement.quantity) || 0;
+        let newStock = previousStock;
+        if (movement.type === 'in') {
+            newStock = previousStock + qty;
+        }
+        else if (movement.type === 'out' || movement.type === 'invoice_deduction') {
+            newStock = Math.max(0, previousStock - qty);
+        }
+        else if (movement.type === 'adjustment') {
+            newStock = qty;
+        }
+        const entry = {
+            id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            productId,
+            tenantId,
+            type: movement.type,
+            quantity: qty,
+            previousStock,
+            newStock,
+            reference: movement.reference,
+            reason: movement.reason,
+            timestamp: new Date().toISOString(),
+        };
+        const updatedProduct = {
+            ...product,
+            stockQuantity: newStock,
+            stockMovements: [entry, ...(product.stockMovements || [])].slice(0, 50),
+            updatedAt: new Date().toISOString(),
+        };
+        await this.saveProduct(tenantId, updatedProduct);
+        return entry;
+    },
+    async deductStockForInvoice(tenantId, doc) {
+        if (!doc.items || !Array.isArray(doc.items))
+            return;
+        const allProducts = await this.getProducts(tenantId);
+        if (allProducts.length === 0)
+            return;
+        for (const item of doc.items) {
+            const match = allProducts.find((p) => p.id === item.productId) ||
+                allProducts.find((p) => item.hsnCode && p.sku && p.sku.toLowerCase() === item.hsnCode.toLowerCase()) ||
+                allProducts.find((p) => item.description && p.name.toLowerCase() === item.description.trim().toLowerCase());
+            if (match) {
+                const qty = Number(item.quantity) || 1;
+                await this.recordStockMovement(tenantId, match.id, {
+                    type: 'invoice_deduction',
+                    quantity: qty,
+                    reference: `Invoice #${doc.documentNumber}`,
+                    reason: `Auto-deducted for ${doc.client?.name || 'Customer'}`,
+                });
+            }
+        }
+    },
+    async getLowStockProducts(tenantId) {
+        const products = await this.getProducts(tenantId);
+        return products.filter((p) => !p.isArchived && (Number(p.stockQuantity) || 0) <= (Number(p.minStockThreshold) || 5));
     },
     async getBrandSettings(tenantId) {
         const storeBrand = getLocalStore('billcraft_tenant_brand', DEMO_BRAND_SETTINGS);

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AdminApi } from '@invoice/api';
-import { PlanId, PlanLimits, PLANS } from '@invoice/core';
+import { PlanId, PlanLimits, PLANS, APP_CONFIG } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -182,7 +182,7 @@ export default function AdminPlansPage() {
                   <label className="flex items-center justify-between text-xs text-slate-300 p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 cursor-pointer">
                     <span className="flex items-center gap-2">
                       <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                      Remove BillCraft Watermark
+                      Remove {APP_CONFIG.brandName} Watermark
                     </span>
                     <input
                       type="checkbox"

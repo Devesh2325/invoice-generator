@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TenantApi } from '@invoice/api';
@@ -822,81 +823,85 @@ export default function TenantPartiesPage() {
                 count: 0,
               };
               return (
-                <Card key={p.id} className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-sm transition-shadow">
-                  <CardContent className="p-5 space-y-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <div>
-                        <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">{p.name}</h3>
-                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                          {bal.count} {bal.count === 1 ? 'invoice' : 'invoices'}
-                        </span>
-                      </div>
-                      <Badge variant="outline" className="text-[10px] capitalize">
-                        {p.type}
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-                      {p.email && (
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                          <span className="truncate">{p.email}</span>
-                        </div>
-                      )}
-                      {p.phone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                          <span>{p.phone}</span>
-                        </div>
-                      )}
-                      {p.taxId && (
-                        <div className="flex items-center gap-2">
-                          <Building className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                          <span>Tax ID / GSTIN: {p.taxId}</span>
-                        </div>
-                      )}
-                      {p.billingAddress?.street1 && (
-                        <div className="flex items-start gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                          <MapPin className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
-                          <span>
-                            {[
-                              p.billingAddress.street1,
-                              p.billingAddress.city,
-                              p.billingAddress.state,
-                              p.billingAddress.country,
-                            ]
-                              .filter(Boolean)
-                              .join(', ')}
+                <Link key={p.id} href={`/dashboard/parties/${p.id}`} className="block group">
+                  <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:border-primary group-hover:shadow-md transition-all cursor-pointer">
+                    <CardContent className="p-5 space-y-3">
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">
+                            {p.name}
+                          </h3>
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                            {bal.count} {bal.count === 1 ? 'invoice' : 'invoices'} • View Profile →
                           </span>
                         </div>
-                      )}
-                    </div>
+                        <Badge variant="outline" className="text-[10px] capitalize">
+                          {p.type}
+                        </Badge>
+                      </div>
 
-                    {/* Customer Financial Summary in Selected Workspace Currency */}
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2 bg-slate-50/70 dark:bg-slate-950/70 -mx-5 -mb-5 p-3.5 rounded-b-xl">
-                      <div>
-                        <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500 block">
-                          Total Invoiced
-                        </span>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">
-                          {formatCurrency(bal.invoiced, tenantCurrency)}
-                        </span>
+                      <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                        {p.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                            <span className="truncate">{p.email}</span>
+                          </div>
+                        )}
+                        {p.phone && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                            <span>{p.phone}</span>
+                          </div>
+                        )}
+                        {p.taxId && (
+                          <div className="flex items-center gap-2">
+                            <Building className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                            <span>Tax ID / GSTIN: {p.taxId}</span>
+                          </div>
+                        )}
+                        {p.billingAddress?.street1 && (
+                          <div className="flex items-start gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <MapPin className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
+                            <span>
+                              {[
+                                p.billingAddress.street1,
+                                p.billingAddress.city,
+                                p.billingAddress.state,
+                                p.billingAddress.country,
+                              ]
+                                .filter(Boolean)
+                                .join(', ')}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-right">
-                        <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500 block">
-                          Outstanding Balance
-                        </span>
-                        <span
-                          className={`text-xs font-bold tabular-nums ${
-                            bal.outstanding > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
-                          }`}
-                        >
-                          {formatCurrency(bal.outstanding, tenantCurrency)}
-                        </span>
+
+                      {/* Customer Financial Summary in Selected Workspace Currency */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2 bg-slate-50/70 dark:bg-slate-950/70 -mx-5 -mb-5 p-3.5 rounded-b-xl">
+                        <div>
+                          <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500 block">
+                            Total Invoiced
+                          </span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+                            {formatCurrency(bal.invoiced, tenantCurrency)}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500 block">
+                            Outstanding Balance
+                          </span>
+                          <span
+                            className={`text-xs font-bold tabular-nums ${
+                              bal.outstanding > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
+                            }`}
+                          >
+                            {formatCurrency(bal.outstanding, tenantCurrency)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               );
             })}
           </div>

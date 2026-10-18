@@ -1053,43 +1053,43 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
 
     return (
       <div className="space-y-3">
-        <div className="overflow-x-auto border rounded-xl" style={{ borderColor }}>
-          <table className="w-full text-left border-collapse text-xs">
+        <div className="overflow-x-auto border rounded-xl shadow-2xs" style={{ borderColor }}>
+          <table className="w-full min-w-[980px] text-left border-collapse text-xs">
             <thead>
               <tr
-                className="uppercase tracking-wider text-[10px] font-bold"
+                className="uppercase tracking-wider text-[10px] font-bold select-none"
                 style={{
                   backgroundColor: headBg,
                   color: headColor,
                   borderBottom: `2px solid ${borderColor}`,
                 }}
               >
-                <th className="py-2.5 px-2 w-7 text-center">#</th>
-                <th className="py-2.5 px-2.5 min-w-[210px]">Item Description</th>
-                <th className="py-2.5 px-2 w-24 text-center">{isIndiaGst ? 'HSN/SAC' : 'Code'}</th>
-                <th className="py-2.5 px-2 w-16 text-right">Qty</th>
-                <th className="py-2.5 px-2 w-24 text-right">Rate</th>
-                <th className="py-2.5 px-2 w-20 text-right">Disc %</th>
+                <th className="py-2.5 px-2 w-8 min-w-[32px] text-center">#</th>
+                <th className="py-2.5 px-2.5 min-w-[240px]">Item Description</th>
+                <th className="py-2.5 px-2 w-24 min-w-[90px] text-center">{isIndiaGst ? 'HSN/SAC' : 'Code'}</th>
+                <th className="py-2.5 px-2 w-16 min-w-[65px] text-right">Qty</th>
+                <th className="py-2.5 px-2 w-28 min-w-[100px] text-right">Rate</th>
+                <th className="py-2.5 px-2 w-20 min-w-[70px] text-right">Disc %</th>
                 {isIndiaGst ? (
                   <>
-                    <th className="py-2.5 px-2 w-20 text-right">GST %</th>
+                    <th className="py-2.5 px-2 w-24 min-w-[80px] text-right">GST %</th>
                     {isInterState ? (
-                      <th className="py-2.5 px-2 w-24 text-right">IGST Amt</th>
+                      <th className="py-2.5 px-2 w-24 min-w-[95px] text-right">IGST Amt</th>
                     ) : (
                       <>
-                        <th className="py-2.5 px-2 w-24 text-right">CGST</th>
-                        <th className="py-2.5 px-2 w-24 text-right">SGST</th>
+                        <th className="py-2.5 px-2 w-24 min-w-[95px] text-right">CGST</th>
+                        <th className="py-2.5 px-2 w-24 min-w-[95px] text-right">SGST</th>
                       </>
                     )}
                   </>
                 ) : (
                   <>
-                    <th className="py-2.5 px-2 w-20 text-right">{tpl.taxLabel} %</th>
-                    <th className="py-2.5 px-2 w-24 text-right">{tpl.taxLabel} Amt</th>
+                    <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">{tpl.taxLabel} %</th>
+                    <th className="py-2.5 px-2 w-24 min-w-[95px] text-right">{tpl.taxLabel} Amt</th>
                   </>
                 )}
-                <th className="py-2.5 px-2.5 w-28 text-right">Total</th>
-                <th className="py-2.5 px-2 w-14 text-center no-print">Act</th>
+                <th className="py-2.5 px-2.5 w-28 min-w-[105px] text-right">Total</th>
+                <th className="py-2.5 px-2 w-14 min-w-[56px] text-center no-print">Act</th>
               </tr>
             </thead>
 
@@ -1146,36 +1146,36 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         className={`${editableInput} w-full font-medium`}
                       />
                     </td>
-                    <td className="py-2.5 px-1.5">
+                    <td className="py-2.5 px-2 min-w-[90px]">
                       <input
                         type="text"
                         value={item.hsnCode || ''}
                         onChange={(e) => onUpdateItem(idx, 'hsnCode', e.target.value)}
                         placeholder={isIndiaGst ? '998314' : 'SKU-01'}
-                        className={`${editableInput} w-full text-center font-mono`}
+                        className={`${editableInput} w-full min-w-[75px] text-center font-mono`}
                       />
                     </td>
-                    <td className="py-2.5 px-1.5">
+                    <td className="py-2.5 px-2 min-w-[65px]">
                       <input
                         type="number"
                         min="0"
                         step="any"
                         value={item.quantity}
                         onChange={(e) => onUpdateItem(idx, 'quantity', Number(e.target.value))}
-                        className={`${editableInput} w-full text-right font-mono`}
+                        className={`${editableInput} w-full min-w-[55px] text-right font-mono`}
                       />
                     </td>
-                    <td className="py-2.5 px-1.5">
+                    <td className="py-2.5 px-2 min-w-[100px]">
                       <input
                         type="number"
                         min="0"
                         step="any"
                         value={item.unitPrice}
                         onChange={(e) => onUpdateItem(idx, 'unitPrice', Number(e.target.value))}
-                        className={`${editableInput} w-full text-right font-mono`}
+                        className={`${editableInput} w-full min-w-[90px] text-right font-mono`}
                       />
                     </td>
-                    <td className="py-2.5 px-1.5">
+                    <td className="py-2.5 px-2 min-w-[70px]">
                       <input
                         type="number"
                         min="0"
@@ -1185,18 +1185,18 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         onChange={(e) =>
                           onUpdateItem(idx, 'discountValue', Number(e.target.value))
                         }
-                        className={`${editableInput} w-full text-right font-mono`}
+                        className={`${editableInput} w-full min-w-[60px] text-right font-mono`}
                       />
                     </td>
 
                     {/* Tax columns */}
                     {isIndiaGst ? (
                       <>
-                        <td className="py-2.5 px-1.5">
+                        <td className="py-2.5 px-2 min-w-[80px]">
                           <select
                             value={item.taxRate ?? 18}
                             onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
-                            className={`${editableInput} w-full text-right font-mono cursor-pointer`}
+                            className={`${editableInput} w-full min-w-[75px] text-right font-mono cursor-pointer`}
                             style={{ backgroundColor: paperColor }}
                           >
                             <option value={0}>0%</option>
@@ -1207,17 +1207,17 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                           </select>
                         </td>
                         {isInterState ? (
-                          <td className="py-2.5 px-2 text-right font-mono" style={{ color: mutedTextColor }}>
+                          <td className="py-2.5 px-2 text-right font-mono min-w-[95px]" style={{ color: mutedTextColor }}>
                             <div>{formatCurrency(item.igstAmount ?? item.taxAmount, currency)}</div>
                             <div className="text-[10px] opacity-75">({item.taxRate || 0}%)</div>
                           </td>
                         ) : (
                           <>
-                            <td className="py-2.5 px-2 text-right font-mono" style={{ color: mutedTextColor }}>
+                            <td className="py-2.5 px-2 text-right font-mono min-w-[95px]" style={{ color: mutedTextColor }}>
                               <div>{formatCurrency(item.cgstAmount ?? item.taxAmount / 2, currency)}</div>
                               <div className="text-[10px] opacity-75">({(item.taxRate || 0) / 2}%)</div>
                             </td>
-                            <td className="py-2.5 px-2 text-right font-mono" style={{ color: mutedTextColor }}>
+                            <td className="py-2.5 px-2 text-right font-mono min-w-[95px]" style={{ color: mutedTextColor }}>
                               <div>{formatCurrency(item.sgstAmount ?? item.taxAmount / 2, currency)}</div>
                               <div className="text-[10px] opacity-75">({(item.taxRate || 0) / 2}%)</div>
                             </td>
@@ -1226,33 +1226,33 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       </>
                     ) : (
                       <>
-                        <td className="py-2.5 px-1.5">
+                        <td className="py-2.5 px-2 min-w-[75px]">
                           <input
                             type="number"
                             min="0"
                             step="any"
                             value={item.taxRate ?? tpl.taxRate}
                             onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
-                            className={`${editableInput} w-full text-right font-mono`}
+                            className={`${editableInput} w-full min-w-[65px] text-right font-mono`}
                           />
                         </td>
-                        <td className="py-2.5 px-2 text-right font-mono" style={{ color: mutedTextColor }}>
+                        <td className="py-2.5 px-2 text-right font-mono min-w-[95px]" style={{ color: mutedTextColor }}>
                           {formatCurrency(item.taxAmount, currency)}
                         </td>
                       </>
                     )}
 
-                    <td className="py-2.5 px-2.5 text-right font-mono font-bold">
+                    <td className="py-2.5 px-2.5 text-right font-mono font-bold min-w-[105px]">
                       {formatCurrency(item.lineTotal, currency)}
                     </td>
 
-                    <td className="py-2.5 px-1.5 text-center no-print">
+                    <td className="py-2.5 px-1.5 text-center no-print w-14 min-w-[56px]">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           type="button"
                           onClick={() => onDuplicateItem(idx)}
                           title="Duplicate Item"
-                          className="p-1 hover:text-blue-500 rounded"
+                          className="p-1 hover:text-blue-500 rounded cursor-pointer"
                           style={{ color: mutedTextColor }}
                         >
                           <Copy className="h-3.5 w-3.5" />
@@ -1262,7 +1262,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                           onClick={() => onRemoveItem(idx)}
                           disabled={document.items.length <= 1}
                           title="Remove Item"
-                          className="p-1 hover:text-rose-500 disabled:opacity-30 rounded"
+                          className="p-1 hover:text-rose-500 disabled:opacity-30 rounded cursor-pointer"
                           style={{ color: mutedTextColor }}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1281,7 +1281,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
           <button
             type="button"
             onClick={onAddItem}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold border-2 border-dashed transition-all hover:shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold border-2 border-dashed transition-all hover:shadow-xs cursor-pointer"
             style={{
               borderColor: `${effectiveAccent}60`,
               color: effectiveAccent,
@@ -1289,7 +1289,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             }}
           >
             <Plus className="h-4 w-4" />
-            <span>+ Add Blank Line Item</span>
+            <span>Add Blank Line Item</span>
           </button>
 
           {onAddCatalogItem && savedItems.length > 0 && (
@@ -1367,8 +1367,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             ((document.paymentConfig.display.showBankDetails && activeBankAccounts.length > 0) ||
               (document.paymentConfig.display.showUpiId && document.paymentConfig.upiId) ||
               document.paymentConfig.display.showQrCode) && (
-              <div className="p-3.5 rounded-xl border flex flex-col sm:flex-row justify-between gap-4" style={{ backgroundColor: tintBg, borderColor }}>
-                <div className="space-y-2 flex-1">
+              <div className="p-3.5 rounded-xl border flex flex-col sm:flex-row justify-between gap-4 overflow-visible" style={{ backgroundColor: tintBg, borderColor }}>
+                <div className="space-y-2 flex-1 min-w-0">
                   <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: effectiveAccent }}>
                     Payment Instructions & Bank Coordinates
                   </span>
@@ -1377,27 +1377,27 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     activeBankAccounts.map((bank) => (
                       <div
                         key={bank.id}
-                        className="text-[11px] p-2.5 rounded-lg border grid grid-cols-2 gap-x-3 gap-y-1"
+                        className="text-[11px] p-2.5 rounded-lg border grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 overflow-visible"
                         style={{ backgroundColor: paperColor, borderColor }}
                       >
-                        <div>
+                        <div className="min-w-0 break-words">
                           <span style={{ color: mutedTextColor }}>Account Holder: </span>
                           <span className="font-bold">{bank.accountHolderName}</span>
                         </div>
-                        <div>
+                        <div className="min-w-0 break-words">
                           <span style={{ color: mutedTextColor }}>Bank Name: </span>
                           <span className="font-bold">{bank.bankName}</span>
                         </div>
-                        <div>
+                        <div className="min-w-0 break-words">
                           <span style={{ color: mutedTextColor }}>Account No: </span>
                           <span className="font-mono font-bold">{bank.accountNumber}</span>
                         </div>
-                        <div>
+                        <div className="min-w-0 break-words">
                           <span style={{ color: mutedTextColor }}>{tpl.routingLabel}: </span>
                           <span className="font-mono font-bold">{bank.ifscOrRoutingCode}</span>
                         </div>
                         {bank.branchName && (
-                          <div>
+                          <div className="min-w-0 break-words">
                             <span style={{ color: mutedTextColor }}>Branch: </span>
                             <span>{bank.branchName}</span>
                           </div>
