@@ -85,7 +85,7 @@ export const APP_CONFIG: AppConfig = {
   trialInvoiceLimit: 7,
   trialWarningThresholds: [5, 6],
   superAdmin: {
-    email: 'admin@billcraft.com', // Must not change per global rule
+    email: 'dmchaturvedi@gmail.com',
     role: 'super_admin',
   },
   appwrite: {
