@@ -25,8 +25,8 @@ interface TenantContextType {
 
 const DEFAULT_DEMO_USER: AuthUser = {
   id: 'usr_demo_01',
-  email: 'admin@acmedesign.io',
-  name: 'Sarah Connor (Studio Director)',
+  email: 'dmchaturvedi@gmail.com',
+  name: 'Devesh Mani Chaturvedi (Inventory Director)',
 };
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -103,7 +103,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         const parsed = JSON.parse(storedUserRaw);
         if (parsed?.id) storedUserId = parsed.id;
-      } catch {}
+      } catch { }
     }
     if (
       storedUserId !== user?.id ||

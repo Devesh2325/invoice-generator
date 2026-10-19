@@ -3,7 +3,7 @@ const path = require('path');
 
 // Read app-config.ts directly or parse it
 const appConfigPath = path.resolve(__dirname, '../packages/core/src/config/app-config.ts');
-let superAdminEmail = 'admin@billcraft.com';
+let superAdminEmail = 'dmchaturvedi@gmail.com';
 let superAdminRole = 'super_admin';
 let trialLimit = 7;
 let brandName = 'Invoxa';

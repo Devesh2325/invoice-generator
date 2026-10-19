@@ -4,7 +4,7 @@
  * Implements Requirement 10:
  * - Takes a full backup/export before any mutation
  * - Lists all records marked for deletion (dry-run mode)
- * - Guarantees Super Admin account (admin@billcraft.com) is preserved with original ID & credentials
+ * - Guarantees Super Admin account (dmchaturvedi@gmail.com) is preserved with original ID & credentials
  * - Preserves core APP_CONFIG and plan matrices
  * - Prepares minimal isolated demo seed for /demo sandbox
  * - Requires explicit confirmation / --execute flag to apply deletions
@@ -108,7 +108,7 @@ export function runDataCleanupDryRun(execute: boolean = false): CleanupPlan {
     preservedConfigs: [
       'packages/core/src/config/app-config.ts (APP_CONFIG)',
       'Plans Matrix (Anonymous, Starter Free Trial, Pro, Enterprise)',
-      'Super Admin Account Credentials (admin@billcraft.com)',
+      'Super Admin Account Credentials (dmchaturvedi@gmail.com)',
       'Standard GST & HSN calculation algorithms',
       '17 Structural Invoice Templates',
     ],

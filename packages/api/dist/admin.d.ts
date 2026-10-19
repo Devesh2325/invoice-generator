@@ -1,4 +1,4 @@
-import { AdminUser, AdminInquiry, AdminSiteSettings, AdminSystemAuditLog, AdminTemplateSetting, AdminTeam, PlanId, PlanLimits } from '@invoice/core';
+import { AdminUser, AdminInquiry, AdminSiteSettings, AdminSystemAuditLog, AdminTemplateSetting, AdminTeam, PlanId, PlanLimits } from "@invoice/core";
 export declare class AdminApi {
     private static getSessionKey;
     private static getRateLimitKey;
@@ -43,7 +43,7 @@ export declare class AdminApi {
         logoUrl?: string;
     }): boolean;
     static getInquiries(): AdminInquiry[];
-    static updateInquiry(inquiryId: string, status: 'new' | 'in_progress' | 'resolved', notes?: string): boolean;
+    static updateInquiry(inquiryId: string, status: "new" | "in_progress" | "resolved", notes?: string): boolean;
     static deleteInquiry(inquiryId: string): boolean;
     static getSiteSettings(): AdminSiteSettings;
     static updateSiteSettings(settings: AdminSiteSettings): boolean;

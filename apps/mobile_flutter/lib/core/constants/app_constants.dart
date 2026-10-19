@@ -34,11 +34,11 @@ class AppConstants {
   // Currencies
   static const List<Map<String, String>> currencies = [
     {'code': 'INR', 'symbol': '₹', 'name': 'Indian Rupee (INR)'},
-    {'code': 'USD', 'symbol': '$', 'name': 'US Dollar (USD)'},
+    {'code': 'USD', 'symbol': '\$', 'name': 'US Dollar (USD)'},
     {'code': 'EUR', 'symbol': '€', 'name': 'Euro (EUR)'},
     {'code': 'GBP', 'symbol': '£', 'name': 'British Pound (GBP)'},
     {'code': 'AED', 'symbol': 'د.إ', 'name': 'UAE Dirham (AED)'},
-    {'code': 'AUD', 'symbol': 'A$', 'name': 'Australian Dollar (AUD)'},
-    {'code': 'CAD', 'symbol': 'C$', 'name': 'Canadian Dollar (CAD)'},
+    {'code': 'AUD', 'symbol': 'A\$', 'name': 'Australian Dollar (AUD)'},
+    {'code': 'CAD', 'symbol': 'C\$', 'name': 'Canadian Dollar (CAD)'},
   ];
 }

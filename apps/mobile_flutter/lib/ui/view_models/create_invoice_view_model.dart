@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import '../../core/constants/app_constants.dart';
 import '../../data/models/invoice_item_model.dart';
 import '../../data/models/invoice_model.dart';
 import '../../data/models/party_model.dart';

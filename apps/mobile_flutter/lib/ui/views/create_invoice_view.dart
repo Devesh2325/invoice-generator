@@ -75,7 +75,7 @@ class _CreateInvoiceFormState extends State<_CreateInvoiceForm> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: vm.documentType,
+                          initialValue: vm.documentType,
                           decoration: const InputDecoration(labelText: 'Type'),
                           items: AppConstants.documentTypes
                               .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13))))
@@ -236,7 +236,7 @@ class _CreateInvoiceFormState extends State<_CreateInvoiceForm> {
               decoration: BoxDecoration(
                 color: isDark ? AppTheme.slate900 : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.4), width: 1.5),
+                border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.4), width: 1.5),
               ),
               child: Column(
                 children: [
