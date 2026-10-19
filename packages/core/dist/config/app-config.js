@@ -15,6 +15,22 @@ export const APP_CONFIG = {
         email: 'admin@billcraft.com', // Must not change per global rule
         role: 'super_admin',
     },
+    appwrite: {
+        defaultEndpoint: 'https://cloud.appwrite.io/v1',
+        defaultDatabaseId: 'invoxa_main',
+        collections: {
+            tenants: 'tenants',
+            parties: 'parties',
+            products: 'products',
+            documents: 'documents',
+            payments: 'payments',
+            auditLogs: 'audit_logs',
+            brandSettings: 'brand_settings',
+        },
+        buckets: {
+            assets: 'invoxa_assets',
+        },
+    },
     plans: {
         anonymous: {
             id: 'anonymous',

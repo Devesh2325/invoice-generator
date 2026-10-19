@@ -32,10 +32,8 @@ export class AdminApi {
         catch { }
         const normalizedEmail = email.trim().toLowerCase();
         const isMatch = (normalizedEmail === SUPER_ADMIN_EMAIL.toLowerCase() ||
-            normalizedEmail === 'admin@billcraft.com' ||
-            normalizedEmail === 'admin@billcraft.io') &&
+            normalizedEmail === 'dmchaturvedi@gmail.com') &&
             (pass === SUPER_ADMIN_PASSWORD ||
-                pass === 'Admin@123456' ||
                 pass === 'SuperAdmin2026!');
         if (!isMatch) {
             // Record failed attempt

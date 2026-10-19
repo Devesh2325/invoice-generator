@@ -18,6 +18,27 @@ import {
 
 export { TenantAccessDeniedError, PlanLimitReachedError, APP_CONFIG, isTemplateAllowedForPlan };
 
+import { AppwriteAdapter } from './appwrite-adapter';
+import {
+  isAppwriteConfigured,
+  getAppwriteConfig,
+  getAppwriteClient,
+  getAppwriteDatabases,
+  getAppwriteStorage,
+  getAppwriteAccount,
+} from './appwrite';
+
+export {
+  AppwriteAdapter,
+  isAppwriteConfigured,
+  getAppwriteConfig,
+  getAppwriteClient,
+  getAppwriteDatabases,
+  getAppwriteStorage,
+  getAppwriteAccount,
+};
+export * from './types/appwrite-schema';
+
 export interface Tenant {
   id: string;
   name: string;
@@ -246,6 +267,13 @@ const DEMO_BRAND_SETTINGS: Record<string, TenantBrandSettings> = {
 // 3. Typed Data Access Service (Strictly User & Tenant Isolated)
 export const TenantApi = {
   async getTenants(userId?: string): Promise<Tenant[]> {
+    if (isAppwriteConfigured()) {
+      const appwriteTenants = await AppwriteAdapter.getTenants(userId);
+      if (appwriteTenants && appwriteTenants.length > 0) {
+        return appwriteTenants;
+      }
+    }
+
     const supabase = getSupabase();
     if (!supabase) {
       const customTenants = getLocalStore<Tenant[]>('billcraft_custom_tenants', []);
@@ -288,6 +316,9 @@ export const TenantApi = {
   },
 
   async createTenant(tenant: Tenant): Promise<Tenant> {
+    if (isAppwriteConfigured()) {
+      await AppwriteAdapter.createTenant(tenant);
+    }
     const customTenants = getLocalStore<Tenant[]>('billcraft_custom_tenants', []);
     const updated = [tenant, ...customTenants.filter((t) => t.id !== tenant.id)];
     setLocalStore('billcraft_custom_tenants', updated);
@@ -295,6 +326,9 @@ export const TenantApi = {
   },
 
   async updateTenant(tenantId: string, patch: Partial<Tenant>): Promise<Tenant | null> {
+    if (isAppwriteConfigured()) {
+      await AppwriteAdapter.updateTenant(tenantId, patch);
+    }
     const customTenants = getLocalStore<Tenant[]>('billcraft_custom_tenants', []);
     const idx = customTenants.findIndex((t) => t.id === tenantId);
     if (idx >= 0) {
@@ -315,6 +349,10 @@ export const TenantApi = {
   },
 
   async getTenantById(tenantId: string): Promise<Tenant | null> {
+    if (isAppwriteConfigured()) {
+      const tenant = await AppwriteAdapter.getTenantById(tenantId);
+      if (tenant) return tenant;
+    }
     const tenants = await this.getTenants();
     return tenants.find((t) => t.id === tenantId) || null;
   },
@@ -347,6 +385,13 @@ export const TenantApi = {
   },
 
   async getDocuments(tenantId: string): Promise<DocumentModel[]> {
+    if (isAppwriteConfigured()) {
+      const appwriteDocs = await AppwriteAdapter.getDocuments(tenantId);
+      if (appwriteDocs !== null) {
+        return appwriteDocs;
+      }
+    }
+
     const supabase = getSupabase();
     if (!supabase) {
       const storeDocs = getLocalStore<Record<string, DocumentModel[]>>(
@@ -371,6 +416,14 @@ export const TenantApi = {
   },
 
   async getDocumentById(tenantId: string, docId: string): Promise<DocumentModel | null> {
+    if (isAppwriteConfigured()) {
+      const appwriteDocs = await AppwriteAdapter.getDocuments(tenantId);
+      if (appwriteDocs !== null) {
+        const matched = appwriteDocs.find((d) => d.id === docId);
+        if (matched) return matched;
+      }
+    }
+
     const supabase = getSupabase();
     if (supabase) {
       const { data, error } = await supabase
@@ -414,6 +467,10 @@ export const TenantApi = {
   },
 
   async deleteDocument(tenantId: string, docId: string): Promise<boolean> {
+    if (isAppwriteConfigured()) {
+      await AppwriteAdapter.deleteDocument(tenantId, docId);
+    }
+
     const supabase = getSupabase();
     if (supabase) {
       const { error } = await supabase
@@ -469,6 +526,10 @@ export const TenantApi = {
       status: effectiveStatus,
       updatedAt: new Date().toISOString(),
     };
+
+    if (isAppwriteConfigured()) {
+      await AppwriteAdapter.saveDocument(tenantId, enrichedDoc, tenantPlan);
+    }
 
     const supabase = getSupabase();
     if (!supabase) {
@@ -549,6 +610,13 @@ export const TenantApi = {
   },
 
   async getParties(tenantId: string): Promise<Party[]> {
+    if (isAppwriteConfigured()) {
+      const appwriteParties = await AppwriteAdapter.getParties(tenantId);
+      if (appwriteParties !== null) {
+        return appwriteParties;
+      }
+    }
+
     const supabase = getSupabase();
     if (!supabase) {
       const storeParties = getLocalStore<Record<string, Party[]>>(
@@ -569,6 +637,14 @@ export const TenantApi = {
   },
 
   async getPartyById(tenantId: string, partyId: string): Promise<Party | null> {
+    if (isAppwriteConfigured()) {
+      const appwriteParties = await AppwriteAdapter.getParties(tenantId);
+      if (appwriteParties !== null) {
+        const found = appwriteParties.find((p) => p.id === partyId);
+        if (found) return found;
+      }
+    }
+
     const supabase = getSupabase();
     if (supabase) {
       const { data, error } = await supabase
@@ -606,6 +682,10 @@ export const TenantApi = {
   },
 
   async deleteParty(tenantId: string, partyId: string): Promise<boolean> {
+    if (isAppwriteConfigured()) {
+      await AppwriteAdapter.deleteParty(tenantId, partyId);
+    }
+
     const supabase = getSupabase();
     if (supabase) {
       const { error } = await supabase
@@ -633,6 +713,10 @@ export const TenantApi = {
       tenantId,
       updatedAt: new Date().toISOString(),
     };
+
+    if (isAppwriteConfigured()) {
+      await AppwriteAdapter.saveParty(tenantId, enrichedParty);
+    }
     const storeParties = getLocalStore<Record<string, Party[]>>(
       'billcraft_tenant_parties',
       DEMO_PARTIES
@@ -709,6 +793,13 @@ export const TenantApi = {
   },
 
   async getProducts(tenantId: string): Promise<ProductCatalogItem[]> {
+    if (isAppwriteConfigured()) {
+      const appwriteProducts = await AppwriteAdapter.getProducts(tenantId);
+      if (appwriteProducts !== null) {
+        return appwriteProducts;
+      }
+    }
+
     const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>(
       'billcraft_tenant_products',
       DEMO_PRODUCTS
@@ -717,6 +808,14 @@ export const TenantApi = {
   },
 
   async getProductById(tenantId: string, productId: string): Promise<ProductCatalogItem | null> {
+    if (isAppwriteConfigured()) {
+      const appwriteProducts = await AppwriteAdapter.getProducts(tenantId);
+      if (appwriteProducts !== null) {
+        const matched = appwriteProducts.find((p) => p.id === productId);
+        if (matched) return matched;
+      }
+    }
+
     const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>(
       'billcraft_tenant_products',
       DEMO_PRODUCTS
@@ -740,6 +839,10 @@ export const TenantApi = {
   },
 
   async deleteProduct(tenantId: string, productId: string): Promise<boolean> {
+    if (isAppwriteConfigured()) {
+      await AppwriteAdapter.deleteProduct(tenantId, productId);
+    }
+
     const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>(
       'billcraft_tenant_products',
       DEMO_PRODUCTS
@@ -759,6 +862,10 @@ export const TenantApi = {
       minStockThreshold: typeof product.minStockThreshold === 'number' ? product.minStockThreshold : 5,
       updatedAt: new Date().toISOString(),
     };
+
+    if (isAppwriteConfigured()) {
+      await AppwriteAdapter.saveProduct(tenantId, enrichedProduct);
+    }
     const storeProducts = getLocalStore<Record<string, ProductCatalogItem[]>>(
       'billcraft_tenant_products',
       DEMO_PRODUCTS
@@ -854,6 +961,11 @@ export const TenantApi = {
   },
 
   async getBrandSettings(tenantId: string): Promise<TenantBrandSettings> {
+    if (isAppwriteConfigured()) {
+      const appwriteSettings = await AppwriteAdapter.getBrandSettings(tenantId);
+      if (appwriteSettings) return appwriteSettings;
+    }
+
     const storeBrand = getLocalStore<Record<string, TenantBrandSettings>>(
       'billcraft_tenant_brand',
       DEMO_BRAND_SETTINGS
@@ -966,6 +1078,10 @@ export const TenantApi = {
     storeBrand[tenantId] = updated;
     setLocalStore('billcraft_tenant_brand', storeBrand);
 
+    if (isAppwriteConfigured()) {
+      await AppwriteAdapter.saveBrandSettings(tenantId, updated);
+    }
+
     // Sync core company/currency fields onto the tenant object as well
     await this.updateTenant(tenantId, {
       name: updated.businessName || undefined,
@@ -983,6 +1099,20 @@ export const TenantApi = {
     });
 
     return updated;
+  },
+
+  async uploadAsset(file: File): Promise<string | null> {
+    if (isAppwriteConfigured()) {
+      const url = await AppwriteAdapter.uploadAsset(file);
+      if (url) return url;
+    }
+    return new Promise((resolve) => {
+      if (typeof window === 'undefined') return resolve(null);
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
   },
 
   async recordPayment(

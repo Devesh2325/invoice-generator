@@ -58,6 +58,22 @@ export interface AppConfig {
     };
   };
   defaultTerminology: Record<string, string>;
+  appwrite: {
+    defaultEndpoint: string;
+    defaultDatabaseId: string;
+    collections: {
+      tenants: string;
+      parties: string;
+      products: string;
+      documents: string;
+      payments: string;
+      auditLogs: string;
+      brandSettings: string;
+    };
+    buckets: {
+      assets: string;
+    };
+  };
 }
 
 export const APP_CONFIG: AppConfig = {
@@ -71,6 +87,22 @@ export const APP_CONFIG: AppConfig = {
   superAdmin: {
     email: 'admin@billcraft.com', // Must not change per global rule
     role: 'super_admin',
+  },
+  appwrite: {
+    defaultEndpoint: 'https://cloud.appwrite.io/v1',
+    defaultDatabaseId: 'invoxa_main',
+    collections: {
+      tenants: 'tenants',
+      parties: 'parties',
+      products: 'products',
+      documents: 'documents',
+      payments: 'payments',
+      auditLogs: 'audit_logs',
+      brandSettings: 'brand_settings',
+    },
+    buckets: {
+      assets: 'invoxa_assets',
+    },
   },
   plans: {
     anonymous: {

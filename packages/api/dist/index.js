@@ -1,6 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { computeEffectiveInvoiceStatus, TenantAccessDeniedError, PlanLimitReachedError, APP_CONFIG, isTemplateAllowedForPlan, } from '@invoice/core';
 export { TenantAccessDeniedError, PlanLimitReachedError, APP_CONFIG, isTemplateAllowedForPlan };
+import { AppwriteAdapter } from './appwrite-adapter';
+import { isAppwriteConfigured, getAppwriteConfig, getAppwriteClient, getAppwriteDatabases, getAppwriteStorage, getAppwriteAccount, } from './appwrite';
+export { AppwriteAdapter, isAppwriteConfigured, getAppwriteConfig, getAppwriteClient, getAppwriteDatabases, getAppwriteStorage, getAppwriteAccount, };
+export * from './types/appwrite-schema';
 // 1. Client initialization
 let supabaseClient = null;
 export function getSupabase() {
@@ -120,6 +124,12 @@ const DEMO_BRAND_SETTINGS = {
 // 3. Typed Data Access Service (Strictly User & Tenant Isolated)
 export const TenantApi = {
     async getTenants(userId) {
+        if (isAppwriteConfigured()) {
+            const appwriteTenants = await AppwriteAdapter.getTenants(userId);
+            if (appwriteTenants && appwriteTenants.length > 0) {
+                return appwriteTenants;
+            }
+        }
         const supabase = getSupabase();
         if (!supabase) {
             const customTenants = getLocalStore('billcraft_custom_tenants', []);
@@ -159,12 +169,18 @@ export const TenantApi = {
         }));
     },
     async createTenant(tenant) {
+        if (isAppwriteConfigured()) {
+            await AppwriteAdapter.createTenant(tenant);
+        }
         const customTenants = getLocalStore('billcraft_custom_tenants', []);
         const updated = [tenant, ...customTenants.filter((t) => t.id !== tenant.id)];
         setLocalStore('billcraft_custom_tenants', updated);
         return tenant;
     },
     async updateTenant(tenantId, patch) {
+        if (isAppwriteConfigured()) {
+            await AppwriteAdapter.updateTenant(tenantId, patch);
+        }
         const customTenants = getLocalStore('billcraft_custom_tenants', []);
         const idx = customTenants.findIndex((t) => t.id === tenantId);
         if (idx >= 0) {
@@ -183,6 +199,11 @@ export const TenantApi = {
         return null;
     },
     async getTenantById(tenantId) {
+        if (isAppwriteConfigured()) {
+            const tenant = await AppwriteAdapter.getTenantById(tenantId);
+            if (tenant)
+                return tenant;
+        }
         const tenants = await this.getTenants();
         return tenants.find((t) => t.id === tenantId) || null;
     },
@@ -205,6 +226,12 @@ export const TenantApi = {
         };
     },
     async getDocuments(tenantId) {
+        if (isAppwriteConfigured()) {
+            const appwriteDocs = await AppwriteAdapter.getDocuments(tenantId);
+            if (appwriteDocs !== null) {
+                return appwriteDocs;
+            }
+        }
         const supabase = getSupabase();
         if (!supabase) {
             const storeDocs = getLocalStore('billcraft_tenant_documents', DEMO_DOCUMENTS);
@@ -224,6 +251,14 @@ export const TenantApi = {
         return data;
     },
     async getDocumentById(tenantId, docId) {
+        if (isAppwriteConfigured()) {
+            const appwriteDocs = await AppwriteAdapter.getDocuments(tenantId);
+            if (appwriteDocs !== null) {
+                const matched = appwriteDocs.find((d) => d.id === docId);
+                if (matched)
+                    return matched;
+            }
+        }
         const supabase = getSupabase();
         if (supabase) {
             const { data, error } = await supabase
@@ -259,6 +294,9 @@ export const TenantApi = {
         return null;
     },
     async deleteDocument(tenantId, docId) {
+        if (isAppwriteConfigured()) {
+            await AppwriteAdapter.deleteDocument(tenantId, docId);
+        }
         const supabase = getSupabase();
         if (supabase) {
             const { error } = await supabase
@@ -300,6 +338,9 @@ export const TenantApi = {
             status: effectiveStatus,
             updatedAt: new Date().toISOString(),
         };
+        if (isAppwriteConfigured()) {
+            await AppwriteAdapter.saveDocument(tenantId, enrichedDoc, tenantPlan);
+        }
         const supabase = getSupabase();
         if (!supabase) {
             const storeDocs = getLocalStore('billcraft_tenant_documents', DEMO_DOCUMENTS);
@@ -368,6 +409,12 @@ export const TenantApi = {
         return doc;
     },
     async getParties(tenantId) {
+        if (isAppwriteConfigured()) {
+            const appwriteParties = await AppwriteAdapter.getParties(tenantId);
+            if (appwriteParties !== null) {
+                return appwriteParties;
+            }
+        }
         const supabase = getSupabase();
         if (!supabase) {
             const storeParties = getLocalStore('billcraft_tenant_parties', DEMO_PARTIES);
@@ -383,6 +430,14 @@ export const TenantApi = {
         return data;
     },
     async getPartyById(tenantId, partyId) {
+        if (isAppwriteConfigured()) {
+            const appwriteParties = await AppwriteAdapter.getParties(tenantId);
+            if (appwriteParties !== null) {
+                const found = appwriteParties.find((p) => p.id === partyId);
+                if (found)
+                    return found;
+            }
+        }
         const supabase = getSupabase();
         if (supabase) {
             const { data, error } = await supabase
@@ -413,6 +468,9 @@ export const TenantApi = {
         return null;
     },
     async deleteParty(tenantId, partyId) {
+        if (isAppwriteConfigured()) {
+            await AppwriteAdapter.deleteParty(tenantId, partyId);
+        }
         const supabase = getSupabase();
         if (supabase) {
             const { error } = await supabase
@@ -436,6 +494,9 @@ export const TenantApi = {
             tenantId,
             updatedAt: new Date().toISOString(),
         };
+        if (isAppwriteConfigured()) {
+            await AppwriteAdapter.saveParty(tenantId, enrichedParty);
+        }
         const storeParties = getLocalStore('billcraft_tenant_parties', DEMO_PARTIES);
         if (!storeParties[tenantId])
             storeParties[tenantId] = [];
@@ -492,10 +553,24 @@ export const TenantApi = {
         return { importedCount, updatedCount, skippedCount };
     },
     async getProducts(tenantId) {
+        if (isAppwriteConfigured()) {
+            const appwriteProducts = await AppwriteAdapter.getProducts(tenantId);
+            if (appwriteProducts !== null) {
+                return appwriteProducts;
+            }
+        }
         const storeProducts = getLocalStore('billcraft_tenant_products', DEMO_PRODUCTS);
         return storeProducts[tenantId] || [];
     },
     async getProductById(tenantId, productId) {
+        if (isAppwriteConfigured()) {
+            const appwriteProducts = await AppwriteAdapter.getProducts(tenantId);
+            if (appwriteProducts !== null) {
+                const matched = appwriteProducts.find((p) => p.id === productId);
+                if (matched)
+                    return matched;
+            }
+        }
         const storeProducts = getLocalStore('billcraft_tenant_products', DEMO_PRODUCTS);
         const tenantProducts = storeProducts[tenantId] || [];
         const matched = tenantProducts.find((p) => p.id === productId);
@@ -512,6 +587,9 @@ export const TenantApi = {
         return null;
     },
     async deleteProduct(tenantId, productId) {
+        if (isAppwriteConfigured()) {
+            await AppwriteAdapter.deleteProduct(tenantId, productId);
+        }
         const storeProducts = getLocalStore('billcraft_tenant_products', DEMO_PRODUCTS);
         if (!storeProducts[tenantId])
             return false;
@@ -528,6 +606,9 @@ export const TenantApi = {
             minStockThreshold: typeof product.minStockThreshold === 'number' ? product.minStockThreshold : 5,
             updatedAt: new Date().toISOString(),
         };
+        if (isAppwriteConfigured()) {
+            await AppwriteAdapter.saveProduct(tenantId, enrichedProduct);
+        }
         const storeProducts = getLocalStore('billcraft_tenant_products', DEMO_PRODUCTS);
         if (!storeProducts[tenantId])
             storeProducts[tenantId] = [];
@@ -604,6 +685,11 @@ export const TenantApi = {
         return products.filter((p) => !p.isArchived && (Number(p.stockQuantity) || 0) <= (Number(p.minStockThreshold) || 5));
     },
     async getBrandSettings(tenantId) {
+        if (isAppwriteConfigured()) {
+            const appwriteSettings = await AppwriteAdapter.getBrandSettings(tenantId);
+            if (appwriteSettings)
+                return appwriteSettings;
+        }
         const storeBrand = getLocalStore('billcraft_tenant_brand', DEMO_BRAND_SETTINGS);
         const customTenants = getLocalStore('billcraft_custom_tenants', []);
         const demoOverrides = getLocalStore('billcraft_demo_tenant_overrides', {});
@@ -698,6 +784,9 @@ export const TenantApi = {
         };
         storeBrand[tenantId] = updated;
         setLocalStore('billcraft_tenant_brand', storeBrand);
+        if (isAppwriteConfigured()) {
+            await AppwriteAdapter.saveBrandSettings(tenantId, updated);
+        }
         // Sync core company/currency fields onto the tenant object as well
         await this.updateTenant(tenantId, {
             name: updated.businessName || undefined,
@@ -714,6 +803,21 @@ export const TenantApi = {
             invoicePrefix: updated.invoicePrefix,
         });
         return updated;
+    },
+    async uploadAsset(file) {
+        if (isAppwriteConfigured()) {
+            const url = await AppwriteAdapter.uploadAsset(file);
+            if (url)
+                return url;
+        }
+        return new Promise((resolve) => {
+            if (typeof window === 'undefined')
+                return resolve(null);
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+        });
     },
     async recordPayment(tenantId, docId, amount, method, reference, notes, paymentDate) {
         const storeDocs = getLocalStore('billcraft_tenant_documents', DEMO_DOCUMENTS);

@@ -1,6 +1,10 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { DocumentModel, Party, DocumentPaymentConfig, RoundingMode, PaymentMethod, DocumentStatus, AuditHistoryEntry, TenantAccessDeniedError, PlanLimitReachedError, APP_CONFIG, isTemplateAllowedForPlan } from '@invoice/core';
 export { TenantAccessDeniedError, PlanLimitReachedError, APP_CONFIG, isTemplateAllowedForPlan };
+import { AppwriteAdapter } from './appwrite-adapter';
+import { isAppwriteConfigured, getAppwriteConfig, getAppwriteClient, getAppwriteDatabases, getAppwriteStorage, getAppwriteAccount } from './appwrite';
+export { AppwriteAdapter, isAppwriteConfigured, getAppwriteConfig, getAppwriteClient, getAppwriteDatabases, getAppwriteStorage, getAppwriteAccount, };
+export * from './types/appwrite-schema';
 export interface Tenant {
     id: string;
     name: string;
@@ -131,6 +135,7 @@ export declare const TenantApi: {
     getLowStockProducts(tenantId: string): Promise<ProductCatalogItem[]>;
     getBrandSettings(tenantId: string): Promise<TenantBrandSettings>;
     updateBrandSettings(tenantId: string, settings: Partial<TenantBrandSettings>): Promise<TenantBrandSettings>;
+    uploadAsset(file: File): Promise<string | null>;
     recordPayment(tenantId: string, docId: string, amount: number, method: PaymentMethod, reference?: string, notes?: string, paymentDate?: string): Promise<DocumentModel | null>;
     recordRefund(tenantId: string, docId: string, amount: number, method: PaymentMethod, reason?: string, reference?: string, notes?: string, refundDate?: string): Promise<DocumentModel | null>;
     getAuditLogs(tenantId: string): Promise<(AuditHistoryEntry & {

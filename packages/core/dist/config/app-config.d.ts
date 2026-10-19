@@ -57,6 +57,22 @@ export interface AppConfig {
         };
     };
     defaultTerminology: Record<string, string>;
+    appwrite: {
+        defaultEndpoint: string;
+        defaultDatabaseId: string;
+        collections: {
+            tenants: string;
+            parties: string;
+            products: string;
+            documents: string;
+            payments: string;
+            auditLogs: string;
+            brandSettings: string;
+        };
+        buckets: {
+            assets: string;
+        };
+    };
 }
 export declare const APP_CONFIG: AppConfig;
 /**
