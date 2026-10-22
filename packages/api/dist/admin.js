@@ -195,134 +195,228 @@ export class AdminApi {
                 isPro: false,
                 enabled: true,
                 downloadsCount: 1420,
+                description: "Modern GST-compliant tax invoice with HSN/SAC, Place of Supply, and CGST/SGST/IGST split.",
+                primaryColor: "#1D4ED8",
             },
             {
                 id: "tally_prime",
-                name: "Tally Prime Classic",
+                name: "Tally Prime Tax Grid",
                 category: "GST & Tax Compliant (India)",
                 isPro: false,
                 enabled: true,
                 downloadsCount: 980,
+                description: "Traditional Indian accounting bordered box layout with GSTIN, State Code, HSN/SAC & Signatory.",
+                primaryColor: "#0F172A",
             },
             {
-                id: "zoho_gst",
-                name: "Zoho Books Corporate",
+                id: "vyapar_classic",
+                name: "Vyapar Business GST",
                 category: "GST & Tax Compliant (India)",
-                isPro: true,
+                isPro: false,
                 enabled: true,
                 downloadsCount: 1150,
+                description: "High-clarity commercial distributor & wholesale GST layout with bold accent header.",
+                primaryColor: "#EA580C",
             },
             {
-                id: "stripe_fintech",
-                name: "Stripe Indigo",
+                id: "modern",
+                name: "Modern Fintech",
                 category: "SaaS & Modern Fintech",
                 isPro: false,
                 enabled: true,
                 downloadsCount: 2340,
+                description: "Clean high-contrast layout with elegant colored accents and modern cards.",
+                primaryColor: "#3157D5",
             },
             {
-                id: "brex_modern",
-                name: "Brex Tech Slate",
+                id: "stripe_clean",
+                name: "Stripe Clean SaaS",
                 category: "SaaS & Modern Fintech",
                 isPro: true,
                 enabled: true,
-                downloadsCount: 890,
+                downloadsCount: 1890,
+                description: "Developer-first, hyper-minimal tech invoice inspired by Stripe Invoicing.",
+                primaryColor: "#6366F1",
             },
             {
-                id: "mercury_teal",
-                name: "Mercury Minimal Teal",
-                category: "SaaS & Modern Fintech",
+                id: "zoho_standard",
+                name: "Zoho Books Corporate",
+                category: "Corporate & Enterprise",
                 isPro: false,
                 enabled: true,
                 downloadsCount: 1220,
+                description: "Classic corporate invoice with formal grid layout and balanced typography.",
+                primaryColor: "#0284C7",
             },
             {
-                id: "quickbooks_enterprise",
-                name: "QuickBooks Enterprise",
+                id: "freshbooks_cloud",
+                name: "FreshBooks Cloud Retainer",
                 category: "Corporate & Enterprise",
                 isPro: true,
                 enabled: true,
                 downloadsCount: 760,
+                description: "Friendly, polished freelance & agency billing format with prominent payment terms.",
+                primaryColor: "#059669",
             },
             {
-                id: "freshbooks_classic",
-                name: "FreshBooks Corporate",
+                id: "bold_header",
+                name: "Bold Color Block Header",
+                category: "SaaS & Modern Fintech",
+                isPro: true,
+                enabled: true,
+                downloadsCount: 1040,
+                description: "Full-bleed primary color header banner for maximum brand recognition.",
+                primaryColor: "#4F46E5",
+            },
+            {
+                id: "professional",
+                name: "Executive Professional",
                 category: "Corporate & Enterprise",
                 isPro: false,
                 enabled: true,
-                downloadsCount: 1040,
+                downloadsCount: 1650,
+                description: "Conservative, highly structured layout for enterprise B2B vendors.",
+                primaryColor: "#1E293B",
             },
             {
-                id: "xero_standard",
-                name: "Xero Modern Ledger",
+                id: "corporate",
+                name: "Corporate Standard",
+                category: "Corporate & Enterprise",
+                isPro: true,
+                enabled: true,
+                downloadsCount: 890,
+                description: "Traditional corporate invoice with full-width section headers and formal ledger table.",
+                primaryColor: "#1E40AF",
+            },
+            {
+                id: "classic",
+                name: "Classic Heritage Serif",
                 category: "Corporate & Enterprise",
                 isPro: true,
                 enabled: true,
                 downloadsCount: 650,
+                description: "Timeless black-and-white layout with double borders and classic typography.",
+                primaryColor: "#0F172A",
             },
             {
-                id: "canva_studio",
-                name: "Canva Creative Studio",
+                id: "elegant",
+                name: "Luxury Boutique Serif",
                 category: "Creative & Agency",
-                isPro: false,
+                isPro: true,
                 enabled: true,
-                downloadsCount: 1820,
+                downloadsCount: 820,
+                description: "Sophisticated editorial aesthetic tailored for high-end consulting and premium brands.",
+                primaryColor: "#78350F",
             },
             {
-                id: "dribbble_bold",
-                name: "Dribbble Bold Purple",
+                id: "creative",
+                name: "Creative Studio Gradient",
                 category: "Creative & Agency",
                 isPro: true,
                 enabled: true,
                 downloadsCount: 1490,
+                description: "Vibrant and expressive design for design agencies, video editors, and creators.",
+                primaryColor: "#7C3AED",
             },
             {
-                id: "behance_dark",
-                name: "Behance Agency Charcoal",
+                id: "canva_studio",
+                name: "Canva Studio Agency",
+                category: "Creative & Agency",
+                isPro: false,
+                enabled: true,
+                downloadsCount: 1820,
+                description: "Contemporary creative agency invoice with rounded soft cards and pastel badges.",
+                primaryColor: "#06B6D4",
+            },
+            {
+                id: "agency_retainer",
+                name: "Digital Marketing Retainer",
                 category: "Creative & Agency",
                 isPro: true,
                 enabled: true,
                 downloadsCount: 1100,
+                description: "Multi-service agency retainer layout with milestone tracking and deliverable notes.",
+                primaryColor: "#EC4899",
             },
             {
-                id: "apple_clean",
-                name: "Apple Cupertino Clean",
+                id: "minimal",
+                name: "Minimal Monochrome",
                 category: "Minimal & Industry Specialty",
                 isPro: false,
                 enabled: true,
                 downloadsCount: 3100,
+                description: "Stripped-back typographic layout with zero visual clutter and maximum whitespace.",
+                primaryColor: "#18181B",
             },
             {
-                id: "notion_minimal",
-                name: "Notion Mono Monochrome",
-                category: "Minimal & Industry Specialty",
-                isPro: false,
-                enabled: true,
-                downloadsCount: 2840,
-            },
-            {
-                id: "medical_rx",
-                name: "Healthcare & Clinical Rx",
+                id: "compact",
+                name: "Dense Compact Ledger",
                 category: "Minimal & Industry Specialty",
                 isPro: true,
                 enabled: true,
-                downloadsCount: 430,
+                downloadsCount: 680,
+                description: "High-density multi-item invoice layout designed for long item catalogs.",
+                primaryColor: "#334155",
             },
             {
-                id: "logistics_waybill",
-                name: "Supply Chain & Logistics",
-                category: "Minimal & Industry Specialty",
-                isPro: true,
-                enabled: true,
-                downloadsCount: 520,
-            },
-            {
-                id: "retail_pos",
-                name: "Retail POS Thermal Slip",
+                id: "retail",
+                name: "Retail POS Receipt",
                 category: "Minimal & Industry Specialty",
                 isPro: false,
                 enabled: true,
-                downloadsCount: 890,
+                downloadsCount: 920,
+                description: "Clean thermal slip receipt format for counter sales, retail stores, and pop-ups.",
+                primaryColor: "#059669",
+            },
+            {
+                id: "service_business",
+                name: "Trades & Field Services",
+                category: "Minimal & Industry Specialty",
+                isPro: true,
+                enabled: true,
+                downloadsCount: 750,
+                description: "Job-site and contractor layout with labor vs parts itemization and signature line.",
+                primaryColor: "#D97706",
+            },
+            {
+                id: "in-gst",
+                name: "Standard Indian GST Tax Invoice",
+                category: "GST & Tax Compliant (India)",
+                isPro: false,
+                enabled: true,
+                downloadsCount: 2200,
+                description: "Comprehensive Indian tax compliance format with e-invoice QR code and reverse charge notes.",
+                primaryColor: "#2563EB",
+            },
+            {
+                id: "uk-vat",
+                name: "UK HMRC Compliant VAT",
+                category: "Corporate & Enterprise",
+                isPro: true,
+                enabled: true,
+                downloadsCount: 840,
+                description: "Standard British VAT invoice format compliant with HMRC Making Tax Digital rules.",
+                primaryColor: "#065F46",
+            },
+            {
+                id: "eu-reverse-charge",
+                name: "EU Cross-Border Reverse Charge",
+                category: "Corporate & Enterprise",
+                isPro: true,
+                enabled: true,
+                downloadsCount: 610,
+                description: "European cross-border invoice with intra-community Article 194 VAT reverse charge clause.",
+                primaryColor: "#1E3A8A",
+            },
+            {
+                id: "us-sales-tax",
+                name: "US Multi-Jurisdiction Sales Tax",
+                category: "Corporate & Enterprise",
+                isPro: false,
+                enabled: true,
+                downloadsCount: 1540,
+                description: "American corporate invoice supporting combined State, County, and City sales tax lines.",
+                primaryColor: "#0284C7",
             },
         ];
         if (typeof window === "undefined")
@@ -331,8 +425,12 @@ export class AdminApi {
             const stored = localStorage.getItem("billcraft_admin_templates");
             if (stored) {
                 const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0)
-                    return parsed;
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    // Merge seeds that might not exist in parsed to ensure 100% coverage
+                    const existingIds = new Set(parsed.map((p) => p.id));
+                    const missing = seeds.filter((s) => !existingIds.has(s.id));
+                    return [...parsed, ...missing];
+                }
             }
             localStorage.setItem("billcraft_admin_templates", JSON.stringify(seeds));
         }
@@ -344,6 +442,7 @@ export class AdminApi {
         const updated = templates.map((t) => t.id === templateId ? { ...t, ...patch } : t);
         if (typeof window !== "undefined") {
             localStorage.setItem("billcraft_admin_templates", JSON.stringify(updated));
+            window.dispatchEvent(new Event("invoxa-templates-updated"));
             this.recordAuditLog("UPDATE_TEMPLATE", `Template: ${templateId}`, "Super Admin");
         }
         return true;
@@ -368,6 +467,7 @@ export class AdminApi {
         }
         if (typeof window !== "undefined") {
             localStorage.setItem("billcraft_admin_templates", JSON.stringify(updated));
+            window.dispatchEvent(new Event("invoxa-templates-updated"));
             this.recordAuditLog("SAVE_TEMPLATE", `Template: ${tpl.id} (${tpl.name})`, "Super Admin");
         }
         return tpl;
@@ -377,6 +477,7 @@ export class AdminApi {
         const filtered = templates.filter((t) => t.id !== templateId);
         if (typeof window !== "undefined") {
             localStorage.setItem("billcraft_admin_templates", JSON.stringify(filtered));
+            window.dispatchEvent(new Event("invoxa-templates-updated"));
             this.recordAuditLog("DELETE_TEMPLATE", `Deleted Template: ${templateId}`, "Super Admin");
             return true;
         }
@@ -700,5 +801,34 @@ export class AdminApi {
             localStorage.setItem("billcraft_admin_audit_logs", JSON.stringify(logs.slice(0, 100)));
         }
         catch { }
+    }
+    // Generator Field Visibility Controls (Description, Qty, Price, Amount default)
+    static getGeneratorSettings() {
+        const defaults = {
+            showHsnColumn: false,
+            showTaxRateColumn: false,
+            showUnitColumn: false,
+            showDiscountColumn: false,
+        };
+        if (typeof window === "undefined")
+            return defaults;
+        try {
+            const stored = localStorage.getItem("invoxa_generator_field_settings");
+            if (stored) {
+                return { ...defaults, ...JSON.parse(stored) };
+            }
+        }
+        catch { }
+        return defaults;
+    }
+    static updateGeneratorSettings(settings) {
+        const current = this.getGeneratorSettings();
+        const updated = { ...current, ...settings };
+        if (typeof window !== "undefined") {
+            localStorage.setItem("invoxa_generator_field_settings", JSON.stringify(updated));
+            window.dispatchEvent(new Event("invoxa-generator-settings-updated"));
+            this.recordAuditLog("UPDATE_GENERATOR_FIELDS", "Generator Field Settings", "Super Admin");
+        }
+        return updated;
     }
 }

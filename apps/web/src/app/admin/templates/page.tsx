@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AdminApi } from '@invoice/api';
-import { AdminTemplateSetting } from '@invoice/core';
+import { AdminTemplateSetting, GeneratorFieldSettings } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +20,14 @@ import {
   Edit,
   Trash2,
   Eye,
+  EyeOff,
   Download,
   Plus,
   X,
   FileCode,
   Layers,
   Save,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export default function AdminTemplatesPage() {
@@ -34,6 +36,25 @@ export default function AdminTemplatesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedTier, setSelectedTier] = useState<'all' | 'free' | 'pro'>('all');
+  const [generatorSettings, setGeneratorSettings] = useState<GeneratorFieldSettings>(() =>
+    AdminApi.getGeneratorSettings()
+  );
+
+  const handleToggleGeneratorField = (field: keyof GeneratorFieldSettings) => {
+    const updated = {
+      ...generatorSettings,
+      [field]: !generatorSettings[field],
+    };
+    AdminApi.updateGeneratorSettings(updated);
+    setGeneratorSettings(updated);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('billcraft-generator-settings-updated'));
+    }
+    toast({
+      title: 'Generator Settings Saved',
+      description: `Default column "${String(field)}" is now ${updated[field] ? 'VISIBLE' : 'HIDDEN'} on generator.`,
+    });
+  };
 
   // Modals state
   const [editingTemplate, setEditingTemplate] = useState<AdminTemplateSetting | null>(null);
@@ -226,6 +247,94 @@ export default function AdminTemplatesPage() {
               <ExternalLink className="h-3.5 w-3.5" />
             </Button>
           </Link>
+        </div>
+      </div>
+
+      {/* Super Admin Control: Generator Default Field Visibility */}
+      <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-primary" />
+              Invoice Generator Default Line Columns
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Control which line item columns appear on the live invoice generator by default. Users will see Description, Qty, and Price only when extras are hidden.
+            </p>
+          </div>
+          <Badge variant="outline" className="text-[11px] font-mono border-slate-700 text-slate-300 w-fit">
+            Live Platform Default
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+          <div className="bg-slate-950 border border-slate-800/80 p-3 rounded-lg flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-slate-200">HSN / SAC Code</div>
+              <div className="text-[10px] text-slate-400">Show HSN/SAC column by default</div>
+            </div>
+            <button
+              onClick={() => handleToggleGeneratorField('showHsnColumn')}
+              className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                generatorSettings.showHsnColumn
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+              }`}
+            >
+              {generatorSettings.showHsnColumn ? 'ENABLED' : 'HIDDEN'}
+            </button>
+          </div>
+
+          <div className="bg-slate-950 border border-slate-800/80 p-3 rounded-lg flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-slate-200">Tax Rate / GST %</div>
+              <div className="text-[10px] text-slate-400">Show Tax column per item row</div>
+            </div>
+            <button
+              onClick={() => handleToggleGeneratorField('showTaxRateColumn')}
+              className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                generatorSettings.showTaxRateColumn
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+              }`}
+            >
+              {generatorSettings.showTaxRateColumn ? 'ENABLED' : 'HIDDEN'}
+            </button>
+          </div>
+
+          <div className="bg-slate-950 border border-slate-800/80 p-3 rounded-lg flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-slate-200">Unit of Measure</div>
+              <div className="text-[10px] text-slate-400">Show Unit (PCS/HRS/KGS)</div>
+            </div>
+            <button
+              onClick={() => handleToggleGeneratorField('showUnitColumn')}
+              className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                generatorSettings.showUnitColumn
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+              }`}
+            >
+              {generatorSettings.showUnitColumn ? 'ENABLED' : 'HIDDEN'}
+            </button>
+          </div>
+
+          <div className="bg-slate-950 border border-slate-800/80 p-3 rounded-lg flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-slate-200">Discount %</div>
+              <div className="text-[10px] text-slate-400">Show item discount column</div>
+            </div>
+            <button
+              onClick={() => handleToggleGeneratorField('showDiscountColumn')}
+              className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                generatorSettings.showDiscountColumn
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+              }`}
+            >
+              {generatorSettings.showDiscountColumn ? 'ENABLED' : 'HIDDEN'}
+            </button>
+          </div>
         </div>
       </div>
 

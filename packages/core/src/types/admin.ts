@@ -58,6 +58,14 @@ export interface AdminTemplateSetting {
   region?: string;
 }
 
+export interface GeneratorFieldSettings {
+  showHsnColumn: boolean;
+  showTaxRateColumn: boolean;
+  showUnitColumn: boolean;
+  showDiscountColumn: boolean;
+}
+
+
 export interface AdminTeam {
   id: string;
   name: string;

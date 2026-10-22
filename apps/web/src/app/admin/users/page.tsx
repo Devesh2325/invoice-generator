@@ -1,15 +1,19 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AdminApi } from '@invoice/api';
 import { AdminUser, PlanId } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Ban, CheckCircle, UserCheck, Shield, Users } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { Search, Ban, CheckCircle, UserCheck, Shield, Users, UserCog } from 'lucide-react';
 
 export default function AdminUsersPage() {
+  const router = useRouter();
+  const { toast } = useToast();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('all');
@@ -34,6 +38,81 @@ export default function AdminUsersPage() {
       AdminApi.unbanUser(user.id);
     }
     loadUsers();
+  };
+
+  const handleImpersonate = (u: AdminUser) => {
+    if (typeof window === 'undefined') return;
+    try {
+      // 1. Save backup of current Super Admin session
+      const backup = {
+        user: window.localStorage.getItem('billcraft_current_user'),
+        userId: window.localStorage.getItem('billcraft_current_user_id'),
+        activeTenantId: window.localStorage.getItem('billcraft_active_tenant_id'),
+        adminEmail: 'dmchaturvedi@gmail.com',
+        timestamp: Date.now(),
+      };
+      window.localStorage.setItem('billcraft_impersonator_backup', JSON.stringify(backup));
+      window.localStorage.setItem('billcraft_is_impersonating', 'true');
+      window.localStorage.setItem(
+        'billcraft_impersonated_target',
+        JSON.stringify({
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          plan: u.plan,
+        })
+      );
+
+      // 2. Check if user already exists in registered users or find/create a tenant
+      const tenantId = `tenant_${u.id}`;
+      const customTenantsRaw = window.localStorage.getItem('billcraft_custom_tenants');
+      let customTenants = customTenantsRaw ? JSON.parse(customTenantsRaw) : [];
+      let userTenant = customTenants.find((t: any) => t.ownerUserId === u.id || t.id === tenantId);
+
+      if (!userTenant) {
+        userTenant = {
+          id: tenantId,
+          name: `${u.name}'s Workspace`,
+          ownerUserId: u.id,
+          createdAt: new Date().toISOString(),
+          currency: 'INR',
+          plan: u.plan || 'starter',
+          isWhiteLabel: u.plan === 'enterprise',
+        };
+        customTenants.push(userTenant);
+        window.localStorage.setItem('billcraft_custom_tenants', JSON.stringify(customTenants));
+      }
+
+      const impersonatedUser = {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        tenantId: userTenant.id,
+        plan: u.plan || 'starter',
+      };
+
+      window.localStorage.setItem('billcraft_current_user', JSON.stringify(impersonatedUser));
+      window.localStorage.setItem('billcraft_current_user_id', u.id);
+      window.localStorage.setItem('billcraft_active_tenant_id', userTenant.id);
+
+      window.dispatchEvent(new Event('billcraft-auth-updated'));
+      window.dispatchEvent(new Event('billcraft-plan-updated'));
+
+      toast({
+        title: 'Impersonation Mode Active',
+        description: `Now viewing workspace as ${u.name} (${u.email}). Redirecting to Dashboard...`,
+      });
+
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 350);
+    } catch (e: any) {
+      toast({
+        title: 'Impersonation Failed',
+        description: e.message || 'Unable to establish impersonation session.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const filtered = users.filter((u) => {
@@ -151,10 +230,11 @@ export default function AdminUsersPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => alert(`Impersonating session for ${u.email}...`)}
-                        className="text-xs text-slate-400 hover:text-white h-7 px-2"
+                        onClick={() => handleImpersonate(u)}
+                        className="text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 h-7 px-2 font-semibold flex items-center gap-1"
+                        title={`Impersonate ${u.name} and view dashboard`}
                       >
-                        Impersonate
+                        <UserCog className="h-3 w-3" /> Impersonate
                       </Button>
                     </div>
                   </td>

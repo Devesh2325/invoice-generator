@@ -27,9 +27,11 @@ import {
   generateVerifiedUpiQrSvgDataUrl,
   APP_CONFIG,
   isTemplateAllowedForPlan,
+  GeneratorFieldSettings,
+  AdminTemplateSetting,
 } from '@invoice/core';
 import { getTemplate, getTemplatesByCategory, getInvoiceTemplate } from '@invoice/theme';
-import { TenantApi, ProductCatalogItem } from '@invoice/api';
+import { TenantApi, AdminApi, ProductCatalogItem } from '@invoice/api';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { useTheme } from '@/lib/theme/theme-provider';
 import { saveDocument } from '@/lib/storage/indexed-db';
@@ -139,8 +141,45 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   initialDocument,
   onSaved,
 }) => {
-  const { activeTenant, brandSettings, tenantCurrency } = useTenant();
-  const categorizedTemplates = useMemo(() => getTemplatesByCategory(), []);
+  const { activeTenant, brandSettings, tenantCurrency, user } = useTenant();
+  const [generatorSettings, setGeneratorSettings] = useState<GeneratorFieldSettings>(() =>
+    AdminApi.getGeneratorSettings()
+  );
+  const [showSplitAdvanced, setShowSplitAdvanced] = useState(false);
+
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setGeneratorSettings(AdminApi.getGeneratorSettings());
+    };
+    window.addEventListener('billcraft-generator-settings-updated', handleSettingsUpdate);
+    return () => window.removeEventListener('billcraft-generator-settings-updated', handleSettingsUpdate);
+  }, []);
+
+  const [adminTemplates, setAdminTemplates] = useState<AdminTemplateSetting[]>(() =>
+    AdminApi.getTemplates()
+  );
+
+  useEffect(() => {
+    const handleTplUpdate = () => {
+      setAdminTemplates(AdminApi.getTemplates());
+    };
+    window.addEventListener('invoxa-templates-updated', handleTplUpdate);
+    return () => window.removeEventListener('invoxa-templates-updated', handleTplUpdate);
+  }, []);
+
+  const disabledTemplateIds = useMemo(() => {
+    return new Set(adminTemplates.filter((t) => t.enabled === false).map((t) => t.id));
+  }, [adminTemplates]);
+
+  const categorizedTemplates = useMemo(() => {
+    const all = getTemplatesByCategory();
+    return all
+      .map((cat) => ({
+        ...cat,
+        templates: cat.templates.filter((t) => !disabledTemplateIds.has(t.id)),
+      }))
+      .filter((cat) => cat.templates.length > 0);
+  }, [disabledTemplateIds]);
 
   // Core Invoice Metadata
   const [docId] = useState<string>(initialDocument?.id || `doc_${Date.now()}`);
@@ -1877,6 +1916,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               savedCustomers={savedCustomers}
               savedItems={savedItems}
               selectedCustomerId={selectedCustomerId}
+              isAnonymous={!user}
+              fieldSettings={generatorSettings}
               onSelectCustomer={handleSelectCustomer}
               onSelectCatalogItem={handleSelectCatalogItem}
               onAddCatalogItem={handleAddCatalogItem}
@@ -1991,6 +2032,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   savedCustomers={savedCustomers}
                   savedItems={savedItems}
                   selectedCustomerId={selectedCustomerId}
+                  isAnonymous={!user}
+                  fieldSettings={generatorSettings}
                   onSelectCustomer={handleSelectCustomer}
                   onSelectCatalogItem={handleSelectCatalogItem}
                   onAddCatalogItem={handleAddCatalogItem}
@@ -2205,37 +2248,40 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-bold flex items-center justify-between gap-2">
-                      <span>Bill To ({customTerminology.clientLabel || 'Customer'} & Place of Supply)</span>
+                      <span>
+                        Bill To ({customTerminology.clientLabel || 'Customer'}
+                        {currency === 'INR' || (senderCountry || '').toLowerCase() === 'india' ? ' & Place of Supply' : ''})
+                      </span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2.5">
-                    <div>
-                      <label className="text-[11px] font-bold text-primary flex items-center gap-1 mb-1">
-                        <Users className="h-3.5 w-3.5" /> Select Saved {customTerminology.clientLabel?.split('/')[0]?.trim() || 'Customer'}
-                      </label>
-                      <select
-                        aria-label="Select Saved Customer"
-                        value={selectedCustomerId}
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleSelectCustomer(e.target.value);
-                          }
-                        }}
-                        className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 hover:bg-white dark:hover:bg-slate-900 px-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
-                      >
-                        <option value="" className="bg-popover text-foreground">
-                          {savedCustomers.length > 0
-                            ? `Choose from ${savedCustomers.length} saved customer(s)...`
-                            : 'No saved customers yet — enter details below'}
-                        </option>
-                        {savedCustomers.map((cust) => (
-                          <option key={cust.id} value={cust.id} className="bg-popover text-foreground">
-                            {cust.name}
-                            {cust.taxId ? ` (${cust.taxId})` : cust.billingAddress?.city ? ` — ${cust.billingAddress.city}` : ''}
+                    {user && savedCustomers.length > 0 && (
+                      <div>
+                        <label className="text-[11px] font-bold text-primary flex items-center gap-1 mb-1">
+                          <Users className="h-3.5 w-3.5" /> Select Saved {customTerminology.clientLabel?.split('/')[0]?.trim() || 'Customer'}
+                        </label>
+                        <select
+                          aria-label="Select Saved Customer"
+                          value={selectedCustomerId}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleSelectCustomer(e.target.value);
+                            }
+                          }}
+                          className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 hover:bg-white dark:hover:bg-slate-900 px-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                        >
+                          <option value="" className="bg-popover text-foreground">
+                            Choose from {savedCustomers.length} saved customer(s)...
                           </option>
-                        ))}
-                      </select>
-                    </div>
+                          {savedCustomers.map((cust) => (
+                            <option key={cust.id} value={cust.id} className="bg-popover text-foreground">
+                              {cust.name}
+                              {cust.taxId ? ` (${cust.taxId})` : cust.billingAddress?.city ? ` — ${cust.billingAddress.city}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     <Input
                       placeholder="Customer / Company Name"
@@ -2243,26 +2289,32 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       onChange={(e) => setClientName(e.target.value)}
                     />
                     <Input
-                      placeholder="Customer GSTIN (e.g. 27AAACR5055K1Z7)"
+                      placeholder={
+                        currency === 'INR' || (senderCountry || '').toLowerCase() === 'india'
+                          ? 'Customer GSTIN (e.g. 27AAACR5055K1Z7)'
+                          : 'Customer Tax ID / VAT Number'
+                      }
                       value={clientTaxId}
                       onChange={(e) => setClientTaxId(e.target.value.toUpperCase())}
                     />
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">
-                        Place of Supply (Customer State)
-                      </label>
-                      <select
-                        value={clientState}
-                        onChange={(e) => setClientState(e.target.value)}
-                        className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2.5 text-xs font-semibold"
-                      >
-                        {INDIAN_STATES.map((st) => (
-                          <option key={st.code} value={st.label}>
-                            {st.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    {(currency === 'INR' || (senderCountry || '').toLowerCase() === 'india') && (
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">
+                          Place of Supply (Customer State)
+                        </label>
+                        <select
+                          value={clientState}
+                          onChange={(e) => setClientState(e.target.value)}
+                          className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2.5 text-xs font-semibold"
+                        >
+                          {INDIAN_STATES.map((st) => (
+                            <option key={st.code} value={st.label}>
+                              {st.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <Input
                       placeholder="Customer Email"
                       value={clientEmail}
@@ -2303,10 +2355,10 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               <Card>
                 <CardHeader className="pb-3 flex flex-wrap flex-row items-center justify-between gap-2">
                   <CardTitle className="text-sm font-bold">
-                    Invoice Items (HSN/SAC & GST)
+                    Invoice Items {currency === 'INR' || (senderCountry || '').toLowerCase() === 'india' ? '(HSN/SAC & GST)' : ''}
                   </CardTitle>
                   <div className="flex flex-wrap items-center gap-2">
-                    {savedItems.length > 0 && (
+                    {user && savedItems.length > 0 && (
                       <select
                         aria-label="Quick Add Saved Item"
                         value=""
@@ -2347,27 +2399,27 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                           <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                             Item #{index + 1}
                           </span>
-                          <select
-                            aria-label={`Select Saved Item for Item ${index + 1}`}
-                            value={item.productId || ''}
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                handleSelectCatalogItem(index, e.target.value);
-                              }
-                            }}
-                            className="h-7 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
-                          >
-                            <option value="">
-                              {savedItems.length > 0
-                                ? `📦 Select Saved Item (${savedItems.length})...`
-                                : '📦 No saved items yet'}
-                            </option>
-                            {savedItems.map((prod) => (
-                              <option key={prod.id} value={prod.id}>
-                                {prod.name} — {formatCurrency(prod.unitPrice, currency)} (GST {prod.taxRate}%)
+                          {user && savedItems.length > 0 && (
+                            <select
+                              aria-label={`Select Saved Item for Item ${index + 1}`}
+                              value={item.productId || ''}
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleSelectCatalogItem(index, e.target.value);
+                                }
+                              }}
+                              className="h-7 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                            >
+                              <option value="">
+                                📦 Select Saved Item ({savedItems.length})...
                               </option>
-                            ))}
-                          </select>
+                              {savedItems.map((prod) => (
+                                <option key={prod.id} value={prod.id}>
+                                  {prod.name} — {formatCurrency(prod.unitPrice, currency)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <button
@@ -2389,7 +2441,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                        <div className="md:col-span-3">
+                        <div className={showSplitAdvanced || generatorSettings.showHsnColumn ? 'md:col-span-3' : 'md:col-span-4'}>
                           <label className="text-[10px] font-semibold text-slate-500 block">
                             Description
                           </label>
@@ -2398,23 +2450,26 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                             onChange={(e) =>
                               handleUpdateItem(index, 'description', e.target.value)
                             }
+                            placeholder="What you sold or did / service description"
                           />
                         </div>
-                        <div>
-                          <label className="text-[10px] font-semibold text-slate-500 block">
-                            HSN / SAC
-                          </label>
-                          <Input
-                            value={item.hsnCode || ''}
-                            onChange={(e) =>
-                              handleUpdateItem(index, 'hsnCode', e.target.value)
-                            }
-                            placeholder="998314"
-                          />
-                        </div>
+                        {(showSplitAdvanced || generatorSettings.showHsnColumn) && (
+                          <div>
+                            <label className="text-[10px] font-semibold text-slate-500 block">
+                              HSN / SAC
+                            </label>
+                            <Input
+                              value={item.hsnCode || ''}
+                              onChange={(e) =>
+                                handleUpdateItem(index, 'hsnCode', e.target.value)
+                              }
+                              placeholder="998314"
+                            />
+                          </div>
+                        )}
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div className={`grid grid-cols-2 ${(showSplitAdvanced || generatorSettings.showDiscountColumn || generatorSettings.showTaxRateColumn) ? 'md:grid-cols-4' : 'md:grid-cols-2'} gap-2`}>
                         <div>
                           <label className="text-[10px] font-semibold text-slate-500 block">
                             Qty
@@ -2439,43 +2494,56 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                             }
                           />
                         </div>
-                        <div>
-                          <label className="text-[10px] font-semibold text-slate-500 block">
-                            Discount (%)
-                          </label>
-                          <Input
-                            type="number"
-                            value={item.discountValue}
-                            onChange={(e) =>
-                              handleUpdateItem(
-                                index,
-                                'discountValue',
-                                Number(e.target.value)
-                              )
-                            }
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-semibold text-slate-500 block">
-                            GST Rate (%)
-                          </label>
-                          <select
-                            value={item.taxRate}
-                            onChange={(e) =>
-                              handleUpdateItem(index, 'taxRate', Number(e.target.value))
-                            }
-                            className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2 text-xs font-semibold"
-                          >
-                            <option value={0} className="bg-popover text-foreground">0% (Exempt)</option>
-                            <option value={5} className="bg-popover text-foreground">5% GST</option>
-                            <option value={12} className="bg-popover text-foreground">12% GST</option>
-                            <option value={18} className="bg-popover text-foreground">18% GST</option>
-                            <option value={28} className="bg-popover text-foreground">28% GST</option>
-                          </select>
-                        </div>
+                        {(showSplitAdvanced || generatorSettings.showDiscountColumn) && (
+                          <div>
+                            <label className="text-[10px] font-semibold text-slate-500 block">
+                              Discount (%)
+                            </label>
+                            <Input
+                              type="number"
+                              value={item.discountValue}
+                              onChange={(e) =>
+                                handleUpdateItem(
+                                  index,
+                                  'discountValue',
+                                  Number(e.target.value)
+                                )
+                              }
+                            />
+                          </div>
+                        )}
+                        {(showSplitAdvanced || generatorSettings.showTaxRateColumn) && (
+                          <div>
+                            <label className="text-[10px] font-semibold text-slate-500 block">
+                              {currency === 'INR' || (senderCountry || '').toLowerCase() === 'india' ? 'GST Rate (%)' : 'Tax Rate (%)'}
+                            </label>
+                            <select
+                              value={item.taxRate}
+                              onChange={(e) =>
+                                handleUpdateItem(index, 'taxRate', Number(e.target.value))
+                              }
+                              className="w-full h-9 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2 text-xs font-semibold"
+                            >
+                              <option value={0} className="bg-popover text-foreground">0% (Exempt)</option>
+                              <option value={5} className="bg-popover text-foreground">5%</option>
+                              <option value={12} className="bg-popover text-foreground">12%</option>
+                              <option value={18} className="bg-popover text-foreground">18%</option>
+                              <option value={28} className="bg-popover text-foreground">28%</option>
+                            </select>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowSplitAdvanced(!showSplitAdvanced)}
+                      className="text-xs text-primary hover:underline font-semibold"
+                    >
+                      {showSplitAdvanced ? '— Simplified Form (Hide HSN & Tax)' : '+ Add HSN, Tax Rate & Discount to Form'}
+                    </button>
+                  </div>
                 </CardContent>
               </Card>
 

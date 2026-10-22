@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AdminApi, TeamApi, TenantApi } from '@invoice/api';
 import { AdminTeam, PlanId, APP_CONFIG } from '@invoice/core';
 import { Button } from '@/components/ui/button';
@@ -20,9 +21,11 @@ import {
   Sparkles,
   Layers,
   Edit3,
+  UserCog,
 } from 'lucide-react';
 
 export default function AdminTeamsPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const [teams, setTeams] = useState<AdminTeam[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,6 +170,78 @@ export default function AdminTeamsPage() {
       title: 'Workspace Updated',
       description: `Workspace "${editTeamName}" and white-label settings updated successfully.`,
     });
+  };
+
+  const handleImpersonateTeam = (team: AdminTeam) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const backup = {
+        user: window.localStorage.getItem('billcraft_current_user'),
+        userId: window.localStorage.getItem('billcraft_current_user_id'),
+        activeTenantId: window.localStorage.getItem('billcraft_active_tenant_id'),
+        adminEmail: 'dmchaturvedi@gmail.com',
+        timestamp: Date.now(),
+      };
+      window.localStorage.setItem('billcraft_impersonator_backup', JSON.stringify(backup));
+      window.localStorage.setItem('billcraft_is_impersonating', 'true');
+      window.localStorage.setItem(
+        'billcraft_impersonated_target',
+        JSON.stringify({
+          id: team.id,
+          email: team.ownerEmail,
+          name: team.name,
+          plan: team.plan,
+        })
+      );
+
+      // Ensure tenant exists in custom tenants
+      const customTenantsRaw = window.localStorage.getItem('billcraft_custom_tenants');
+      let customTenants = customTenantsRaw ? JSON.parse(customTenantsRaw) : [];
+      let found = customTenants.find((t: any) => t.id === team.id);
+      if (!found) {
+        found = {
+          id: team.id,
+          name: team.name,
+          ownerUserId: team.ownerEmail,
+          createdAt: team.createdAt || new Date().toISOString(),
+          currency: 'INR',
+          plan: team.plan,
+          isWhiteLabel: Boolean(team.isWhiteLabel),
+        };
+        customTenants.push(found);
+        window.localStorage.setItem('billcraft_custom_tenants', JSON.stringify(customTenants));
+      }
+
+      const impersonatedUser = {
+        id: team.id,
+        email: team.ownerEmail,
+        name: team.name,
+        tenantId: team.id,
+        plan: team.plan,
+      };
+
+      window.localStorage.setItem('billcraft_current_user', JSON.stringify(impersonatedUser));
+      window.localStorage.setItem('billcraft_current_user_id', team.id);
+      window.localStorage.setItem('billcraft_active_tenant_id', team.id);
+
+      window.dispatchEvent(new Event('billcraft-auth-updated'));
+      window.dispatchEvent(new Event('billcraft-plan-updated'));
+
+      toast({
+        title: 'Impersonation Mode Active',
+        description: `Now viewing "${team.name}" workspace. Redirecting to Dashboard...`,
+      });
+
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 350);
+    } catch (e: any) {
+      toast({
+        title: 'Impersonation Failed',
+        description: e.message || 'Unable to establish impersonation session.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const filteredTeams = teams.filter(
@@ -330,6 +405,15 @@ export default function AdminTeamsPage() {
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleImpersonateTeam(team)}
+                            className="h-7 px-2.5 text-[11px] bg-amber-950/20 border-amber-800/40 text-amber-300 hover:text-amber-200 hover:bg-amber-950/40 font-semibold"
+                            title={`Impersonate ${team.name} workspace`}
+                          >
+                            <UserCog className="h-3 w-3 mr-1 text-amber-400" /> Impersonate
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"

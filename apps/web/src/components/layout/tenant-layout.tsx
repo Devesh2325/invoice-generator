@@ -29,6 +29,8 @@ import {
   X,
   UserCheck,
   Shield,
+  ShieldAlert,
+  ArrowRight,
   Search,
   Sun,
   Moon,
@@ -45,6 +47,60 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
   const { toggleTheme, resolvedTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [impersonatedInfo, setImpersonatedInfo] = useState<{ name?: string; email?: string } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkImpersonation = () => {
+      const imp = window.localStorage.getItem('billcraft_is_impersonating') === 'true';
+      setIsImpersonating(imp);
+      if (imp) {
+        try {
+          const raw = window.localStorage.getItem('billcraft_impersonated_target');
+          if (raw) setImpersonatedInfo(JSON.parse(raw));
+        } catch {}
+      } else {
+        setImpersonatedInfo(null);
+      }
+    };
+    checkImpersonation();
+    window.addEventListener('billcraft-auth-updated', checkImpersonation);
+    return () => window.removeEventListener('billcraft-auth-updated', checkImpersonation);
+  }, []);
+
+  const handleExitImpersonation = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const backupRaw = window.localStorage.getItem('billcraft_impersonator_backup');
+      if (backupRaw) {
+        const backup = JSON.parse(backupRaw);
+        if (backup.user) {
+          window.localStorage.setItem('billcraft_current_user', backup.user);
+        } else {
+          window.localStorage.setItem(
+            'billcraft_current_user',
+            JSON.stringify({
+              id: 'admin_devesh',
+              email: 'dmchaturvedi@gmail.com',
+              name: 'Devesh Chaturvedi (Super Admin)',
+            })
+          );
+        }
+        if (backup.userId) window.localStorage.setItem('billcraft_current_user_id', backup.userId);
+        if (backup.activeTenantId) window.localStorage.setItem('billcraft_active_tenant_id', backup.activeTenantId);
+      }
+      window.localStorage.removeItem('billcraft_is_impersonating');
+      window.localStorage.removeItem('billcraft_impersonator_backup');
+      window.localStorage.removeItem('billcraft_impersonated_target');
+      window.dispatchEvent(new Event('billcraft-auth-updated'));
+      window.dispatchEvent(new Event('billcraft-plan-updated'));
+      router.push('/admin/users');
+    } catch (err) {
+      console.error('Failed to exit impersonation', err);
+      router.push('/admin/users');
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -120,8 +176,34 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row font-sans text-slate-900 dark:text-slate-100 transition-colors">
-      {/* Mobile Top Header */}
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans text-slate-900 dark:text-slate-100 transition-colors">
+      {/* Super Admin Impersonation Banner */}
+      {isImpersonating && (
+        <div className="bg-amber-500 text-slate-950 px-4 py-2.5 text-xs md:text-sm font-semibold flex flex-wrap items-center justify-between gap-3 shadow-md sticky top-0 z-[100] border-b border-amber-600">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center justify-center bg-slate-950 text-amber-400 p-1 rounded-full text-[11px] font-bold shrink-0">
+              <ShieldAlert className="h-3.5 w-3.5" />
+            </span>
+            <span>
+              <strong>Super Admin Impersonation:</strong> Viewing workspace as{' '}
+              <strong className="underline decoration-slate-900/40 underline-offset-2">
+                {user?.name || impersonatedInfo?.name || user?.email}
+              </strong>{' '}
+              ({user?.email || impersonatedInfo?.email})
+            </span>
+          </div>
+          <button
+            onClick={handleExitImpersonation}
+            className="bg-slate-950 hover:bg-slate-900 text-amber-300 hover:text-white px-3 py-1 rounded-md text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer ml-auto"
+          >
+            <span>Exit & Return to Super Admin</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col md:flex-row">
+        {/* Mobile Top Header */}
       <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-2 min-w-0">
           {brandSettings?.logoUrl ? (
@@ -348,6 +430,8 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
           {children}
         </div>
       </div>
+    </div>
+  );
     </div>
   );
 };

@@ -37,6 +37,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+*.tsbuildinfo
 
 # Flutter & Dart
 **/android/local.properties

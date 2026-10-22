@@ -1,4 +1,4 @@
-import { AdminUser, AdminInquiry, AdminSiteSettings, AdminSystemAuditLog, AdminTemplateSetting, AdminTeam, PlanId, PlanLimits } from "@invoice/core";
+import { AdminUser, AdminInquiry, AdminSiteSettings, AdminSystemAuditLog, AdminTemplateSetting, GeneratorFieldSettings, AdminTeam, PlanId, PlanLimits } from "@invoice/core";
 export declare class AdminApi {
     private static getSessionKey;
     private static getRateLimitKey;
@@ -51,4 +51,6 @@ export declare class AdminApi {
     static updateSiteSettings(settings: AdminSiteSettings): boolean;
     static getSystemAuditLogs(): AdminSystemAuditLog[];
     static recordAuditLog(action: string, target: string, actor?: string): void;
+    static getGeneratorSettings(): GeneratorFieldSettings;
+    static updateGeneratorSettings(settings: Partial<GeneratorFieldSettings>): GeneratorFieldSettings;
 }

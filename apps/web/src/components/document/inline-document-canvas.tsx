@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import {
   DocumentModel,
   DocumentType,
@@ -25,6 +25,7 @@ import {
   QrCode,
   ShieldCheck,
   CheckCircle2,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 interface InlineDocumentCanvasProps {
@@ -32,6 +33,13 @@ interface InlineDocumentCanvasProps {
   savedCustomers?: Party[];
   savedItems?: ProductCatalogItem[];
   selectedCustomerId?: string;
+  isAnonymous?: boolean;
+  fieldSettings?: {
+    showHsnColumn?: boolean;
+    showTaxRateColumn?: boolean;
+    showUnitColumn?: boolean;
+    showDiscountColumn?: boolean;
+  };
   onSelectCustomer?: (partyId: string) => void;
   onSelectCatalogItem?: (index: number, productId: string) => void;
   onAddCatalogItem?: (productId: string) => void;
@@ -57,6 +65,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   savedCustomers = [],
   savedItems = [],
   selectedCustomerId = '',
+  isAnonymous = false,
+  fieldSettings,
   onSelectCustomer,
   onSelectCatalogItem,
   onAddCatalogItem,
@@ -109,12 +119,23 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   const cardRadius =
     tpl.card === 'box' ? 'rounded-none' : tpl.card === 'round' ? 'rounded-xl' : 'rounded-lg';
 
-  // Is India GST specific?
-  const isIndiaGst = tpl.id === 'in-gst' || tpl.taxIdLabel === 'GSTIN';
+  const [showAdvancedColumns, setShowAdvancedColumns] = useState(false);
+  const showHsn = showAdvancedColumns || Boolean(fieldSettings?.showHsnColumn);
+  const showTaxColumns = showAdvancedColumns || Boolean(fieldSettings?.showTaxRateColumn);
+  const showDiscount = showAdvancedColumns || Boolean(fieldSettings?.showDiscountColumn);
 
   const currency = document.currency || tpl.currency || 'INR';
+  const senderCountry = (document.sender?.address?.country || '').trim().toLowerCase();
+  const clientCountry = (document.client?.billingAddress?.country || '').trim().toLowerCase();
+
+  // India GST rule: Only applies for INR or Indian parties; international users use standard tax/VAT
+  const isIndiaGst = currency === 'INR' || senderCountry === 'india' || clientCountry === 'india';
+  const effectiveTaxIdLabel = isIndiaGst
+    ? 'GSTIN'
+    : (tpl.id === 'in-gst' ? 'Tax ID / VAT No.' : (tpl.taxIdLabel || 'Tax ID / VAT No.'));
+
   const summary = document.summary;
-  const isInterState = summary.gstSupplyType === 'inter';
+  const isInterState = isIndiaGst && summary.gstSupplyType === 'inter';
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -682,7 +703,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
                     <div className="flex items-center gap-1">
                       <span className="font-bold shrink-0" style={{ color: mutedTextColor }}>
-                        {tpl.taxIdLabel}:
+                        {effectiveTaxIdLabel}:
                       </span>
                       <input
                         type="text"
@@ -855,7 +876,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     Bill To ({resolvedClientLabel})
                   </span>
 
-                  {onSelectCustomer && (
+                  {onSelectCustomer && !isAnonymous && savedCustomers.length > 0 && (
                     <div className="no-print flex items-center gap-1.5">
                       <select
                         aria-label="Select Saved Customer"
@@ -869,9 +890,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         style={{ backgroundColor: paperColor, borderColor, color: textColor }}
                       >
                         <option value="">
-                          {savedCustomers.length > 0
-                            ? `Select Customer (${savedCustomers.length})...`
-                            : 'Select Customer...'}
+                          Select Customer ({savedCustomers.length})...
                         </option>
                         {savedCustomers.map((cust) => (
                           <option key={cust.id} value={cust.id}>
@@ -894,7 +913,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
                   <div className="flex items-center gap-1">
                     <span className="font-bold shrink-0" style={{ color: mutedTextColor }}>
-                      {tpl.taxIdLabel}:
+                      {effectiveTaxIdLabel}:
                     </span>
                     <input
                       type="text"
@@ -1067,10 +1086,13 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
     const headColor =
       tpl.tableHead === 'fill' ? '#FFFFFF' : textColor;
 
+    const hasExtraCols = showHsn || showTaxColumns || showDiscount;
+    const tableMinW = hasExtraCols ? 'min-w-[920px]' : 'min-w-[560px]';
+
     return (
       <div className="space-y-3">
         <div className="overflow-x-auto border rounded-xl shadow-2xs" style={{ borderColor }}>
-          <table className="w-full min-w-[980px] text-left border-collapse text-xs">
+          <table className={`w-full ${tableMinW} text-left border-collapse text-xs`}>
             <thead>
               <tr
                 className="uppercase tracking-wider text-[10px] font-bold select-none"
@@ -1081,30 +1103,36 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 }}
               >
                 <th className="py-2.5 px-2 w-8 min-w-[32px] text-center">#</th>
-                <th className="py-2.5 px-2.5 min-w-[240px]">Item Description</th>
-                <th className="py-2.5 px-2 w-24 min-w-[90px] text-center">{isIndiaGst ? 'HSN/SAC' : 'Code'}</th>
-                <th className="py-2.5 px-2 w-16 min-w-[65px] text-right">Qty</th>
-                <th className="py-2.5 px-2 w-28 min-w-[100px] text-right">Rate</th>
-                <th className="py-2.5 px-2 w-20 min-w-[70px] text-right">Disc %</th>
-                {isIndiaGst ? (
-                  <>
-                    <th className="py-2.5 px-2 w-24 min-w-[80px] text-right">GST %</th>
-                    {isInterState ? (
-                      <th className="py-2.5 px-2 w-24 min-w-[95px] text-right">IGST Amt</th>
-                    ) : (
-                      <>
-                        <th className="py-2.5 px-2 w-24 min-w-[95px] text-right">CGST</th>
-                        <th className="py-2.5 px-2 w-24 min-w-[95px] text-right">SGST</th>
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">{tpl.taxLabel} %</th>
-                    <th className="py-2.5 px-2 w-24 min-w-[95px] text-right">{tpl.taxLabel} Amt</th>
-                  </>
+                <th className="py-2.5 px-2.5 min-w-[200px]">Description</th>
+                {showHsn && (
+                  <th className="py-2.5 px-2 w-24 min-w-[90px] text-center">{isIndiaGst ? 'HSN/SAC' : 'Code'}</th>
                 )}
-                <th className="py-2.5 px-2.5 w-28 min-w-[105px] text-right">Total</th>
+                <th className="py-2.5 px-2 w-16 min-w-[60px] text-right">Qty</th>
+                <th className="py-2.5 px-2 w-28 min-w-[95px] text-right">Price ({currency})</th>
+                {showDiscount && (
+                  <th className="py-2.5 px-2 w-20 min-w-[70px] text-right">Disc %</th>
+                )}
+                {showTaxColumns && (
+                  isIndiaGst ? (
+                    <>
+                      <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">GST %</th>
+                      {isInterState ? (
+                        <th className="py-2.5 px-2 w-24 min-w-[90px] text-right">IGST Amt</th>
+                      ) : (
+                        <>
+                          <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">CGST</th>
+                          <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">SGST</th>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">{tpl.taxLabel} %</th>
+                      <th className="py-2.5 px-2 w-24 min-w-[90px] text-right">{tpl.taxLabel} Amt</th>
+                    </>
+                  )
+                )}
+                <th className="py-2.5 px-2.5 w-28 min-w-[100px] text-right">Amount</th>
                 <th className="py-2.5 px-2 w-14 min-w-[56px] text-center no-print">Act</th>
               </tr>
             </thead>
@@ -1128,7 +1156,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       {idx + 1}
                     </td>
                     <td className="py-2.5 px-2 space-y-1">
-                      {onSelectCatalogItem && (
+                      {onSelectCatalogItem && !isAnonymous && savedItems.length > 0 && (
                         <div className="no-print">
                           <select
                             aria-label={`Select Saved Item for Row ${idx + 1}`}
@@ -1142,9 +1170,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                             style={{ backgroundColor: paperColor, borderColor, color: textColor }}
                           >
                             <option value="">
-                              {savedItems.length > 0
-                                ? `📦 Select Saved Item (${savedItems.length})...`
-                                : '📦 Select Saved Item...'}
+                              Select Saved Item ({savedItems.length})...
                             </option>
                             {savedItems.map((prod) => (
                               <option key={prod.id} value={prod.id}>
@@ -1158,107 +1184,113 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         type="text"
                         value={item.description}
                         onChange={(e) => onUpdateItem(idx, 'description', e.target.value)}
-                        placeholder="Item or service description..."
+                        placeholder="Description of service or product..."
                         className={`${editableInput} w-full font-medium`}
                       />
                     </td>
-                    <td className="py-2.5 px-2 min-w-[90px]">
-                      <input
-                        type="text"
-                        value={item.hsnCode || ''}
-                        onChange={(e) => onUpdateItem(idx, 'hsnCode', e.target.value)}
-                        placeholder={isIndiaGst ? '998314' : 'SKU-01'}
-                        className={`${editableInput} w-full min-w-[75px] text-center font-mono`}
-                      />
-                    </td>
-                    <td className="py-2.5 px-2 min-w-[65px]">
+                    {showHsn && (
+                      <td className="py-2.5 px-2 min-w-[90px]">
+                        <input
+                          type="text"
+                          value={item.hsnCode || ''}
+                          onChange={(e) => onUpdateItem(idx, 'hsnCode', e.target.value)}
+                          placeholder={isIndiaGst ? '998314' : 'SKU-01'}
+                          className={`${editableInput} w-full min-w-[75px] text-center font-mono`}
+                        />
+                      </td>
+                    )}
+                    <td className="py-2.5 px-2 min-w-[60px]">
                       <input
                         type="number"
                         min="0"
                         step="any"
                         value={item.quantity}
                         onChange={(e) => onUpdateItem(idx, 'quantity', Number(e.target.value))}
-                        className={`${editableInput} w-full min-w-[55px] text-right font-mono`}
+                        className={`${editableInput} w-full min-w-[50px] text-right font-mono`}
                       />
                     </td>
-                    <td className="py-2.5 px-2 min-w-[100px]">
+                    <td className="py-2.5 px-2 min-w-[95px]">
                       <input
                         type="number"
                         min="0"
                         step="any"
                         value={item.unitPrice}
                         onChange={(e) => onUpdateItem(idx, 'unitPrice', Number(e.target.value))}
-                        className={`${editableInput} w-full min-w-[90px] text-right font-mono`}
+                        className={`${editableInput} w-full min-w-[85px] text-right font-mono`}
                       />
                     </td>
-                    <td className="py-2.5 px-2 min-w-[70px]">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="any"
-                        value={item.discountValue || 0}
-                        onChange={(e) =>
-                          onUpdateItem(idx, 'discountValue', Number(e.target.value))
-                        }
-                        className={`${editableInput} w-full min-w-[60px] text-right font-mono`}
-                      />
-                    </td>
-
-                    {/* Tax columns */}
-                    {isIndiaGst ? (
-                      <>
-                        <td className="py-2.5 px-2 min-w-[80px]">
-                          <select
-                            value={item.taxRate ?? 18}
-                            onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
-                            className={`${editableInput} w-full min-w-[75px] text-right font-mono cursor-pointer`}
-                            style={{ backgroundColor: paperColor }}
-                          >
-                            <option value={0}>0%</option>
-                            <option value={5}>5%</option>
-                            <option value={12}>12%</option>
-                            <option value={18}>18%</option>
-                            <option value={28}>28%</option>
-                          </select>
-                        </td>
-                        {isInterState ? (
-                          <td className="py-2.5 px-2 text-right font-mono min-w-[95px]" style={{ color: mutedTextColor }}>
-                            <div>{formatCurrency(item.igstAmount ?? item.taxAmount, currency)}</div>
-                            <div className="text-[10px] opacity-75">({item.taxRate || 0}%)</div>
-                          </td>
-                        ) : (
-                          <>
-                            <td className="py-2.5 px-2 text-right font-mono min-w-[95px]" style={{ color: mutedTextColor }}>
-                              <div>{formatCurrency(item.cgstAmount ?? item.taxAmount / 2, currency)}</div>
-                              <div className="text-[10px] opacity-75">({(item.taxRate || 0) / 2}%)</div>
-                            </td>
-                            <td className="py-2.5 px-2 text-right font-mono min-w-[95px]" style={{ color: mutedTextColor }}>
-                              <div>{formatCurrency(item.sgstAmount ?? item.taxAmount / 2, currency)}</div>
-                              <div className="text-[10px] opacity-75">({(item.taxRate || 0) / 2}%)</div>
-                            </td>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <td className="py-2.5 px-2 min-w-[75px]">
-                          <input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={item.taxRate ?? tpl.taxRate}
-                            onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
-                            className={`${editableInput} w-full min-w-[65px] text-right font-mono`}
-                          />
-                        </td>
-                        <td className="py-2.5 px-2 text-right font-mono min-w-[95px]" style={{ color: mutedTextColor }}>
-                          {formatCurrency(item.taxAmount, currency)}
-                        </td>
-                      </>
+                    {showDiscount && (
+                      <td className="py-2.5 px-2 min-w-[70px]">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="any"
+                          value={item.discountValue || 0}
+                          onChange={(e) =>
+                            onUpdateItem(idx, 'discountValue', Number(e.target.value))
+                          }
+                          className={`${editableInput} w-full min-w-[60px] text-right font-mono`}
+                        />
+                      </td>
                     )}
 
-                    <td className="py-2.5 px-2.5 text-right font-mono font-bold min-w-[105px]">
+                    {/* Tax columns */}
+                    {showTaxColumns && (
+                      isIndiaGst ? (
+                        <>
+                          <td className="py-2.5 px-2 min-w-[75px]">
+                            <select
+                              value={item.taxRate ?? 18}
+                              onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
+                              className={`${editableInput} w-full min-w-[70px] text-right font-mono cursor-pointer`}
+                              style={{ backgroundColor: paperColor }}
+                            >
+                              <option value={0}>0%</option>
+                              <option value={5}>5%</option>
+                              <option value={12}>12%</option>
+                              <option value={18}>18%</option>
+                              <option value={28}>28%</option>
+                            </select>
+                          </td>
+                          {isInterState ? (
+                            <td className="py-2.5 px-2 text-right font-mono min-w-[90px]" style={{ color: mutedTextColor }}>
+                              <div>{formatCurrency(item.igstAmount ?? item.taxAmount, currency)}</div>
+                              <div className="text-[10px] opacity-75">({item.taxRate || 0}%)</div>
+                            </td>
+                          ) : (
+                            <>
+                              <td className="py-2.5 px-2 text-right font-mono min-w-[75px]" style={{ color: mutedTextColor }}>
+                                <div>{formatCurrency(item.cgstAmount ?? item.taxAmount / 2, currency)}</div>
+                                <div className="text-[10px] opacity-75">({(item.taxRate || 0) / 2}%)</div>
+                              </td>
+                              <td className="py-2.5 px-2 text-right font-mono min-w-[75px]" style={{ color: mutedTextColor }}>
+                                <div>{formatCurrency(item.sgstAmount ?? item.taxAmount / 2, currency)}</div>
+                                <div className="text-[10px] opacity-75">({(item.taxRate || 0) / 2}%)</div>
+                              </td>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <td className="py-2.5 px-2 min-w-[75px]">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={item.taxRate ?? tpl.taxRate}
+                              onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
+                              className={`${editableInput} w-full min-w-[65px] text-right font-mono`}
+                            />
+                          </td>
+                          <td className="py-2.5 px-2 text-right font-mono min-w-[90px]" style={{ color: mutedTextColor }}>
+                            {formatCurrency(item.taxAmount, currency)}
+                          </td>
+                        </>
+                      )
+                    )}
+
+                    <td className="py-2.5 px-2.5 text-right font-mono font-bold min-w-[100px]">
                       {formatCurrency(item.lineTotal, currency)}
                     </td>
 
@@ -1292,45 +1324,62 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
           </table>
         </div>
 
-        {/* Action button: Add item */}
-        <div className="no-print flex flex-wrap items-center gap-3">
+        {/* Action button: Add item & Column toggle */}
+        <div className="no-print flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={onAddItem}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold border-2 border-dashed transition-all hover:shadow-xs cursor-pointer"
+              style={{
+                borderColor: `${effectiveAccent}60`,
+                color: effectiveAccent,
+                backgroundColor: `${effectiveAccent}0d`,
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              <span>+ Line Item</span>
+            </button>
+
+            {onAddCatalogItem && !isAnonymous && savedItems.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Package className="h-4 w-4" style={{ color: mutedTextColor }} />
+                <select
+                  aria-label="Quick Add Saved Item"
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      onAddCatalogItem(e.target.value);
+                    }
+                  }}
+                  className="text-xs font-semibold border rounded-lg px-2.5 py-1.5 cursor-pointer shadow-2xs"
+                  style={{ backgroundColor: paperColor, borderColor, color: textColor }}
+                >
+                  <option value="">+ Add from Saved Items ({savedItems.length})...</option>
+                  {savedItems.map((prod) => (
+                    <option key={prod.id} value={prod.id}>
+                      {prod.name} — {formatCurrency(prod.unitPrice, currency)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
           <button
             type="button"
-            onClick={onAddItem}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold border-2 border-dashed transition-all hover:shadow-xs cursor-pointer"
-            style={{
-              borderColor: `${effectiveAccent}60`,
-              color: effectiveAccent,
-              backgroundColor: `${effectiveAccent}0d`,
-            }}
+            onClick={() => setShowAdvancedColumns(!showAdvancedColumns)}
+            className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 hover:opacity-90"
+            style={{ borderColor, color: mutedTextColor, backgroundColor: tintBg }}
+            title="Toggle additional tax, HSN code, and discount columns on table"
           >
-            <Plus className="h-4 w-4" />
-            <span>Add Blank Line Item</span>
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>
+              {showAdvancedColumns
+                ? 'Simplified 4-Column View (Description, Qty, Price only)'
+                : '+ Add HSN / Tax / Discount Columns'}
+            </span>
           </button>
-
-          {onAddCatalogItem && savedItems.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <Package className="h-4 w-4" style={{ color: mutedTextColor }} />
-              <select
-                aria-label="Quick Add Saved Item"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    onAddCatalogItem(e.target.value);
-                  }
-                }}
-                className="text-xs font-semibold border rounded-lg px-2.5 py-1.5 cursor-pointer shadow-2xs"
-                style={{ backgroundColor: paperColor, borderColor, color: textColor }}
-              >
-                <option value="">+ Add from Saved Items ({savedItems.length})...</option>
-                {savedItems.map((prod) => (
-                  <option key={prod.id} value={prod.id}>
-                    {prod.name} — {formatCurrency(prod.unitPrice, currency)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
       </div>
     );
