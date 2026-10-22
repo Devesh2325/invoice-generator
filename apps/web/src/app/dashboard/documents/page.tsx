@@ -32,8 +32,11 @@ import {
   Undo2,
   Ban,
   Copy,
+  Trash2,
 } from 'lucide-react';
 import { exportDocumentToPdf, triggerPrint } from '@/lib/pdf/export-pdf';
+import { deleteDocument } from '@/lib/storage/indexed-db';
+import { toast } from '@/components/ui/use-toast';
 
 export default function TenantInvoicesPage() {
   const { activeTenant, tenantCurrency } = useTenant();
@@ -174,6 +177,64 @@ export default function TenantInvoicesPage() {
     await loadDocuments();
   };
 
+  const handleDeleteInvoice = async (doc: DocumentModel) => {
+    if (!window.confirm(`Are you sure you want to permanently delete invoice #${doc.documentNumber}? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await deleteDocument(doc.id);
+      if (activeTenant?.id) {
+        await TenantApi.deleteDocument(activeTenant.id, doc.id);
+      }
+      setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+      toast({
+        title: 'Invoice Deleted',
+        description: `Invoice #${doc.documentNumber} has been permanently deleted.`,
+      });
+    } catch (err) {
+      console.error('Failed to delete invoice:', err);
+      alert('Failed to delete invoice.');
+    }
+  };
+
+  const emptyDrafts = useMemo(() => {
+    return documents.filter(
+      (doc) =>
+        (doc.status === 'draft' || !doc.status) &&
+        (doc.summary?.grandTotal === 0 || !doc.items || doc.items.length === 0 || !doc.items.some((i) => i.unitPrice > 0))
+    );
+  }, [documents]);
+
+  const handleCleanEmptyDrafts = async () => {
+    if (emptyDrafts.length === 0) return;
+    if (
+      !window.confirm(
+        `Found ${emptyDrafts.length} empty draft invoice(s) with ₹0 total. Do you want to permanently delete all of them to clean your database?`
+      )
+    ) {
+      return;
+    }
+    try {
+      setLoading(true);
+      for (const draft of emptyDrafts) {
+        await deleteDocument(draft.id);
+        if (activeTenant?.id) {
+          await TenantApi.deleteDocument(activeTenant.id, draft.id);
+        }
+      }
+      await loadDocuments();
+      toast({
+        title: 'Drafts Cleaned',
+        description: `Successfully cleaned ${emptyDrafts.length} empty draft invoice(s).`,
+      });
+    } catch (err) {
+      console.error('Failed to clean empty drafts:', err);
+      alert('Failed to clean empty drafts.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const statusBadgeVariant = (status: string) => {
     switch (status) {
       case 'paid':
@@ -207,14 +268,29 @@ export default function TenantInvoicesPage() {
             </p>
           </div>
 
-          <Link href="/create">
-            <Button
-              size="sm"
-              className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-sm flex items-center gap-1.5"
-            >
-              <Plus className="h-4 w-4" /> Create Invoice
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2.5">
+            {emptyDrafts.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCleanEmptyDrafts}
+                className="text-xs font-semibold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 shadow-xs flex items-center gap-1.5"
+                title="Permanently remove empty ₹0 drafts generated in error"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Clean {emptyDrafts.length} Empty Draft{emptyDrafts.length > 1 ? 's' : ''}
+              </Button>
+            )}
+
+            <Link href="/create">
+              <Button
+                size="sm"
+                className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-sm flex items-center gap-1.5"
+              >
+                <Plus className="h-4 w-4" /> Create Invoice
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Filter Toolbar */}
@@ -468,6 +544,17 @@ export default function TenantInvoicesPage() {
                                   <Ban className="h-3.5 w-3.5" />
                                 </Button>
                               )}
+
+                              {/* Delete Invoice */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteInvoice(doc)}
+                                className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+                                title="Delete Invoice permanently"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             </div>
                           </td>
                         </tr>

@@ -90,7 +90,9 @@ import {
   Menu,
   Sun,
   Moon,
+  Save,
 } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 
 interface DocumentBuilderProps {
   initialDocument?: DocumentModel;
@@ -470,7 +472,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [viewMode, setViewMode] = useState<'sheet' | 'split' | 'pdf_preview'>('sheet');
   const [isPersisted, setIsPersisted] = useState<boolean>(Boolean(initialDocument));
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>(
+    Boolean(initialDocument) ? 'saved' : 'unsaved'
+  );
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
@@ -706,31 +710,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     refunds,
   ]);
 
-  // Auto-save debounced (~1s) on all changes
+  // Track edits in memory - DO NOT auto-save empty drafts to database
   const isFirstMount = useRef(true);
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
       return;
     }
-    setSaveStatus('saving');
-    const timer = setTimeout(async () => {
-      try {
-        await saveDocument(documentModel);
-        if (activeTenant?.id) {
-          await TenantApi.saveDocument(activeTenant.id, documentModel);
-        }
-        setIsPersisted(true);
-        setSaveStatus('saved');
-        if (onSaved) onSaved(documentModel);
-      } catch (e) {
-        console.error('Failed to autosave invoice:', e);
-        setSaveStatus('saved');
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [documentModel, activeTenant?.id]);
+    setSaveStatus('unsaved');
+  }, [documentModel]);
 
   // Line item manipulation helpers
   const handleAddItem = () => {
@@ -911,19 +899,30 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       setIsPersisted(true);
       setSaveStatus('saved');
       if (onSaved) onSaved(documentModel);
+      toast({
+        title: 'Draft Saved',
+        description: `Invoice #${documentModel.documentNumber} saved as draft.`,
+      });
     } catch (err: any) {
-      console.error('Failed to save invoice:', err);
+      console.error('Failed to save draft:', err);
+      setSaveStatus('unsaved');
       if (err?.name === 'PlanLimitReachedError' || err?.message?.includes('Plan Limit') || err?.message?.includes('upgrade')) {
         setUpgradeReason(err.message || 'Free trial limit reached. Upgrade to Pro for unlimited invoices.');
         setUpgradeModalOpen(true);
+      } else {
+        toast({
+          title: 'Error Saving Draft',
+          description: err?.message || 'Failed to save draft.',
+          variant: 'destructive',
+        });
       }
     }
   };
 
-  const handleFinalize = async () => {
+  const handleSaveInvoice = async () => {
     try {
       setSaveStatus('saving');
-      const nextStatus: DocumentStatus = 'pending';
+      const nextStatus: DocumentStatus = status === 'draft' ? 'pending' : status;
       setStatus(nextStatus);
       const nextEffectiveStatus = computeEffectiveInvoiceStatus({
         status: nextStatus,
@@ -941,18 +940,29 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       }
       setIsPersisted(true);
       setSaveStatus('saved');
-      setShareModalOpen(true);
       if (onSaved) onSaved(updated);
+      toast({
+        title: 'Invoice Saved',
+        description: `Invoice #${updated.documentNumber} saved successfully.`,
+      });
     } catch (err: any) {
-      console.error('Failed to finalize invoice:', err);
+      console.error('Failed to save invoice:', err);
+      setSaveStatus('unsaved');
       if (err?.name === 'PlanLimitReachedError' || err?.message?.includes('Plan Limit') || err?.message?.includes('upgrade')) {
         setUpgradeReason(err.message || 'Free trial limit reached. Upgrade to Pro for unlimited invoices.');
         setUpgradeModalOpen(true);
       } else {
-        alert(err?.message || 'Failed to finalize invoice.');
+        toast({
+          title: 'Error Saving Invoice',
+          description: err?.message || 'Failed to save invoice.',
+          variant: 'destructive',
+        });
       }
     }
   };
+
+  // Backwards compatibility alias
+  const handleFinalize = handleSaveInvoice;
 
   const handleDuplicateDoc = async () => {
     const newDocNumber = formatDocumentNumber(
@@ -1117,7 +1127,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        handleSaveDraft();
+        handleSaveInvoice();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         triggerPrint();
@@ -1243,12 +1253,17 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             {formatInvoiceStatusLabel(effectiveStatus)}
           </Badge>
 
-          {/* Auto-Save Status */}
+          {/* Save Status */}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium shrink-0">
             {saveStatus === 'saving' ? (
               <>
                 <span className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                 <span className="hidden xl:inline">Saving...</span>
+              </>
+            ) : saveStatus === 'unsaved' ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                <span className="hidden xl:inline text-amber-600 dark:text-amber-400 font-semibold">Unsaved</span>
               </>
             ) : (
               <>
@@ -1535,17 +1550,21 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             <span>{isExportingPdf ? 'Exporting...' : 'Download PDF'}</span>
           </Button>
 
-          {/* Finalize Invoice (primary button) */}
+          {/* Save Invoice (primary CTA button) */}
           <Button
             size="sm"
-            onClick={handleFinalize}
-            className="h-9 bg-primary hover:bg-primary-hover text-primary-foreground flex items-center gap-1.5 text-xs shadow-xs font-bold"
+            onClick={handleSaveInvoice}
+            disabled={saveStatus === 'saving'}
+            className="h-9 bg-primary hover:bg-primary-hover text-primary-foreground flex items-center gap-1.5 text-xs shadow-md font-bold px-4"
+            title="Save invoice"
           >
-            <CheckCircle2 className="h-3.5 w-3.5" />
+            {saveStatus === 'saving' ? (
+              <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
             <span>
-              {effectiveStatus === 'draft' || !isPersisted
-                ? 'Finalize Invoice'
-                : 'Update Finalized'}
+              {isPersisted ? 'Save Changes' : 'Save Invoice'}
             </span>
           </Button>
 
@@ -1563,6 +1582,14 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 bg-popover border-border p-1.5 shadow-xl z-50">
+              <DropdownMenuItem
+                onClick={handleSaveDraft}
+                className="text-xs flex items-center gap-2.5 py-2 cursor-pointer"
+              >
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span>Save as Draft</span>
+              </DropdownMenuItem>
+
               <DropdownMenuItem
                 onClick={() => setShareModalOpen(true)}
                 className="text-xs flex items-center gap-2.5 py-2 cursor-pointer"
@@ -1655,6 +1682,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 <>
                   <span className="h-2.5 w-2.5 rounded-full border border-primary border-t-transparent animate-spin" />
                   <span>Saving...</span>
+                </>
+              ) : saveStatus === 'unsaved' ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">Unsaved</span>
                 </>
               ) : (
                 <>
@@ -1897,11 +1929,16 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         </Button>
         <Button
           size="sm"
-          onClick={handleFinalize}
+          onClick={handleSaveInvoice}
+          disabled={saveStatus === 'saving'}
           className="flex-1 min-h-[44px] text-xs font-bold bg-primary hover:bg-primary-hover text-primary-foreground flex items-center justify-center gap-1.5 shadow-md"
         >
-          <CheckCircle2 className="h-4 w-4" />
-          <span>{effectiveStatus === 'draft' || !isPersisted ? 'Finalize Invoice' : 'Update Finalized'}</span>
+          {saveStatus === 'saving' ? (
+            <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          <span>{isPersisted ? 'Save Changes' : 'Save Invoice'}</span>
         </Button>
       </div>
 
