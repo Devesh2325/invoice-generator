@@ -71,7 +71,8 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
 
   const sState = (input.senderState || '').trim().toLowerCase();
   const cState = (input.clientState || '').trim().toLowerCase();
-  const isInterState = Boolean(sState && cState && sState !== cState);
+  const isIndiaCurrency = (currency || 'INR').toUpperCase() === 'INR';
+  const isInterState = isIndiaCurrency && Boolean(sState && cState && sState !== cState);
   const gstSupplyType: 'intra' | 'inter' = isInterState ? 'inter' : 'intra';
 
   let totalGross = new Decimal(0);
@@ -147,12 +148,12 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
       lineDiscount: roundToCurrency(lineDisc, dp, roundingModeEnum).toNumber(),
       lineNet: roundToCurrency(lineNet, dp, roundingModeEnum).toNumber(),
       taxAmount: roundedLineTax.toNumber(),
-      cgstRate: isInterState ? 0 : rateKey / 2,
-      cgstAmount: isInterState ? 0 : halfTax.toNumber(),
-      sgstRate: isInterState ? 0 : rateKey / 2,
-      sgstAmount: isInterState ? 0 : otherHalfTax.toNumber(),
-      igstRate: isInterState ? rateKey : 0,
-      igstAmount: isInterState ? roundedLineTax.toNumber() : 0,
+      cgstRate: isIndiaCurrency ? (isInterState ? 0 : rateKey / 2) : 0,
+      cgstAmount: isIndiaCurrency ? (isInterState ? 0 : halfTax.toNumber()) : 0,
+      sgstRate: isIndiaCurrency ? (isInterState ? 0 : rateKey / 2) : 0,
+      sgstAmount: isIndiaCurrency ? (isInterState ? 0 : otherHalfTax.toNumber()) : 0,
+      igstRate: isIndiaCurrency ? (isInterState ? rateKey : 0) : 0,
+      igstAmount: isIndiaCurrency ? (isInterState ? roundedLineTax.toNumber() : 0) : 0,
       lineTotal: roundToCurrency(lineTotal, dp, roundingModeEnum).toNumber(),
     });
   }
@@ -194,23 +195,25 @@ export function calculateDocument(input: CalculationInput): CalculationResult {
       roundingModeEnum
     );
 
-    if (isInterState) {
-      igstTotal = igstTotal.plus(adjustedTax);
-    } else {
-      cgstTotal = cgstTotal.plus(halfBucketTax);
-      sgstTotal = sgstTotal.plus(secondHalfBucketTax);
+    if (isIndiaCurrency) {
+      if (isInterState) {
+        igstTotal = igstTotal.plus(adjustedTax);
+      } else {
+        cgstTotal = cgstTotal.plus(halfBucketTax);
+        sgstTotal = sgstTotal.plus(secondHalfBucketTax);
+      }
     }
 
     taxBreakdown.push({
       rate,
       taxableAmount: roundToCurrency(adjustedTaxable, dp, roundingModeEnum).toNumber(),
       taxAmount: adjustedTax.toNumber(),
-      cgstRate: isInterState ? 0 : rate / 2,
-      cgstAmount: isInterState ? 0 : halfBucketTax.toNumber(),
-      sgstRate: isInterState ? 0 : rate / 2,
-      sgstAmount: isInterState ? 0 : secondHalfBucketTax.toNumber(),
-      igstRate: isInterState ? rate : 0,
-      igstAmount: isInterState ? adjustedTax.toNumber() : 0,
+      cgstRate: isIndiaCurrency && !isInterState ? rate / 2 : 0,
+      cgstAmount: isIndiaCurrency && !isInterState ? halfBucketTax.toNumber() : 0,
+      sgstRate: isIndiaCurrency && !isInterState ? rate / 2 : 0,
+      sgstAmount: isIndiaCurrency && !isInterState ? secondHalfBucketTax.toNumber() : 0,
+      igstRate: isIndiaCurrency && isInterState ? rate : 0,
+      igstAmount: isIndiaCurrency && isInterState ? adjustedTax.toNumber() : 0,
     });
   });
 

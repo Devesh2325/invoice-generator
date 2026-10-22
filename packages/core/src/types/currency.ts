@@ -41,6 +41,175 @@ export interface FormatCurrencyOptions {
   showSign?: boolean;
 }
 
+export interface CurrencyTaxProfile {
+  currency: string;
+  taxLabel: string;
+  taxIdLabel: string;
+  defaultTaxRate: number;
+  routingLabel: string;
+  defaultCountry: string;
+  defaultState: string;
+  defaultTemplateId: string;
+  isIndiaGst: boolean;
+  supportsUpi: boolean;
+  supportsHsn: boolean;
+  defaultBankName: string;
+  defaultBankBranch: string;
+  defaultTerms: string;
+  defaultNotes: string;
+}
+
+export function getCurrencyTaxProfile(currencyCode: string = 'INR'): CurrencyTaxProfile {
+  const code = (currencyCode || 'INR').toUpperCase();
+  switch (code) {
+    case 'GBP':
+      return {
+        currency: 'GBP',
+        taxLabel: 'VAT',
+        taxIdLabel: 'VAT Reg No.',
+        defaultTaxRate: 20,
+        routingLabel: 'Sort code',
+        defaultCountry: 'United Kingdom',
+        defaultState: 'Greater London',
+        defaultTemplateId: 'uk-vat',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'Barclays Bank UK',
+        defaultBankBranch: 'London Main Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.\n2. Please quote invoice number in bank transfer reference.',
+      };
+    case 'USD':
+      return {
+        currency: 'USD',
+        taxLabel: 'Sales Tax',
+        taxIdLabel: 'EIN / Tax ID',
+        defaultTaxRate: 0,
+        routingLabel: 'Routing number',
+        defaultCountry: 'United States',
+        defaultState: 'California',
+        defaultTemplateId: 'us-sales-tax',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'Chase Bank NA',
+        defaultBankBranch: 'New York Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.\n2. Wire/ACH payments: please include invoice number.',
+      };
+    case 'EUR':
+      return {
+        currency: 'EUR',
+        taxLabel: 'VAT',
+        taxIdLabel: 'VAT ID No.',
+        defaultTaxRate: 20,
+        routingLabel: 'IBAN / BIC',
+        defaultCountry: 'Germany',
+        defaultState: 'Berlin',
+        defaultTemplateId: 'eu-reverse-charge',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'Deutsche Bank',
+        defaultBankBranch: 'Frankfurt Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.\n2. SEPA transfer: please quote invoice reference.',
+      };
+    case 'CAD':
+      return {
+        currency: 'CAD',
+        taxLabel: 'GST/HST',
+        taxIdLabel: 'GST/HST No.',
+        defaultTaxRate: 13,
+        routingLabel: 'Transit No.',
+        defaultCountry: 'Canada',
+        defaultState: 'Ontario',
+        defaultTemplateId: 'ca-hst',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'Royal Bank of Canada',
+        defaultBankBranch: 'Toronto Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.',
+      };
+    case 'AUD':
+      return {
+        currency: 'AUD',
+        taxLabel: 'GST',
+        taxIdLabel: 'ABN',
+        defaultTaxRate: 10,
+        routingLabel: 'BSB',
+        defaultCountry: 'Australia',
+        defaultState: 'New South Wales',
+        defaultTemplateId: 'au-gst',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'Commonwealth Bank',
+        defaultBankBranch: 'Sydney Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.',
+      };
+    case 'AED':
+      return {
+        currency: 'AED',
+        taxLabel: 'VAT',
+        taxIdLabel: 'TRN',
+        defaultTaxRate: 5,
+        routingLabel: 'IBAN / SWIFT',
+        defaultCountry: 'United Arab Emirates',
+        defaultState: 'Dubai',
+        defaultTemplateId: 'ae-vat',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'Emirates NBD',
+        defaultBankBranch: 'Dubai Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.',
+      };
+    case 'SGD':
+      return {
+        currency: 'SGD',
+        taxLabel: 'GST',
+        taxIdLabel: 'UEN / GST Reg No.',
+        defaultTaxRate: 9,
+        routingLabel: 'Bank Code / SWIFT',
+        defaultCountry: 'Singapore',
+        defaultState: 'Singapore',
+        defaultTemplateId: 'sg-gst',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'DBS Bank Ltd',
+        defaultBankBranch: 'Singapore Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.',
+      };
+    case 'INR':
+    default:
+      return {
+        currency: code,
+        taxLabel: 'GST',
+        taxIdLabel: 'GSTIN',
+        defaultTaxRate: 18,
+        routingLabel: 'IFSC',
+        defaultCountry: 'India',
+        defaultState: '27 - Maharashtra',
+        defaultTemplateId: 'in-gst',
+        isIndiaGst: code === 'INR',
+        supportsUpi: code === 'INR',
+        supportsHsn: code === 'INR',
+        defaultBankName: 'Demo Bank Ltd',
+        defaultBankBranch: 'Main Branch, Mumbai',
+        defaultTerms: 'Net 15 Days',
+        defaultNotes: '1. Payment is due within 15 days of invoice date.\n2. Goods/services once billed are subject to Mumbai jurisdiction.',
+      };
+  }
+}
+
 export function formatCurrency(
   amount: number | string,
   currencyCode: string = 'INR',

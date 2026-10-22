@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useMemo, useState, useEffect } from 'react';
-import { DocumentModel } from '@invoice/core';
+import { DocumentModel, getCurrencyTaxProfile } from '@invoice/core';
 import {
   renderInvoiceDocument,
   renderInvoice,
@@ -44,8 +44,22 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const [fitToWidth, setFitToWidth] = useState<boolean>(true);
   const [iframeHeight, setIframeHeight] = useState<number>(1140);
 
-  // Template ID with backward compatibility
-  const templateId = document.templateId || 'in-gst';
+  // Template ID with currency-aware fallback
+  const templateId = useMemo(() => {
+    const docCurr = (document.currency || 'INR').toUpperCase();
+    const docTpl = document.templateId;
+    if (
+      docCurr !== 'INR' &&
+      (!docTpl ||
+        docTpl === 'cleartax_gst' ||
+        docTpl === 'in-gst' ||
+        docTpl === 'tally_prime' ||
+        docTpl === 'vyapar_classic')
+    ) {
+      return getCurrencyTaxProfile(docCurr).defaultTemplateId;
+    }
+    return docTpl || 'in-gst';
+  }, [document.templateId, document.currency]);
   const templateMeta = useMemo(() => getInvoiceTemplate(templateId), [templateId]);
 
   // Map the rich DocumentModel into template payload

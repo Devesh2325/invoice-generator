@@ -25,6 +25,7 @@ import {
   validateUpiId,
   validateBankAccount,
   generateVerifiedUpiQrSvgDataUrl,
+  getCurrencyTaxProfile,
   APP_CONFIG,
   isTemplateAllowedForPlan,
   GeneratorFieldSettings,
@@ -204,13 +205,14 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.dueDate ||
       new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
-  const [currency, setCurrency] = useState<string>(
-    initialDocument?.currency || tenantCurrency || 'INR'
-  );
+  const initialCurrency = initialDocument?.currency || brandSettings?.currency || tenantCurrency || 'INR';
+  const initialTaxProfile = useMemo(() => getCurrencyTaxProfile(initialCurrency), [initialCurrency]);
+
+  const [currency, setCurrency] = useState<string>(initialCurrency);
 
   // Rounding & Precision
   const [enableRoundOff, setEnableRoundOff] = useState<boolean>(
-    initialDocument?.enableRoundOff ?? brandSettings?.enableRoundOff ?? false
+    initialDocument?.enableRoundOff ?? brandSettings?.enableRoundOff ?? initialTaxProfile.isIndiaGst
   );
   const [roundingMode, setRoundingMode] = useState<RoundingMode>(
     initialDocument?.roundingMode || brandSettings?.roundingMode || 'nearest_integer'
@@ -247,13 +249,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.sender.address?.city || brandSettings?.city || ''
   );
   const [senderState, setSenderState] = useState(
-    initialDocument?.sender.address?.state || brandSettings?.gstState || '27 - Maharashtra'
+    initialDocument?.sender.address?.state ||
+      brandSettings?.gstState ||
+      (initialTaxProfile.isIndiaGst ? '27 - Maharashtra' : initialTaxProfile.defaultState)
   );
   const [senderPostalCode, setSenderPostalCode] = useState(
     initialDocument?.sender.address?.postalCode || brandSettings?.postalCode || ''
   );
   const [senderCountry, setSenderCountry] = useState(
-    initialDocument?.sender.address?.country || brandSettings?.country || 'India'
+    initialDocument?.sender.address?.country || brandSettings?.country || initialTaxProfile.defaultCountry
   );
 
   // Client details (start blank on new invoices so user can select from Saved Customers dropdown or type manually)
@@ -276,13 +280,14 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.client.billingAddress?.city || ''
   );
   const [clientState, setClientState] = useState(
-    initialDocument?.client.billingAddress?.state || '27 - Maharashtra'
+    initialDocument?.client.billingAddress?.state ||
+      (initialTaxProfile.isIndiaGst ? '27 - Maharashtra' : initialTaxProfile.defaultState)
   );
   const [clientPostalCode, setClientPostalCode] = useState(
     initialDocument?.client.billingAddress?.postalCode || ''
   );
   const [clientCountry, setClientCountry] = useState(
-    initialDocument?.client.billingAddress?.country || 'India'
+    initialDocument?.client.billingAddress?.country || initialTaxProfile.defaultCountry
   );
 
   // Line Items (start with 1 blank row on new invoices so user can pick from Saved Items dropdown or type manually)
@@ -294,7 +299,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         hsnCode: '',
         quantity: 1,
         unitPrice: 0,
-        taxRate: 18,
+        taxRate: initialTaxProfile.defaultTaxRate,
         taxInclusive: false,
         discountType: 'percentage',
         discountValue: 0,
@@ -327,7 +332,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
   // Template & Custom Theme Overrides
   const [templateId, setTemplateId] = useState<string>(
-    initialDocument?.templateId || brandSettings?.defaultTemplateId || 'cleartax_gst'
+    initialDocument?.templateId ||
+      brandSettings?.defaultTemplateId ||
+      (initialTaxProfile.isIndiaGst ? 'cleartax_gst' : initialTaxProfile.defaultTemplateId)
   );
   const [customPrimaryColor, setCustomPrimaryColor] = useState<string | undefined>(
     initialDocument?.customTheme?.primaryColor || brandSettings?.primaryColor
@@ -338,24 +345,57 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   );
 
   // Payment Configuration (Bank Accounts, UPI, QR Code, Display Toggles)
-  const [paymentConfig, setPaymentConfig] = useState<DocumentPaymentConfig>(
-    initialDocument?.paymentConfig || brandSettings?.paymentConfig || DEFAULT_PAYMENT_CONFIG
-  );
+  const [paymentConfig, setPaymentConfig] = useState<DocumentPaymentConfig>(() => {
+    if (initialDocument?.paymentConfig) return initialDocument.paymentConfig;
+    if (brandSettings?.paymentConfig) return brandSettings.paymentConfig;
+    if (!initialTaxProfile.isIndiaGst) {
+      return {
+        bankAccounts: [
+          {
+            id: 'bank_default_intl',
+            bankName: initialTaxProfile.defaultBankName,
+            accountHolderName: brandSettings?.businessName || activeTenant?.name || 'Your Business Name',
+            accountNumber: '12345678',
+            confirmAccountNumber: '12345678',
+            ifscOrRoutingCode: initialTaxProfile.routingLabel === 'Sort code' ? '20-00-00' : '021000021',
+            branchName: initialTaxProfile.defaultBankBranch,
+            accountType: 'current',
+            swiftBicCode: 'INTLGB22',
+            country: initialTaxProfile.defaultCountry,
+            isPrimary: true,
+          },
+        ],
+        selectedBankAccountIds: ['bank_default_intl'],
+        upiId: '',
+        upiPayeeName: '',
+        autoGenerateUpiQr: false,
+        display: {
+          showBankDetails: true,
+          showUpiId: false,
+          showQrCode: false,
+          showPaymentInstructions: true,
+          showPaymentTerms: true,
+        },
+      };
+    }
+    return DEFAULT_PAYMENT_CONFIG;
+  });
 
   const [notes, setNotes] = useState<string>(
-    initialDocument?.notes ||
-      '1. Payment is due within 15 days of invoice date.\n2. Goods/services once billed are subject to Mumbai jurisdiction.'
+    initialDocument?.notes || initialTaxProfile.defaultNotes
   );
   const [paymentTerms, setPaymentTerms] = useState<string>(
-    initialDocument?.paymentTerms || brandSettings?.defaultTerms || 'Net 15 Days'
+    initialDocument?.paymentTerms || brandSettings?.defaultTerms || initialTaxProfile.defaultTerms
   );
   const [paymentInstructions, setPaymentInstructions] = useState<string>(
     initialDocument?.paymentInstructions ||
       brandSettings?.defaultInstructions ||
-      'NEFT / RTGS / IMPS / UPI accepted. Please mention Invoice No. in payment remarks.'
+      (initialTaxProfile.isIndiaGst
+        ? 'NEFT / RTGS / IMPS / UPI accepted. Please mention Invoice No. in payment remarks.'
+        : 'Bank transfer accepted. Please quote Invoice No. in payment remarks.')
   );
   const [signatoryName, setSignatoryName] = useState<string>(
-    initialDocument?.signatoryName || brandSettings?.signatoryName || 'Authorized Director'
+    initialDocument?.signatoryName || brandSettings?.signatoryName || 'Authorized Signatory'
   );
 
   // Terminology customization state (e.g. Tax Invoice vs Commercial Invoice, Client vs Customer)
@@ -382,6 +422,106 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       }
       return updated;
     });
+  };
+
+  const handleCurrencyChange = (newCurrency: string) => {
+    setCurrency(newCurrency);
+    const newProfile = getCurrencyTaxProfile(newCurrency);
+    const prevProfile = getCurrencyTaxProfile(currency);
+
+    // If switching between Indian GST (INR) and International (GBP, USD, EUR, etc.)
+    if (prevProfile.isIndiaGst && !newProfile.isIndiaGst) {
+      // Switching from INR to foreign currency:
+      if (['cleartax_gst', 'tally_prime', 'vyapar_classic', 'in-gst'].includes(templateId)) {
+        setTemplateId(newProfile.defaultTemplateId);
+      }
+      if (senderCountry.toLowerCase() === 'india' || !senderCountry) {
+        setSenderCountry(newProfile.defaultCountry);
+        setSenderState(newProfile.defaultState);
+      }
+      if (clientCountry.toLowerCase() === 'india' || !clientCountry) {
+        setClientCountry(newProfile.defaultCountry);
+        setClientState(newProfile.defaultState);
+      }
+      setItems((prev) =>
+        prev.map((it) => ({
+          ...it,
+          taxRate: it.taxRate === 18 ? newProfile.defaultTaxRate : it.taxRate,
+          hsnCode: '',
+        }))
+      );
+      setPaymentConfig((prev) => ({
+        ...prev,
+        display: {
+          ...prev.display,
+          showUpiId: false,
+          showQrCode: false,
+        },
+        autoGenerateUpiQr: false,
+        bankAccounts: prev.bankAccounts.map((b) =>
+          b.country === 'India' || b.ifscOrRoutingCode === 'DEM00000000'
+            ? {
+                ...b,
+                bankName: newProfile.defaultBankName,
+                branchName: newProfile.defaultBankBranch,
+                ifscOrRoutingCode: newProfile.routingLabel === 'Sort code' ? '20-00-00' : '021000021',
+                country: newProfile.defaultCountry,
+              }
+            : b
+        ),
+      }));
+      if (notes.includes('Mumbai jurisdiction') || notes.includes('15 days')) {
+        setNotes(newProfile.defaultNotes);
+      }
+      if (paymentInstructions.includes('UPI accepted') || paymentInstructions.includes('NEFT / RTGS')) {
+        setPaymentInstructions('Bank transfer accepted. Please quote Invoice No. in payment remarks.');
+      }
+    } else if (!prevProfile.isIndiaGst && newProfile.isIndiaGst) {
+      // Switching from foreign currency to INR:
+      setTemplateId('cleartax_gst');
+      if (['United Kingdom', 'United States', 'Germany', 'Australia', 'Canada'].includes(senderCountry)) {
+        setSenderCountry('India');
+        setSenderState('27 - Maharashtra');
+      }
+      if (['United Kingdom', 'United States', 'Germany', 'Australia', 'Canada'].includes(clientCountry)) {
+        setClientCountry('India');
+        setClientState('27 - Maharashtra');
+      }
+      setItems((prev) =>
+        prev.map((it) => ({
+          ...it,
+          taxRate: it.taxRate === 20 || it.taxRate === 0 ? 18 : it.taxRate,
+        }))
+      );
+      setPaymentConfig((prev) => ({
+        ...prev,
+        display: {
+          ...prev.display,
+          showUpiId: true,
+          showQrCode: true,
+        },
+        autoGenerateUpiQr: true,
+      }));
+      setNotes('1. Payment is due within 15 days of invoice date.\n2. Goods/services once billed are subject to Mumbai jurisdiction.');
+      setPaymentInstructions('NEFT / RTGS / IMPS / UPI accepted. Please mention Invoice No. in payment remarks.');
+    } else if (!prevProfile.isIndiaGst && !newProfile.isIndiaGst) {
+      // Switching between foreign currencies (e.g. USD <-> GBP)
+      setTemplateId(newProfile.defaultTemplateId);
+      if (senderCountry === prevProfile.defaultCountry) {
+        setSenderCountry(newProfile.defaultCountry);
+        setSenderState(newProfile.defaultState);
+      }
+      if (clientCountry === prevProfile.defaultCountry) {
+        setClientCountry(newProfile.defaultCountry);
+        setClientState(newProfile.defaultState);
+      }
+      setItems((prev) =>
+        prev.map((it) => ({
+          ...it,
+          taxRate: it.taxRate === prevProfile.defaultTaxRate ? newProfile.defaultTaxRate : it.taxRate,
+        }))
+      );
+    }
   };
 
   // Saved Customers & Catalog Items for active workspace
@@ -431,9 +571,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   );
   useEffect(() => {
     if (!initialDocument && activeTenant && brandSettings && appliedTenantId !== activeTenant.id) {
-      if (brandSettings.currency || activeTenant.currency) {
-        setCurrency(brandSettings.currency || activeTenant.currency || 'INR');
-      }
+      const targetCurr = brandSettings.currency || activeTenant.currency || 'INR';
+      const prof = getCurrencyTaxProfile(targetCurr);
+      setCurrency(targetCurr);
       setSenderName(brandSettings.businessName || activeTenant.name || 'Your Business Name');
       if (brandSettings.email) setSenderEmail(brandSettings.email);
       if (brandSettings.phone) setSenderPhone(brandSettings.phone);
@@ -446,13 +586,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       if (brandSettings.city || activeTenant.city) {
         setSenderCity(brandSettings.city || activeTenant.city || '');
       }
-      if (brandSettings.gstState || activeTenant.gstState) {
-        setSenderState(brandSettings.gstState || activeTenant.gstState || '27 - Maharashtra');
-      }
+      setSenderState(
+        brandSettings.gstState ||
+          activeTenant.gstState ||
+          (prof.isIndiaGst ? '27 - Maharashtra' : prof.defaultState)
+      );
       if (brandSettings.postalCode) setSenderPostalCode(brandSettings.postalCode);
-      if (brandSettings.country || activeTenant.country) {
-        setSenderCountry(brandSettings.country || activeTenant.country || 'India');
-      }
+      setSenderCountry(
+        brandSettings.country || activeTenant.country || prof.defaultCountry
+      );
       if (brandSettings.logoUrl !== undefined) setSenderLogo(brandSettings.logoUrl || '');
       if (brandSettings.enableRoundOff !== undefined) setEnableRoundOff(brandSettings.enableRoundOff);
       if (brandSettings.roundingMode) setRoundingMode(brandSettings.roundingMode);
@@ -864,7 +1006,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     else if (field === 'referenceNumber') setReferenceNumber(value);
     else if (field === 'issueDate') setIssueDate(value);
     else if (field === 'dueDate') setDueDate(value);
-    else if (field === 'currency') setCurrency(value);
+    else if (field === 'currency') handleCurrencyChange(value);
     else if (field === 'templateId') setTemplateId(value);
     else if (field === 'notes') setNotes(value);
     else if (field === 'paymentTerms') setPaymentTerms(value);
@@ -1438,7 +1580,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   </label>
                   <select
                     value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
+                    onChange={(e) => handleCurrencyChange(e.target.value)}
                     className="w-full text-xs font-bold bg-muted/60 border border-border rounded-lg px-2.5 py-1.5 text-foreground cursor-pointer"
                   >
                     {Object.values(CURRENCIES).map((c) => (

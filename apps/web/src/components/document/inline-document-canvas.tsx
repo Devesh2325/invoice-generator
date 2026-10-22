@@ -8,6 +8,7 @@ import {
   formatCurrency,
   INDIAN_STATES,
   generateVerifiedUpiQrSvgDataUrl,
+  getCurrencyTaxProfile,
 } from '@invoice/core';
 import { ProductCatalogItem } from '@invoice/api';
 import { getInvoiceTemplate, TemplatePreset } from '@invoice/theme';
@@ -88,11 +89,26 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const currency = document.currency || 'INR';
+  const taxProfile = useMemo(() => getCurrencyTaxProfile(currency), [currency]);
+
   // Template configuration from the 18 print-ready presets
-  const tpl = useMemo(
-    () => getInvoiceTemplate(document.templateId || 'in-gst'),
-    [document.templateId]
-  );
+  // If the invoice is in a foreign currency (e.g. GBP, USD, EUR) but the template is still set to an Indian GST preset,
+  // automatically adapt to the currency's native regional template (e.g. 'uk-vat' for GBP, 'us-sales-tax' for USD).
+  const tpl = useMemo(() => {
+    let tplId = document.templateId;
+    if (
+      currency !== 'INR' &&
+      (!tplId ||
+        tplId === 'cleartax_gst' ||
+        tplId === 'in-gst' ||
+        tplId === 'tally_prime' ||
+        tplId === 'vyapar_classic')
+    ) {
+      tplId = taxProfile.defaultTemplateId;
+    }
+    return getInvoiceTemplate(tplId || taxProfile.defaultTemplateId);
+  }, [document.templateId, currency, taxProfile.defaultTemplateId]);
 
   // Theme colors & overrides
   const effectiveAccent = document.customTheme?.primaryColor || tpl.accent || '#1D4ED8';
@@ -120,19 +136,21 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
     tpl.card === 'box' ? 'rounded-none' : tpl.card === 'round' ? 'rounded-xl' : 'rounded-lg';
 
   const [showAdvancedColumns, setShowAdvancedColumns] = useState(false);
-  const showHsn = showAdvancedColumns || Boolean(fieldSettings?.showHsnColumn);
+  // India GST rule: ONLY applies when currency is INR
+  const isIndiaGst = currency === 'INR';
+  const showHsn = isIndiaGst && (showAdvancedColumns || Boolean(fieldSettings?.showHsnColumn));
   const showTaxColumns = showAdvancedColumns || Boolean(fieldSettings?.showTaxRateColumn);
   const showDiscount = showAdvancedColumns || Boolean(fieldSettings?.showDiscountColumn);
 
-  const currency = document.currency || tpl.currency || 'INR';
-  const senderCountry = (document.sender?.address?.country || '').trim().toLowerCase();
-  const clientCountry = (document.client?.billingAddress?.country || '').trim().toLowerCase();
-
-  // India GST rule: Only applies for INR or Indian parties; international users use standard tax/VAT
-  const isIndiaGst = currency === 'INR' || senderCountry === 'india' || clientCountry === 'india';
   const effectiveTaxIdLabel = isIndiaGst
     ? 'GSTIN'
-    : (tpl.id === 'in-gst' ? 'Tax ID / VAT No.' : (tpl.taxIdLabel || 'Tax ID / VAT No.'));
+    : (tpl.id === 'in-gst' ? taxProfile.taxIdLabel : (tpl.taxIdLabel || taxProfile.taxIdLabel));
+  const effectiveTaxLabel = isIndiaGst
+    ? 'GST'
+    : (tpl.id === 'in-gst' ? taxProfile.taxLabel : (tpl.taxLabel || taxProfile.taxLabel));
+  const effectiveRoutingLabel = isIndiaGst
+    ? 'IFSC'
+    : (tpl.id === 'in-gst' ? taxProfile.routingLabel : (tpl.routingLabel || taxProfile.routingLabel));
 
   const summary = document.summary;
   const isInterState = isIndiaGst && summary.gstSupplyType === 'inter';
@@ -184,7 +202,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
     if (payConfig.qrCodeDataUrl && !payConfig.autoGenerateUpiQr) {
       return payConfig.qrCodeDataUrl;
     }
-    if (payConfig.upiId) {
+    // UPI QR code is ONLY valid for Indian domestic INR transactions
+    if (isIndiaGst && payConfig.upiId) {
       return (
         generateVerifiedUpiQrSvgDataUrl({
           upiId: payConfig.upiId,
@@ -196,7 +215,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
       );
     }
     return payConfig.qrCodeDataUrl || null;
-  }, [document.paymentConfig, document.sender.name, document.documentNumber, summary.balanceDue, summary.grandTotal, currency]);
+  }, [document.paymentConfig, document.sender.name, document.documentNumber, summary.balanceDue, summary.grandTotal, currency, isIndiaGst]);
 
   // Renders the logo uploader
   const renderLogo = (isInverse = false) => (
@@ -428,9 +447,9 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
               <span className="text-[10px] font-black uppercase tracking-wider opacity-80 block">
                 Payment Coordinates
               </span>
-              <div className="opacity-90">{tpl.routingLabel}: {document.paymentConfig?.bankAccounts?.[0]?.ifscOrRoutingCode || 'CH93 0000 0000 0000'}</div>
+              <div className="opacity-90">{effectiveRoutingLabel}: {document.paymentConfig?.bankAccounts?.[0]?.ifscOrRoutingCode || '—'}</div>
               <div className="opacity-90">Account: {document.paymentConfig?.bankAccounts?.[0]?.accountNumber || '—'}</div>
-              {document.paymentConfig?.upiId && (
+              {isIndiaGst && document.paymentConfig?.upiId && (
                 <div className="opacity-90">{tpl.vpaLabel}: {document.paymentConfig.upiId}</div>
               )}
             </div>
@@ -714,7 +733,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       />
                     </div>
 
-                    {isIndiaGst && (
+                    {isIndiaGst ? (
                       <div className="flex items-center gap-1">
                         <span className="font-bold shrink-0" style={{ color: mutedTextColor }}>
                           State:
@@ -732,6 +751,19 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                             </option>
                           ))}
                         </select>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold shrink-0" style={{ color: mutedTextColor }}>
+                          Region:
+                        </span>
+                        <input
+                          type="text"
+                          value={document.sender.address?.state || ''}
+                          onChange={(e) => onUpdateSenderAddress('state', e.target.value)}
+                          placeholder="County / State / Region"
+                          className={`${editableInput} w-full`}
+                        />
                       </div>
                     )}
 
@@ -919,12 +951,12 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       type="text"
                       value={document.client.taxId || ''}
                       onChange={(e) => onUpdateClient('taxId', e.target.value.toUpperCase())}
-                      placeholder={isIndiaGst ? '27AAACR5055K1Z7' : 'Customer Tax ID'}
+                      placeholder={isIndiaGst ? '27AAACR5055K1Z7' : 'Customer Tax ID / VAT No.'}
                       className={`${editableInput} font-mono font-bold uppercase w-full`}
                     />
                   </div>
 
-                  {isIndiaGst && (
+                  {isIndiaGst ? (
                     <div className="flex items-center gap-1">
                       <span className="font-bold shrink-0" style={{ color: mutedTextColor }}>
                         State:
@@ -942,6 +974,19 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                           </option>
                         ))}
                       </select>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold shrink-0" style={{ color: mutedTextColor }}>
+                        Region:
+                      </span>
+                      <input
+                        type="text"
+                        value={document.client.billingAddress?.state || ''}
+                        onChange={(e) => onUpdateClientAddress('state', e.target.value)}
+                        placeholder="County / State / Region"
+                        className={`${editableInput} w-full`}
+                      />
                     </div>
                   )}
 
@@ -1127,8 +1172,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     </>
                   ) : (
                     <>
-                      <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">{tpl.taxLabel} %</th>
-                      <th className="py-2.5 px-2 w-24 min-w-[90px] text-right">{tpl.taxLabel} Amt</th>
+                      <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">{effectiveTaxLabel} %</th>
+                      <th className="py-2.5 px-2 w-24 min-w-[90px] text-right">{effectiveTaxLabel} Amt</th>
                     </>
                   )
                 )}
@@ -1278,7 +1323,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                               type="number"
                               min="0"
                               step="any"
-                              value={item.taxRate ?? tpl.taxRate}
+                              value={item.taxRate ?? (tpl.id === 'in-gst' ? taxProfile.defaultTaxRate : (tpl.taxRate ?? taxProfile.defaultTaxRate))}
                               onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
                               className={`${editableInput} w-full min-w-[65px] text-right font-mono`}
                             />
@@ -1397,7 +1442,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider flex justify-between border-b"
                 style={{ backgroundColor: `${effectiveAccent}12`, borderColor, color: effectiveAccent }}
               >
-                <span>{tpl.taxLabel} Tax Breakdown</span>
+                <span>{effectiveTaxLabel} Tax Breakdown</span>
                 <span>Rate Analysis</span>
               </div>
               <table className="w-full text-[11px] font-mono">
@@ -1405,7 +1450,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   <tr className="border-b text-[10px]" style={{ borderColor, color: mutedTextColor }}>
                     <th className="py-1.5 px-2.5 text-left">Taxable Value</th>
                     <th className="py-1.5 px-2 text-right">Rate</th>
-                    <th className="py-1.5 px-2.5 text-right">{tpl.taxLabel} Amount</th>
+                    <th className="py-1.5 px-2.5 text-right">{effectiveTaxLabel} Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{ borderColor }}>
@@ -1458,7 +1503,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                           <span className="font-mono font-bold">{bank.accountNumber}</span>
                         </div>
                         <div className="min-w-0 break-words">
-                          <span style={{ color: mutedTextColor }}>{tpl.routingLabel}: </span>
+                          <span style={{ color: mutedTextColor }}>{effectiveRoutingLabel}: </span>
                           <span className="font-mono font-bold">{bank.ifscOrRoutingCode}</span>
                         </div>
                         {bank.branchName && (
@@ -1470,10 +1515,10 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       </div>
                     ))}
 
-                  {document.paymentConfig.display.showUpiId && document.paymentConfig.upiId && (
+                  {isIndiaGst && document.paymentConfig.display.showUpiId && document.paymentConfig.upiId && (
                     <div className="flex items-center gap-2 pt-0.5">
                       <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: mutedTextColor }}>
-                        {tpl.vpaLabel}:
+                        UPI ID / VPA:
                       </span>
                       <span
                         className="font-mono text-xs font-bold px-2 py-0.5 rounded border"
@@ -1579,7 +1624,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             </div>
 
             <div className="flex justify-between" style={{ color: mutedTextColor }}>
-              <span>Total {tpl.taxLabel}</span>
+              <span>Total {effectiveTaxLabel}</span>
               <span className="font-mono font-semibold" style={{ color: textColor }}>
                 {formatCurrency(summary.totalTax, currency)}
               </span>

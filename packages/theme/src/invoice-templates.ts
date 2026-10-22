@@ -1037,6 +1037,7 @@ export function mapCanonicalDocumentToTemplateInv(doc: CanonicalDocument): any {
     };
   });
 
+  const isIndia = (doc.currency || 'INR') === 'INR';
   const supplierState = doc.sender.address?.state || '';
   const placeOfSupply =
     doc.client.billingAddress?.state || (doc as any).placeOfSupply || supplierState;
@@ -1046,8 +1047,9 @@ export function mapCanonicalDocumentToTemplateInv(doc: CanonicalDocument): any {
   let payment: any = undefined;
   if (payConfig) {
     const bank = (payConfig.bankAccounts && payConfig.bankAccounts[0]) || payConfig;
+    const isGbp = doc.currency === 'GBP';
     const showBank = payConfig.display ? payConfig.display.showBankDetails : true;
-    const showUpi = payConfig.display ? payConfig.display.showUpiId : Boolean(payConfig.upiId);
+    const showUpi = isIndia && (payConfig.display ? payConfig.display.showUpiId : Boolean(payConfig.upiId));
     const showQr = payConfig.display ? payConfig.display.showQrCode : Boolean(payConfig.qrCodeDataUrl);
 
     payment = {
@@ -1057,9 +1059,9 @@ export function mapCanonicalDocumentToTemplateInv(doc: CanonicalDocument): any {
       routingValue: showBank ? (bank?.ifscOrRoutingCode || bank?.ifscCode || bank?.routingValue) : undefined,
       branch: showBank ? (bank?.branchName || bank?.branch) : undefined,
       vpa: showUpi ? (payConfig.upiId || bank?.upiId) : undefined,
-      vpaLabel: 'UPI ID / VPA',
-      qrImage: showQr ? (payConfig.qrCodeDataUrl || bank?.qrImage || '') : undefined,
-      qrLabel: 'Scan to pay (UPI)',
+      vpaLabel: isIndia ? 'UPI ID / VPA' : 'Payment reference',
+      qrImage: showQr && (isIndia || !payConfig.autoGenerateUpiQr) ? (payConfig.qrCodeDataUrl || bank?.qrImage || '') : undefined,
+      qrLabel: isIndia ? 'Scan to pay (UPI)' : 'Scan to pay',
     };
   }
 
@@ -1072,11 +1074,11 @@ export function mapCanonicalDocumentToTemplateInv(doc: CanonicalDocument): any {
         : doc.type === 'purchase_order'
         ? anyDoc.deliveryDate || doc.dueDate
         : doc.dueDate,
-    title: doc.customTerminology?.[doc.type] || titles[doc.type] || 'Tax Invoice',
+    title: doc.customTerminology?.[doc.type] || titles[doc.type] || (doc.currency === 'GBP' ? 'VAT Invoice' : 'Tax Invoice'),
     dueLabel: dueLabels[doc.type] || 'Due date',
     balanceLabel: balanceLabels[doc.type] || 'Balance due',
     currency: cur,
-    locale: doc.currency === 'INR' ? 'en-IN' : 'en-US',
+    locale: doc.currency === 'INR' ? 'en-IN' : doc.currency === 'GBP' ? 'en-GB' : 'en-US',
     seller: {
       name: doc.sender.name || 'Your Business',
       address: sAddr,
@@ -1084,7 +1086,7 @@ export function mapCanonicalDocumentToTemplateInv(doc: CanonicalDocument): any {
       phone: doc.sender.phone,
       taxId: doc.sender.taxId,
       taxIdLabel:
-        doc.sender.taxId && doc.sender.taxId.length === 15 ? 'GSTIN' : 'Tax ID',
+        doc.sender.taxId && doc.sender.taxId.length === 15 ? 'GSTIN' : (doc.currency === 'GBP' ? 'VAT Reg No.' : 'Tax ID'),
       logoUrl: doc.sender.logoUrl,
     },
     buyer: {
@@ -1094,13 +1096,18 @@ export function mapCanonicalDocumentToTemplateInv(doc: CanonicalDocument): any {
       phone: doc.client.phone,
       taxId: doc.client.taxId,
       taxIdLabel:
-        doc.client.taxId && doc.client.taxId.length === 15 ? 'GSTIN' : 'Tax ID',
+        doc.client.taxId && doc.client.taxId.length === 15 ? 'GSTIN' : (doc.currency === 'GBP' ? 'VAT Reg No.' : 'Tax ID'),
     },
     items,
-    supply: {
+    supply: isIndia ? {
       fields: {
         'Supplier state': supplierState,
         'Place of supply': placeOfSupply,
+      },
+    } : {
+      fields: {
+        'Tax point': doc.issueDate,
+        'Place of supply': doc.client.billingAddress?.country || (doc.currency === 'GBP' ? 'United Kingdom' : 'Standard'),
       },
     },
     payment,
