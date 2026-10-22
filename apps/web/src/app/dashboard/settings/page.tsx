@@ -53,7 +53,7 @@ export default function TenantSettingsPage() {
   // 0. User Profile & Account Identity
   const [profileName, setProfileName] = useState(user?.name || '');
   const [profileEmail, setProfileEmail] = useState(user?.email || '');
-  const [profilePhone, setProfilePhone] = useState(user?.phone || '+91 98765 43210');
+  const [profilePhone, setProfilePhone] = useState(user?.phone || '');
   const [profileTimezone, setProfileTimezone] = useState(user?.timezone || 'Asia/Kolkata');
   const [profileAvatarUrl, setProfileAvatarUrl] = useState(user?.avatarUrl || '');
   const [profileSaved, setProfileSaved] = useState(false);

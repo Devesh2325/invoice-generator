@@ -27,15 +27,6 @@ interface TenantContextType {
   refreshBrandSettings: () => Promise<void>;
 }
 
-const DEFAULT_DEMO_USER: AuthUser = {
-  id: 'usr_demo_01',
-  email: 'dmchaturvedi@gmail.com',
-  name: 'Devesh Mani Chaturvedi',
-  phone: '+91 98765 43210',
-  timezone: 'Asia/Kolkata',
-  avatarUrl: '',
-};
-
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -46,7 +37,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
   const [activeTenant, setActiveTenantState] = useState<Tenant | null>(null);
   const [brandSettings, setBrandSettings] = useState<TenantBrandSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<AuthUser | null>(DEFAULT_DEMO_USER);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   const loadBrandForTenant = useCallback(async (tenantId: string) => {
     try {
@@ -60,16 +51,25 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
   const loadUserAndTenants = useCallback(async () => {
     setIsLoading(true);
     try {
-      let currentUser: AuthUser = DEFAULT_DEMO_USER;
+      let currentUser: AuthUser | null = null;
       if (typeof window !== 'undefined') {
         const storedUser = window.localStorage.getItem('billcraft_current_user');
         if (storedUser) {
-          currentUser = JSON.parse(storedUser);
-        } else {
-          window.localStorage.setItem('billcraft_current_user_id', DEFAULT_DEMO_USER.id);
+          try {
+            currentUser = JSON.parse(storedUser);
+          } catch {
+            currentUser = null;
+          }
         }
       }
       setUser(currentUser);
+
+      if (!currentUser) {
+        setTenants([]);
+        setActiveTenantState(null);
+        setBrandSettings(null);
+        return;
+      }
 
       const list = await TenantApi.getTenants(currentUser.id);
       setTenants(list);
@@ -105,7 +105,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
     if (typeof window === 'undefined') return;
     const storedUserRaw = window.localStorage.getItem('billcraft_current_user');
     const storedActiveTenantId = window.localStorage.getItem('billcraft_active_tenant_id');
-    let storedUserId = DEFAULT_DEMO_USER.id;
+    let storedUserId: string | null = null;
     if (storedUserRaw) {
       try {
         const parsed = JSON.parse(storedUserRaw);
@@ -113,7 +113,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch { }
     }
     if (
-      storedUserId !== user?.id ||
+      storedUserId !== (user?.id || null) ||
       (storedActiveTenantId && storedActiveTenantId !== activeTenant?.id)
     ) {
       loadUserAndTenants();
@@ -151,7 +151,8 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateUser = useCallback((patch: Partial<AuthUser>) => {
     setUser((prev) => {
-      const updated = prev ? { ...prev, ...patch } : { ...DEFAULT_DEMO_USER, ...patch };
+      if (!prev) return null;
+      const updated = { ...prev, ...patch };
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('billcraft_current_user', JSON.stringify(updated));
         window.dispatchEvent(new Event('billcraft-auth-changed'));

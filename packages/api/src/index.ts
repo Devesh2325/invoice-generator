@@ -301,9 +301,9 @@ export const TenantApi = {
             t.ownerUserId === userId ||
             (currentUserEmail && t.ownerUserId?.toLowerCase() === currentUserEmail)
         );
-        if (userTenants.length > 0) return userTenants;
+        return userTenants;
       }
-      return all.length > 0 ? all : mergedDemo;
+      return [];
     }
 
     const { data, error } = await supabase

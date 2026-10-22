@@ -31,6 +31,43 @@ export default function LoginPage() {
         const users = usersRaw ? JSON.parse(usersRaw) : [];
         let matched = users.find((u: any) => u.email === normalizedEmail);
 
+        // Super Admin & Master Account recognition
+        if (normalizedEmail === 'dmchaturvedi@gmail.com') {
+          if (password !== 'Devesh@23251995') {
+            setErrorMsg('Invalid password for this account. Please verify and try again.');
+            setLoading(false);
+            return;
+          }
+          if (!matched) {
+            matched = {
+              id: 'usr_devesh_01',
+              email: 'dmchaturvedi@gmail.com',
+              name: 'Devesh Mani Chaturvedi',
+              workspaceName: 'Devesh Private Limited',
+              tenantId: 'tenant_devesh_01',
+              password: 'Devesh@23251995',
+              timezone: 'Asia/Kolkata',
+            };
+            users.push(matched);
+            window.localStorage.setItem('billcraft_registered_users', JSON.stringify(users));
+
+            const existingTenants = JSON.parse(window.localStorage.getItem('billcraft_custom_tenants') || '[]');
+            if (!existingTenants.some((t: any) => t.id === 'tenant_devesh_01')) {
+              existingTenants.push({
+                id: 'tenant_devesh_01',
+                name: 'Devesh Private Limited',
+                slug: 'devesh-private-limited',
+                ownerUserId: 'usr_devesh_01',
+                currency: 'INR',
+                country: 'India',
+                gstState: '27 - Maharashtra',
+                role: 'owner',
+              });
+              window.localStorage.setItem('billcraft_custom_tenants', JSON.stringify(existingTenants));
+            }
+          }
+        }
+
         // If not found in registered_users, check workspaces created in Super Admin
         if (!matched) {
           const teamsRaw = window.localStorage.getItem('billcraft_admin_teams');
@@ -72,7 +109,8 @@ export default function LoginPage() {
           }
           await refreshTenants();
           window.dispatchEvent(new Event('billcraft-auth-updated'));
-          router.push('/dashboard');
+          const redirectParam = new URLSearchParams(window.location.search).get('redirect');
+          router.push(redirectParam || '/dashboard');
           return;
         }
       }

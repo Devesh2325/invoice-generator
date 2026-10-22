@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,11 +39,19 @@ interface TenantLayoutProps {
 }
 
 export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
+  const router = useRouter();
   const pathname = usePathname();
-  const { activeTenant, brandSettings, tenants, setActiveTenant, tenantCurrency, user, signOut } = useTenant();
+  const { activeTenant, brandSettings, tenants, setActiveTenant, tenantCurrency, user, isLoading, signOut } = useTenant();
   const { toggleTheme, resolvedTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      const redirectUrl = pathname ? `/login?redirect=${encodeURIComponent(pathname)}` : '/login';
+      router.replace(redirectUrl);
+    }
+  }, [isLoading, user, pathname, router]);
 
   const isWhiteLabel = Boolean(activeTenant?.isWhiteLabel || brandSettings?.whiteLabelEnabled);
   const brandName = isWhiteLabel
@@ -97,6 +105,19 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
   const handleOpenSearch = () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Verifying workspace session...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row font-sans text-slate-900 dark:text-slate-100 transition-colors">
