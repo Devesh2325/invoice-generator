@@ -144,7 +144,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
         <div className="p-4 space-y-4 overflow-y-auto">
           {/* Logo & App Brand */}
           <div className="flex items-center justify-between px-2 pt-1 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <Link href="/" className="flex items-center gap-2 min-w-0">
+            <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
               {brandSettings?.logoUrl ? (
                 <img
                   src={brandSettings.logoUrl}
@@ -243,18 +243,35 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
         </div>
 
         {/* User Footer Card */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-          <div className="flex items-center justify-between">
-            <div className="truncate mr-2">
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                {user?.name || 'Admin User'}
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+          <div className="flex items-center justify-between gap-2">
+            <Link
+              href="/dashboard/settings"
+              className="flex items-center gap-2.5 truncate p-1 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors flex-1"
+              title="Edit Profile & Settings"
+            >
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.name}
+                  className="h-8 w-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0 border border-primary/20">
+                  {user?.name ? user.name.slice(0, 2).toUpperCase() : 'US'}
+                </div>
+              )}
+              <div className="truncate">
+                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                  {user?.name || 'Admin User'}
+                </div>
+                <div className="text-[10px] text-slate-500 truncate">{user?.email}</div>
               </div>
-              <div className="text-[10px] text-slate-500 truncate">{user?.email}</div>
-            </div>
+            </Link>
             <button
               onClick={signOut}
               title="Sign Out"
-              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md transition-colors"
+              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md transition-colors shrink-0"
             >
               <LogOut className="h-4 w-4" />
             </button>

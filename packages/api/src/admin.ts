@@ -400,6 +400,49 @@ export class AdminApi {
     return true;
   }
 
+  static saveTemplate(tpl: AdminTemplateSetting): AdminTemplateSetting {
+    const templates = this.getTemplates();
+    const existingIndex = templates.findIndex((t) => t.id === tpl.id);
+    let updated: AdminTemplateSetting[];
+    if (existingIndex >= 0) {
+      updated = [...templates];
+      updated[existingIndex] = { ...updated[existingIndex], ...tpl };
+    } else {
+      updated = [
+        {
+          ...tpl,
+          id: tpl.id || `tpl_${Date.now()}`,
+          downloadsCount: tpl.downloadsCount || 0,
+        },
+        ...templates,
+      ];
+    }
+    if (typeof window !== "undefined") {
+      localStorage.setItem("billcraft_admin_templates", JSON.stringify(updated));
+      this.recordAuditLog(
+        "SAVE_TEMPLATE",
+        `Template: ${tpl.id} (${tpl.name})`,
+        "Super Admin",
+      );
+    }
+    return tpl;
+  }
+
+  static deleteTemplate(templateId: string): boolean {
+    const templates = this.getTemplates();
+    const filtered = templates.filter((t) => t.id !== templateId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("billcraft_admin_templates", JSON.stringify(filtered));
+      this.recordAuditLog(
+        "DELETE_TEMPLATE",
+        `Deleted Template: ${templateId}`,
+        "Super Admin",
+      );
+      return true;
+    }
+    return false;
+  }
+
   // Teams & Workspaces Management - Starts empty
   static getTeams(): AdminTeam[] {
     if (typeof window === "undefined") return [];

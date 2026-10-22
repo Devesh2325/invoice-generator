@@ -30,7 +30,7 @@ interface PublicHeaderProps {
 
 export function PublicHeader({ className = '', hideNavLinks = false }: PublicHeaderProps) {
   const pathname = usePathname();
-  const { brandSettings } = useTenant();
+  const { brandSettings, user } = useTenant();
   const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -38,15 +38,12 @@ export function PublicHeader({ className = '', hideNavLinks = false }: PublicHea
     ? brandSettings.businessName
     : APP_CONFIG.brandName;
 
-  const navLinks = [
+  const homeHref = user ? '/dashboard' : '/';
+
+  const navLinks: { label: string; href: string; badge?: string }[] = [
     { label: 'Features', href: '/features' },
     { label: 'Templates', href: '/templates' },
     { label: 'Pricing', href: '/pricing' },
-    {
-      label: 'Demo',
-      href: '/demo',
-      badge: 'Sandbox',
-    },
     { label: 'FAQ', href: '/faq' },
     { label: 'Blog', href: '/blog' },
     { label: 'About', href: '/about' },
@@ -58,7 +55,7 @@ export function PublicHeader({ className = '', hideNavLinks = false }: PublicHea
         {/* Brand Logo & Name */}
         <div className="flex items-center gap-4 lg:gap-8">
           <Link
-            href="/"
+            href={homeHref}
             className="flex items-center gap-2 font-black text-xl text-primary tracking-tight transition-transform hover:scale-105"
           >
             <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shadow-xs">
@@ -107,11 +104,19 @@ export function PublicHeader({ className = '', hideNavLinks = false }: PublicHea
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
 
-          <Link href="/login" className="hidden sm:inline-flex">
-            <Button variant="ghost" size="sm" className="text-xs font-bold">
-              Sign In
-            </Button>
-          </Link>
+          {user ? (
+            <Link href="/dashboard" className="hidden sm:inline-flex">
+              <Button variant="ghost" size="sm" className="text-xs font-bold text-primary">
+                Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/login" className="hidden sm:inline-flex">
+              <Button variant="ghost" size="sm" className="text-xs font-bold">
+                Sign In
+              </Button>
+            </Link>
+          )}
 
           <Link href="/create">
             <Button

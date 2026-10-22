@@ -281,6 +281,7 @@ export class BlogApi {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(this.getStorageKey(), JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('invoxa-blog-updated', { detail: { action: 'save', post } }));
       } catch (e) {
         console.error('Failed to save blog post to storage:', e);
       }
@@ -294,6 +295,7 @@ export class BlogApi {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(this.getStorageKey(), JSON.stringify(filtered));
+        window.dispatchEvent(new CustomEvent('invoxa-blog-updated', { detail: { action: 'delete', id } }));
         return true;
       } catch (e) {
         console.error('Failed to delete blog post:', e);

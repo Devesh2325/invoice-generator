@@ -67,6 +67,10 @@
 }
 
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+  }
   * {
     @apply border-border;
   }
@@ -115,6 +119,14 @@
     margin: 0 !important;
     padding: 0 !important;
   }
+  [role="dialog"],
+  [data-radix-portal],
+  [data-state="open"],
+  .dialog-portal,
+  nav,
+  header,
+  footer,
+  aside,
   .no-print {
     display: none !important;
   }

@@ -91,6 +91,8 @@ export interface TenantBrandSettings {
     roundingMode?: RoundingMode;
     paymentConfig?: DocumentPaymentConfig;
     whiteLabelEnabled?: boolean;
+    customDomain?: string;
+    isDomainVerified?: boolean;
 }
 export declare function getSupabase(): SupabaseClient | null;
 export declare function resetApiMemoryStore(): void;

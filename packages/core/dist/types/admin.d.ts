@@ -47,6 +47,10 @@ export interface AdminTemplateSetting {
     isPro: boolean;
     enabled: boolean;
     downloadsCount: number;
+    description?: string;
+    primaryColor?: string;
+    fontFamily?: string;
+    region?: string;
 }
 export interface AdminTeam {
     id: string;

@@ -31,3 +31,19 @@ test-results
 # OS Files
 .DS_Store
 Thumbs.db
+
+# IDE & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Flutter & Dart
+**/android/local.properties
+**/android/.gradle
+**/android/build/
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+

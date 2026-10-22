@@ -21,6 +21,20 @@ import {
   FileText,
   Sparkles,
   Save,
+  Image as ImageIcon,
+  Heading2,
+  Heading3,
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Quote,
+  Code,
+  Table,
+  Link2,
+  Minus,
+  Tag,
+  User as UserIcon,
 } from 'lucide-react';
 
 export default function AdminBlogPage() {
@@ -38,6 +52,32 @@ export default function AdminBlogPage() {
   useEffect(() => {
     loadPosts();
   }, []);
+
+  const COVER_PRESETS = [
+    { label: 'Fintech & Cards', url: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=1200&auto=format&fit=crop&q=80' },
+    { label: 'Accounting & Tax', url: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=1200&auto=format&fit=crop&q=80' },
+    { label: 'Modern Office', url: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1200&auto=format&fit=crop&q=80' },
+    { label: 'Cloud Tech', url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1200&auto=format&fit=crop&q=80' },
+  ];
+
+  const insertMarkdown = (prefix: string, suffix: string = '') => {
+    const textarea = document.getElementById('blog-content-textarea') as HTMLTextAreaElement | null;
+    if (!textarea || !editingPost) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = editingPost.content.substring(start, end);
+    const replacement = `${prefix}${selected || 'text'}${suffix}`;
+    const newContent =
+      editingPost.content.substring(0, start) + replacement + editingPost.content.substring(end);
+    setEditingPost({ ...editingPost, content: newContent });
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        start + prefix.length,
+        start + prefix.length + (selected || 'text').length
+      );
+    }, 50);
+  };
 
   const handleCreateNew = () => {
     const newPost: BlogPost = {
@@ -364,6 +404,57 @@ export default function AdminBlogPage() {
                     </div>
                   </div>
 
+                  {/* Cover Image */}
+                  <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <ImageIcon className="h-3.5 w-3.5 text-primary" />
+                        Article Cover Hero Image
+                      </label>
+                      <span className="text-[10px] text-slate-500">Unsplash or Custom URL</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editingPost.coverImage || ''}
+                        onChange={(e) =>
+                          setEditingPost((prev) => (prev ? { ...prev, coverImage: e.target.value } : null))
+                        }
+                        placeholder="https://images.unsplash.com/photo-..."
+                        className="bg-slate-900 border-slate-700 text-white text-xs h-8 flex-1"
+                      />
+                      {editingPost.coverImage && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingPost((prev) => (prev ? { ...prev, coverImage: '' } : null))}
+                          className="h-8 text-[11px] text-rose-400 hover:bg-rose-950/30"
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    {/* Quick Presets */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <span className="text-[10px] text-slate-400">Quick Presets:</span>
+                      {COVER_PRESETS.map((p, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setEditingPost((prev) => (prev ? { ...prev, coverImage: p.url } : null))}
+                          className="text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                    {editingPost.coverImage && (
+                      <div className="h-28 w-full rounded-lg overflow-hidden border border-slate-800 mt-2">
+                        <img src={editingPost.coverImage} alt="Cover Preview" className="h-full w-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
@@ -379,6 +470,7 @@ export default function AdminBlogPage() {
                         <option value="GST & Taxes">GST & Taxes</option>
                         <option value="Fintech & Payments">Fintech & Payments</option>
                         <option value="Billing Guides">Billing Guides</option>
+                        <option value="Business Growth">Business Growth</option>
                         <option value="Accounting">Accounting</option>
                         <option value="Product Updates">Product Updates</option>
                       </select>
@@ -399,6 +491,46 @@ export default function AdminBlogPage() {
                               : null
                           )
                         }
+                        className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Author Role
+                      </label>
+                      <Input
+                        value={editingPost.author?.role || ''}
+                        onChange={(e) =>
+                          setEditingPost((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  author: { ...prev.author, role: e.target.value },
+                                }
+                              : null
+                          )
+                        }
+                        placeholder="e.g. Head of Tax Policy"
+                        className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Tags (comma separated)
+                      </label>
+                      <Input
+                        value={editingPost.tags?.join(', ') || ''}
+                        onChange={(e) => {
+                          const tagList = e.target.value
+                            .split(',')
+                            .map((t) => t.trim())
+                            .filter(Boolean);
+                          setEditingPost((prev) => (prev ? { ...prev, tags: tagList } : null));
+                        }}
+                        placeholder="GST, Invoicing, Tax, Fintech"
                         className="bg-slate-950 border-slate-800 text-white text-xs h-9"
                       />
                     </div>
@@ -434,11 +566,106 @@ export default function AdminBlogPage() {
                     />
                   </div>
 
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                      Markdown Content
-                    </label>
+                  {/* Markdown Content with Formatting Toolbar */}
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 pb-1">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Markdown Content & Visual Designer
+                      </label>
+                      {/* Markdown Toolbar */}
+                      <div className="flex flex-wrap items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('## ', '\n')}
+                          title="Heading 2"
+                          className="px-1.5 py-1 text-[11px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          H2
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('### ', '\n')}
+                          title="Heading 3"
+                          className="px-1.5 py-1 text-[11px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          H3
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('**', '**')}
+                          title="Bold Text"
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          <Bold className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('*', '*')}
+                          title="Italic Text"
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          <Italic className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('- ', '\n')}
+                          title="Bullet List"
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          <List className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('1. ', '\n')}
+                          title="Ordered List"
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          <ListOrdered className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('> ', '\n')}
+                          title="Quote / Callout"
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          <Quote className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('```\n', '\n```')}
+                          title="Code Block"
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          <Code className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('| Feature | Description |\n|---|---|\n| Item 1 | Value 1 |\n')}
+                          title="Table"
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          <Table className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('[', '](https://...)')}
+                          title="Link"
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          <Link2 className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown('\n---\n\n')}
+                          title="Divider"
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
                     <textarea
+                      id="blog-content-textarea"
                       value={editingPost.content}
                       onChange={(e) =>
                         setEditingPost((prev) => (prev ? { ...prev, content: e.target.value } : null))
@@ -451,11 +678,29 @@ export default function AdminBlogPage() {
               )}
 
               {activeTab === 'preview' && (
-                <div className="p-6 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 max-h-[500px] overflow-y-auto space-y-4 prose prose-invert max-w-none text-xs">
-                  <h1 className="text-2xl font-bold text-white">{editingPost.title || 'Untitled Post'}</h1>
-                  <p className="text-slate-400 italic">{editingPost.excerpt}</p>
+                <div className="p-6 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 max-h-[550px] overflow-y-auto space-y-4 text-xs">
+                  {editingPost.coverImage && (
+                    <div className="h-44 w-full rounded-xl overflow-hidden border border-slate-800">
+                      <img src={editingPost.coverImage} alt="Cover" className="h-full w-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] bg-primary/20 text-primary border-primary/30">
+                      {editingPost.category}
+                    </Badge>
+                    <span className="text-slate-500">• {editingPost.readingTimeMinutes || 5} min read</span>
+                  </div>
+                  <h1 className="text-2xl font-bold text-white tracking-tight">{editingPost.title || 'Untitled Post'}</h1>
+                  <p className="text-slate-400 italic text-sm">{editingPost.excerpt}</p>
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-800 text-slate-400">
+                    <div className="h-6 w-6 rounded-full bg-primary/30 text-primary flex items-center justify-center font-bold text-[10px]">
+                      {editingPost.author?.name ? editingPost.author.name[0] : 'A'}
+                    </div>
+                    <span>{editingPost.author?.name || 'Author'}</span>
+                    {editingPost.author?.role && <span className="text-slate-600">({editingPost.author.role})</span>}
+                  </div>
                   <hr className="border-slate-800" />
-                  <div className="whitespace-pre-wrap leading-relaxed text-slate-300">
+                  <div className="whitespace-pre-wrap leading-relaxed text-slate-300 font-sans text-xs">
                     {editingPost.content}
                   </div>
                 </div>

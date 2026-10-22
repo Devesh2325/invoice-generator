@@ -8,6 +8,9 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  avatarUrl?: string;
+  phone?: string;
+  timezone?: string;
 }
 
 interface TenantContextType {
@@ -18,6 +21,7 @@ interface TenantContextType {
   tenantCurrency: string;
   isLoading: boolean;
   user: AuthUser | null;
+  updateUser: (updatedUser: Partial<AuthUser>) => void;
   signOut: () => void;
   refreshTenants: () => Promise<void>;
   refreshBrandSettings: () => Promise<void>;
@@ -26,7 +30,10 @@ interface TenantContextType {
 const DEFAULT_DEMO_USER: AuthUser = {
   id: 'usr_demo_01',
   email: 'dmchaturvedi@gmail.com',
-  name: 'Devesh Mani Chaturvedi (Inventory Director)',
+  name: 'Devesh Mani Chaturvedi',
+  phone: '+91 98765 43210',
+  timezone: 'Asia/Kolkata',
+  avatarUrl: '',
 };
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -142,6 +149,17 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [activeTenant, loadBrandForTenant, user?.id]);
 
+  const updateUser = useCallback((patch: Partial<AuthUser>) => {
+    setUser((prev) => {
+      const updated = prev ? { ...prev, ...patch } : { ...DEFAULT_DEMO_USER, ...patch };
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('billcraft_current_user', JSON.stringify(updated));
+        window.dispatchEvent(new Event('billcraft-auth-changed'));
+      }
+      return updated;
+    });
+  }, []);
+
   const signOut = () => {
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('billcraft_current_user');
@@ -151,7 +169,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(null);
     setActiveTenantState(null);
     setBrandSettings(null);
-    window.location.href = '/';
+    window.location.href = '/login';
   };
 
   const tenantCurrency =
@@ -167,6 +185,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
         tenantCurrency,
         isLoading,
         user,
+        updateUser,
         signOut,
         refreshTenants: loadUserAndTenants,
         refreshBrandSettings,

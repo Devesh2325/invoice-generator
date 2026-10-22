@@ -135,6 +135,8 @@ export interface TenantBrandSettings {
   // Payment Configuration (Structured Bank Accounts, UPI, QR Code & Display Controls)
   paymentConfig?: DocumentPaymentConfig;
   whiteLabelEnabled?: boolean;
+  customDomain?: string;
+  isDomainVerified?: boolean;
 }
 
 // 1. Client initialization

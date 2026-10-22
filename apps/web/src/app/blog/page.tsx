@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { BlogApi, SEEDED_BLOG_POSTS } from '@invoice/api';
 import { BlogPost } from '@invoice/core';
@@ -23,6 +23,21 @@ export default function BlogIndexPage() {
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
+
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        setPosts(BlogApi.getPublishedPosts());
+      } catch {}
+    };
+    refresh();
+    window.addEventListener('invoxa-blog-updated', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('invoxa-blog-updated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
 
   const categories = ['all', 'GST & Taxes', 'Fintech & Payments', 'Billing Guides', 'Business Growth'];
 

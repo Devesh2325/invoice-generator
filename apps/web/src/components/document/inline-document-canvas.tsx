@@ -100,9 +100,9 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   const isCenteredHeader = headerLayout === 'center';
   const isBigHeader = headerLayout === 'big';
 
-  const isMonoFont = tpl.font.includes('Mono') || tpl.id === 'dark-tech';
+  const isMonoFont = tpl.font.includes('Mono') || tpl.id === 'dark-tech' || document.customTheme?.fontFamily === 'mono';
   const isSerifFont =
-    tpl.font.includes('Serif') || tpl.id === 'eu-reverse-charge' || tpl.id === 'hk-no-tax';
+    tpl.font.includes('Serif') || tpl.id === 'eu-reverse-charge' || tpl.id === 'hk-no-tax' || document.customTheme?.fontFamily === 'serif';
   const fontClass = isMonoFont ? 'font-mono' : isSerifFont ? 'font-serif' : 'font-sans';
 
   // Card rounding style

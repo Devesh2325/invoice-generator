@@ -35,14 +35,28 @@ import {
   Trash2,
   Save,
   Eye,
+  User,
+  Phone,
+  Clock,
+  Camera,
+  Check,
+  Upload,
 } from 'lucide-react';
 
 export default function TenantSettingsPage() {
-  const { activeTenant, brandSettings, refreshBrandSettings } = useTenant();
+  const { activeTenant, brandSettings, refreshBrandSettings, user, updateUser } = useTenant();
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // 0. User Profile & Account Identity
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [profileEmail, setProfileEmail] = useState(user?.email || '');
+  const [profilePhone, setProfilePhone] = useState(user?.phone || '+91 98765 43210');
+  const [profileTimezone, setProfileTimezone] = useState(user?.timezone || 'Asia/Kolkata');
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState(user?.avatarUrl || '');
+  const [profileSaved, setProfileSaved] = useState(false);
 
   // 1. Currency Configuration
   const [defaultCurrency, setDefaultCurrency] = useState('INR');
@@ -89,6 +103,43 @@ export default function TenantSettingsPage() {
   const [resendApiKey, setResendApiKey] = useState('');
   const [senderEmail, setSenderEmail] = useState('billing@company.com');
   const [emailSaved, setEmailSaved] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      if (user.name) setProfileName(user.name);
+      if (user.email) setProfileEmail(user.email);
+      if (user.phone) setProfilePhone(user.phone);
+      if (user.timezone) setProfileTimezone(user.timezone);
+      if (user.avatarUrl) setProfileAvatarUrl(user.avatarUrl);
+    }
+  }, [user]);
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Avatar image must be under 2 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setProfileAvatarUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = () => {
+    updateUser({
+      name: profileName,
+      phone: profilePhone,
+      timezone: profileTimezone,
+      avatarUrl: profileAvatarUrl,
+    });
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 3000);
+  };
 
   // Hydrate from brandSettings when loaded
   useEffect(() => {
@@ -304,6 +355,12 @@ export default function TenantSettingsPage() {
       });
 
       await refreshBrandSettings();
+      updateUser({
+        name: profileName,
+        phone: profilePhone,
+        timezone: profileTimezone,
+        avatarUrl: profileAvatarUrl,
+      });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3500);
     } catch (err: any) {
@@ -351,6 +408,195 @@ export default function TenantSettingsPage() {
             <span>{validationError}</span>
           </div>
         )}
+
+        {/* 0. User Profile & Account Identity */}
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                  <User className="h-4 w-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    User Profile & Account Identity
+                  </CardTitle>
+                  <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
+                    Set your display name, personal avatar, contact mobile number, and local timezone.
+                  </CardDescription>
+                </div>
+              </div>
+              {profileSaved && (
+                <Badge variant="success" className="text-xs flex items-center gap-1 font-semibold">
+                  <Check className="h-3.5 w-3.5" /> Profile Updated
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 space-y-6">
+            {/* Avatar Row */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-4">
+                <div className="relative group">
+                  {profileAvatarUrl ? (
+                    <img
+                      src={profileAvatarUrl}
+                      alt={profileName || 'User Avatar'}
+                      className="h-16 w-16 rounded-full object-cover border-2 border-indigo-600 shadow-sm"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-white font-extrabold text-xl flex items-center justify-center shadow-md">
+                      {profileName ? profileName.slice(0, 2).toUpperCase() : 'DM'}
+                    </div>
+                  )}
+                  <label className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity text-white">
+                    <Camera className="h-5 w-5" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100">Profile Photo & Avatar</div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Displayed on sidebar, notifications, team comments, and invoice audit trails.
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                      <Upload className="h-3 w-3" />
+                      <span>Upload Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarFileChange}
+                        className="hidden"
+                      />
+                    </label>
+                    {profileAvatarUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setProfileAvatarUrl('')}
+                        className="text-[11px] h-7 px-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                      >
+                        Reset to Initials
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Fast Avatar Presets */}
+              <div className="flex flex-col sm:items-end gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Presets</span>
+                <div className="flex items-center gap-1.5">
+                  {[
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
+                  ].map((presetUrl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setProfileAvatarUrl(presetUrl)}
+                      className={`h-8 w-8 rounded-full overflow-hidden border-2 transition-transform hover:scale-110 ${
+                        profileAvatarUrl === presetUrl ? 'border-primary ring-2 ring-primary/30' : 'border-slate-300 dark:border-slate-700'
+                      }`}
+                    >
+                      <img src={presetUrl} alt="Preset Avatar" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Profile Fields Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Full Name */}
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  Full Name *
+                </label>
+                <Input
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="e.g. Devesh Mani Chaturvedi"
+                  className="text-xs bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              {/* Email Address */}
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  Email Address (Primary Account)
+                </label>
+                <Input
+                  value={profileEmail}
+                  disabled
+                  className="text-xs bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 cursor-not-allowed"
+                />
+              </div>
+
+              {/* Mobile Number */}
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>Mobile / Phone Number *</span>
+                </label>
+                <Input
+                  value={profilePhone}
+                  onChange={(e) => setProfilePhone(e.target.value)}
+                  placeholder="+91 98765 43210 or +1 (555) 019-2834"
+                  className="text-xs bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
+                />
+              </div>
+
+              {/* Timezone */}
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>Account Timezone *</span>
+                </label>
+                <select
+                  value={profileTimezone}
+                  onChange={(e) => setProfileTimezone(e.target.value)}
+                  className="w-full text-xs border border-slate-200 dark:border-slate-800 rounded-md p-2 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 h-9"
+                >
+                  <option value="Asia/Kolkata">Asia/Kolkata (IST - UTC+05:30) - India</option>
+                  <option value="Asia/Dubai">Asia/Dubai (GST - UTC+04:00) - UAE</option>
+                  <option value="Asia/Singapore">Asia/Singapore (SGT - UTC+08:00) - Singapore</option>
+                  <option value="Asia/Tokyo">Asia/Tokyo (JST - UTC+09:00) - Japan</option>
+                  <option value="America/New_York">America/New_York (EST/EDT - UTC-05:00) - US East</option>
+                  <option value="America/Chicago">America/Chicago (CST/CDT - UTC-06:00) - US Central</option>
+                  <option value="America/Denver">America/Denver (MST/MDT - UTC-07:00) - US Mountain</option>
+                  <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT - UTC-08:00) - US Pacific</option>
+                  <option value="Europe/London">Europe/London (GMT/BST - UTC+00:00) - United Kingdom</option>
+                  <option value="Europe/Paris">Europe/Paris (CET/CEST - UTC+01:00) - Western Europe</option>
+                  <option value="Europe/Berlin">Europe/Berlin (CET/CEST - UTC+01:00) - Germany</option>
+                  <option value="Australia/Sydney">Australia/Sydney (AEST - UTC+10:00) - Australia</option>
+                  <option value="UTC">UTC (Coordinated Universal Time)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveProfile}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 shadow-2xs"
+              >
+                <Save className="h-3.5 w-3.5 mr-1.5" /> Save Profile Details
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 1. Currency Configuration */}
         <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">

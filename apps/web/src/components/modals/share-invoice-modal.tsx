@@ -164,13 +164,6 @@ export const ShareInvoiceModal: React.FC<ShareInvoiceModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="text-muted-foreground hover:text-foreground p-1 rounded-lg"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
 
         {/* Public Share Link Box */}
@@ -285,7 +278,12 @@ export const ShareInvoiceModal: React.FC<ShareInvoiceModalProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onPrint}
+                onClick={() => {
+                  onOpenChange(false);
+                  setTimeout(() => {
+                    onPrint();
+                  }, 250);
+                }}
                 className="text-xs font-semibold"
               >
                 <Printer className="h-3.5 w-3.5 mr-1" /> Print

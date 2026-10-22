@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
 import { BlogApi, SEEDED_BLOG_POSTS } from '@invoice/api';
-import { APP_CONFIG } from '@invoice/core';
+import { APP_CONFIG, BlogPost } from '@invoice/core';
 import { PublicHeader } from '@/components/layout/public-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,12 +24,28 @@ export default function BlogPostPage() {
   const params = useParams();
   const slug = Array.isArray(params.slug) ? params.slug[0] : (params.slug as string);
 
-  const post = useMemo(() => {
+  const [post, setPost] = useState<BlogPost | undefined>(() => {
     try {
       return BlogApi.getPostBySlug(slug) || SEEDED_BLOG_POSTS.find((p) => p.slug === slug);
     } catch {
       return SEEDED_BLOG_POSTS.find((p) => p.slug === slug);
     }
+  });
+
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        const found = BlogApi.getPostBySlug(slug) || SEEDED_BLOG_POSTS.find((p) => p.slug === slug);
+        if (found) setPost(found);
+      } catch {}
+    };
+    refresh();
+    window.addEventListener('invoxa-blog-updated', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('invoxa-blog-updated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
   }, [slug]);
 
   if (!post) {
@@ -82,15 +98,34 @@ export default function BlogPostPage() {
           </p>
 
           <div className="flex items-center gap-3 pt-4 border-t border-border">
-            <div className="h-10 w-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
-              {post.author.name[0]}
-            </div>
+            {post.author.avatarUrl ? (
+              <img
+                src={post.author.avatarUrl}
+                alt={post.author.name}
+                className="h-10 w-10 rounded-full object-cover border border-border"
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
+                {post.author.name[0]}
+              </div>
+            )}
             <div className="text-left text-xs">
               <div className="font-bold text-foreground">{post.author.name}</div>
               <div className="text-muted-foreground">{post.author.role}</div>
             </div>
           </div>
         </div>
+
+        {/* Cover Image */}
+        {post.coverImage && (
+          <div className="rounded-2xl overflow-hidden border border-border shadow-md max-h-[420px]">
+            <img
+              src={post.coverImage}
+              alt={post.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
 
         {/* Article Body */}
         <article className="prose dark:prose-invert max-w-none text-sm text-foreground/90 leading-relaxed space-y-6 border-y border-border py-8">

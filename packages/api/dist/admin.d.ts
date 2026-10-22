@@ -26,6 +26,8 @@ export declare class AdminApi {
     static updatePlan(planId: PlanId, limits: Partial<PlanLimits>): boolean;
     static getTemplates(): AdminTemplateSetting[];
     static updateTemplate(templateId: string, patch: Partial<AdminTemplateSetting>): boolean;
+    static saveTemplate(tpl: AdminTemplateSetting): AdminTemplateSetting;
+    static deleteTemplate(templateId: string): boolean;
     static getTeams(): AdminTeam[];
     static createTeam(params: {
         name: string;
