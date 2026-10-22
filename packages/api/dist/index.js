@@ -151,8 +151,16 @@ export const TenantApi = {
                     }
                     catch { }
                 }
-                const userTenants = all.filter((t) => t.ownerUserId === userId ||
-                    (currentUserEmail && t.ownerUserId?.toLowerCase() === currentUserEmail));
+                const userTenants = all
+                    .filter((t) => t.ownerUserId === userId ||
+                    (currentUserEmail && t.ownerUserId?.toLowerCase() === currentUserEmail))
+                    .map((t) => {
+                    const storedPlan = getLocalStore(`billcraft_tenant_plan_${t.id}`, null);
+                    return {
+                        ...t,
+                        plan: t.plan || storedPlan || 'starter',
+                    };
+                });
                 return userTenants;
             }
             return [];

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTenant } from '@/lib/auth/tenant-context';
+import { TeamApi } from '@invoice/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,11 +19,25 @@ import {
 } from 'lucide-react';
 
 export const PlanBadge: React.FC = () => {
-  const { activeTenant } = useTenant();
+  const { activeTenant, refreshTenants } = useTenant();
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setTick((t) => t + 1);
+      refreshTenants();
+    };
+    window.addEventListener('billcraft-plan-updated', handleUpdate);
+    return () => window.removeEventListener('billcraft-plan-updated', handleUpdate);
+  }, [refreshTenants]);
 
   // Derive active plan
-  const plan = activeTenant?.plan || 'starter';
+  const plan = (
+    activeTenant?.plan ||
+    (activeTenant?.id ? TeamApi.getTenantPlan(activeTenant.id) : null) ||
+    'starter'
+  ).toLowerCase();
 
   // For free/starter users — show an upgrade icon (like Image 5 reference)
   if (plan === 'starter' || !plan) {

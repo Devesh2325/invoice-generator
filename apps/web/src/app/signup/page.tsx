@@ -5,15 +5,17 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { TenantApi } from '@invoice/api';
 import { useTenant } from '@/lib/auth/tenant-context';
+import { useTheme } from '@/lib/theme/theme-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Sparkles, Building, Mail, Lock, User, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Sparkles, Building, Mail, Lock, User, CheckCircle2, AlertCircle, Sun, Moon } from 'lucide-react';
 import { APP_CONFIG } from '@invoice/core';
 
 export default function SignUpPage() {
   const router = useRouter();
   const { refreshTenants } = useTenant();
+  const { theme, toggleTheme } = useTheme();
   const [workspaceName, setWorkspaceName] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -101,29 +103,41 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center items-center p-6 font-sans relative transition-colors">
+      <div className="absolute top-4 right-4">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+          title="Toggle theme"
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-600" />}
+        </button>
+      </div>
+
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 font-black text-2xl text-primary tracking-tight">
             <Sparkles className="h-6 w-6 text-primary" />
             <span>{APP_CONFIG.brandName}</span>
           </Link>
-          <h2 className="text-xl font-bold text-slate-900">Create your Business Workspace</h2>
-          <p className="text-xs text-slate-500">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Create your Business Workspace</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Set up isolated multi-tenant GST & financial billing for your company
           </p>
         </div>
 
-        <Card className="border-slate-200 shadow-lg">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-bold">Workspace Registration</CardTitle>
-            <CardDescription className="text-xs">
+            <CardTitle className="text-base font-bold text-slate-900 dark:text-slate-100">Workspace Registration</CardTitle>
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
               Fill in your details to create your dedicated, private workspace
             </CardDescription>
           </CardHeader>
           <CardContent>
             {errorMsg && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -131,67 +145,67 @@ export default function SignUpPage() {
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Company / Business Name
                 </label>
                 <div className="relative">
-                  <Building className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <Building className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     required
                     value={workspaceName}
                     onChange={(e) => setWorkspaceName(e.target.value)}
-                    className="pl-9 text-xs"
+                    className="pl-9 text-xs bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     placeholder="e.g. Sharma Enterprises Pvt Ltd"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Your Full Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="pl-9 text-xs"
+                    className="pl-9 text-xs bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     placeholder="e.g. Rahul Sharma"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Work Email
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 text-xs"
+                    className="pl-9 text-xs bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     placeholder="rahul@company.in"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Password (min. 6 characters)
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     type="password"
                     required
                     minLength={6}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9 text-xs"
+                    className="pl-9 text-xs bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     placeholder="••••••••"
                   />
                 </div>
@@ -215,7 +229,7 @@ export default function SignUpPage() {
           </CardContent>
         </Card>
 
-        <div className="text-center text-xs text-slate-500">
+        <div className="text-center text-xs text-slate-500 dark:text-slate-400">
           Already have an account?{' '}
           <Link href="/login" className="font-semibold text-primary hover:underline">
             Sign in

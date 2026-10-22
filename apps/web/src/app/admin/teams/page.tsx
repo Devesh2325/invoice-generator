@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AdminApi } from '@invoice/api';
+import { AdminApi, TeamApi, TenantApi } from '@invoice/api';
 import { AdminTeam, PlanId, APP_CONFIG } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,8 +95,14 @@ export default function AdminTeamsPage() {
     });
   };
 
-  const handleChangePlan = (teamId: string, newPlanChoice: PlanId) => {
+  const handleChangePlan = async (teamId: string, newPlanChoice: PlanId) => {
     AdminApi.updateTeam(teamId, { plan: newPlanChoice });
+    TeamApi.updateTenantPlan(teamId, newPlanChoice);
+    await TenantApi.updateTenant(teamId, { plan: newPlanChoice });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('billcraft-plan-updated'));
+      window.dispatchEvent(new Event('billcraft-auth-updated'));
+    }
     loadTeams();
     toast({
       title: 'Workspace Plan Changed',
@@ -147,6 +153,13 @@ export default function AdminTeamsPage() {
       logoUrl: editLogoUrl.trim(),
       ...(editOwnerPassword.trim() && { ownerPassword: editOwnerPassword.trim() }),
     });
+
+    TeamApi.updateTenantPlan(editingTeamId, editPlan);
+    TenantApi.updateTenant(editingTeamId, { plan: editPlan });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('billcraft-plan-updated'));
+      window.dispatchEvent(new Event('billcraft-auth-updated'));
+    }
 
     loadTeams();
     setEditModalOpen(false);

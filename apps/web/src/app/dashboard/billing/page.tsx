@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
-import { TeamApi } from '@invoice/api';
+import { TeamApi, TenantApi } from '@invoice/api';
 import { PlanId, PLANS } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,32 +20,90 @@ import {
 } from 'lucide-react';
 
 export default function BillingPage() {
-  const { activeTenant } = useTenant();
+  const { activeTenant, refreshTenants } = useTenant();
   const tenantId = activeTenant?.id || 'default_tenant';
 
-  const [currentPlanId, setCurrentPlanId] = useState<PlanId>('starter');
+  const getResolvedPlan = useCallback((): PlanId => {
+    if (activeTenant?.plan && ['starter', 'pro', 'enterprise'].includes(activeTenant.plan.toLowerCase())) {
+      return activeTenant.plan.toLowerCase() as PlanId;
+    }
+    if (tenantId && tenantId !== 'default_tenant') {
+      const fromTeam = TeamApi.getTenantPlan(tenantId);
+      if (fromTeam && ['starter', 'pro', 'enterprise'].includes(fromTeam)) {
+        return fromTeam;
+      }
+    }
+    return 'starter';
+  }, [activeTenant?.plan, tenantId]);
+
+  const [currentPlanId, setCurrentPlanId] = useState<PlanId>(getResolvedPlan);
   const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [upgrading, setUpgrading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    setCurrentPlanId(TeamApi.getTenantPlan(tenantId));
-  }, [tenantId]);
+    setCurrentPlanId(getResolvedPlan());
+  }, [getResolvedPlan]);
 
-  const currentPlan = PLANS[currentPlanId];
+  useEffect(() => {
+    const handlePlanUpdate = () => {
+      setCurrentPlanId(getResolvedPlan());
+    };
+    window.addEventListener('billcraft-plan-updated', handlePlanUpdate);
+    window.addEventListener('billcraft-auth-updated', handlePlanUpdate);
+    return () => {
+      window.removeEventListener('billcraft-plan-updated', handlePlanUpdate);
+      window.removeEventListener('billcraft-auth-updated', handlePlanUpdate);
+    };
+  }, [getResolvedPlan]);
+
+  const currentPlan = PLANS[currentPlanId] || PLANS.starter;
   const members = TeamApi.getMembers(tenantId);
 
-  const handleSwitchPlan = (newPlan: PlanId) => {
+  const handleSwitchPlan = async (newPlan: PlanId) => {
     if (newPlan === currentPlanId) return;
     setUpgrading(true);
 
-    setTimeout(() => {
+    try {
+      // 1. Sync TeamApi storage
       TeamApi.updateTenantPlan(tenantId, newPlan);
+
+      // 2. Sync TenantApi database/localStorage
+      await TenantApi.updateTenant(tenantId, { plan: newPlan });
+
+      // 3. Sync Admin teams table
+      if (typeof window !== 'undefined') {
+        try {
+          const teamsRaw = localStorage.getItem('billcraft_admin_teams');
+          if (teamsRaw) {
+            const teams = JSON.parse(teamsRaw);
+            const updatedTeams = teams.map((t: any) =>
+              t.id === tenantId ? { ...t, plan: newPlan } : t
+            );
+            localStorage.setItem('billcraft_admin_teams', JSON.stringify(updatedTeams));
+          }
+        } catch {}
+      }
+
+      // 4. Update immediate local state
       setCurrentPlanId(newPlan);
-      setUpgrading(false);
-      setSuccessMsg(`Workspace upgraded to ${PLANS[newPlan].name} plan!`);
+
+      // 5. Refresh tenant context
+      await refreshTenants();
+
+      // 6. Broadcast event to header PlanBadge and all listeners
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('billcraft-plan-updated'));
+        window.dispatchEvent(new Event('billcraft-auth-updated'));
+      }
+
+      setSuccessMsg(`Workspace successfully upgraded to ${PLANS[newPlan].name} plan!`);
       setTimeout(() => setSuccessMsg(null), 3500);
-    }, 400);
+    } catch (err) {
+      console.error('Plan upgrade error:', err);
+    } finally {
+      setUpgrading(false);
+    }
   };
 
   const invoiceHistory = [
@@ -243,7 +301,11 @@ export default function BillingPage() {
                     disabled={isCurrent || upgrading}
                     onClick={() => handleSwitchPlan(pid)}
                     variant={isCurrent ? 'outline' : 'default'}
-                    className="w-full text-xs font-bold"
+                    className={`w-full text-xs font-bold transition-all ${
+                      isCurrent
+                        ? 'border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 cursor-default'
+                        : 'bg-primary hover:bg-primary-hover text-white shadow-sm font-extrabold'
+                    }`}
                   >
                     {isCurrent ? 'Current Plan' : upgrading ? 'Updating...' : `Select ${p.name}`}
                   </Button>

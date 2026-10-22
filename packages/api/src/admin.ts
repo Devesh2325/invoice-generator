@@ -613,6 +613,14 @@ export class AdminApi {
     if (typeof window !== "undefined") {
       localStorage.setItem("billcraft_admin_teams", JSON.stringify(updated));
 
+      if (patch.plan) {
+        try {
+          localStorage.setItem(`billcraft_tenant_plan_${teamId}`, patch.plan);
+          window.dispatchEvent(new Event("billcraft-plan-updated"));
+          window.dispatchEvent(new Event("billcraft-auth-updated"));
+        } catch {}
+      }
+
       // Sync custom tenants
       try {
         const existingTenantsRaw = localStorage.getItem(
