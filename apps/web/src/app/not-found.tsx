@@ -42,9 +42,9 @@ export default function NotFound() {
               <ArrowLeft className="h-4 w-4 mr-1.5" /> Go to Dashboard
             </Button>
           </Link>
-          <Link href="/demo">
-            <Button variant="outline" size="sm" className="font-semibold text-indigo-600 border-indigo-200 dark:border-indigo-800">
-              Try Interactive Demo
+          <Link href="/features">
+            <Button variant="outline" size="sm" className="font-semibold">
+              Browse Features
             </Button>
           </Link>
           <Link href="/">

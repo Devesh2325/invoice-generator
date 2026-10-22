@@ -205,11 +205,6 @@ export default function TemplateGalleryPage() {
                 Compare All Plans
               </Button>
             </Link>
-            <Link href="/demo">
-              <Button variant="ghost" size="sm" className="font-bold text-xs text-indigo-600">
-                Try Interactive Demo
-              </Button>
-            </Link>
           </div>
         </div>
       </main>

@@ -237,7 +237,7 @@ export default function PricingPage() {
         <div className="p-8 sm:p-10 rounded-3xl bg-muted/30 border border-border text-center space-y-4">
           <h2 className="text-2xl font-black text-foreground">Start with 7 free invoices today</h2>
           <p className="text-xs text-muted-foreground max-w-md mx-auto">
-            No credit card required. Generate tax invoices, track inventory, or test the interactive demo right now.
+            No credit card required. Generate tax invoices, track inventory, or manage clients with zero hidden fees.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/create">
@@ -245,9 +245,9 @@ export default function PricingPage() {
                 <FilePlus className="w-3.5 h-3.5 mr-1.5" /> Start Free Invoicing
               </Button>
             </Link>
-            <Link href="/demo">
-              <Button variant="outline" size="sm" className="font-bold text-xs text-indigo-600 border-indigo-200 dark:border-indigo-800">
-                Launch Sandbox Demo
+            <Link href="/templates">
+              <Button variant="outline" size="sm" className="font-bold text-xs">
+                Browse Templates
               </Button>
             </Link>
           </div>

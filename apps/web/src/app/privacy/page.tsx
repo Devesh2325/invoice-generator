@@ -55,9 +55,9 @@ export default function PrivacyPage() {
                 <FilePlus className="w-3.5 h-3.5 mr-1.5" /> Start Free Invoicing
               </Button>
             </Link>
-            <Link href="/demo">
+            <Link href="/features">
               <Button variant="outline" size="sm" className="font-bold text-xs">
-                Interactive Sandbox Demo
+                Explore Features
               </Button>
             </Link>
             <Link href="/pricing">

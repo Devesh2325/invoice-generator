@@ -71,7 +71,7 @@ export default function AboutPage() {
         <div className="p-8 sm:p-10 rounded-3xl bg-primary/5 border border-primary/20 text-center space-y-5">
           <h2 className="text-2xl font-black text-foreground">Ready to elevate your financial operations?</h2>
           <p className="text-xs text-muted-foreground max-w-md mx-auto">
-            Generate your first verified invoice in seconds or explore our isolated interactive sandbox.
+            Generate your first verified invoice in seconds with full GST compliance and zero fees.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/create">
@@ -79,13 +79,8 @@ export default function AboutPage() {
                 <FilePlus className="w-4 h-4 mr-1.5" /> Create Invoice Free
               </Button>
             </Link>
-            <Link href="/demo">
-              <Button variant="outline" size="sm" className="font-bold text-xs text-indigo-600 border-indigo-200 dark:border-indigo-800">
-                Explore Interactive Demo
-              </Button>
-            </Link>
             <Link href="/pricing">
-              <Button variant="ghost" size="sm" className="font-bold text-xs">
+              <Button variant="outline" size="sm" className="font-bold text-xs">
                 View Pricing & Plans
               </Button>
             </Link>

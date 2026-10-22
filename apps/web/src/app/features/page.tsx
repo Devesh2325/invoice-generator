@@ -136,7 +136,7 @@ export default function FeaturesPage() {
             Experience the {APP_CONFIG.brandName} Difference
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto">
-            Test the live generator in your browser or explore the interactive sandbox demo.
+            Create your first professional invoice in seconds with full GST compliance and zero fees.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="/create">
@@ -144,13 +144,8 @@ export default function FeaturesPage() {
                 <FilePlus className="w-4 h-4 mr-1.5" /> Open Invoice Studio Free
               </Button>
             </Link>
-            <Link href="/demo">
-              <Button size="lg" variant="outline" className="text-xs font-bold px-6 text-indigo-600 border-indigo-200 dark:border-indigo-800">
-                Explore Interactive Demo
-              </Button>
-            </Link>
             <Link href="/pricing">
-              <Button size="lg" variant="ghost" className="text-xs font-bold px-6">
+              <Button size="lg" variant="outline" className="text-xs font-bold px-6">
                 Compare Plans
               </Button>
             </Link>

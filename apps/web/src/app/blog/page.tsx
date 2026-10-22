@@ -195,9 +195,9 @@ export default function BlogIndexPage() {
                 <FilePlus className="w-3.5 h-3.5 mr-1.5" /> Create Invoice Free
               </Button>
             </Link>
-            <Link href="/demo">
-              <Button variant="outline" size="sm" className="font-bold text-xs text-indigo-600 border-indigo-200 dark:border-indigo-800">
-                Interactive Sandbox Demo
+            <Link href="/templates">
+              <Button variant="outline" size="sm" className="font-bold text-xs">
+                Browse Templates
               </Button>
             </Link>
           </div>
