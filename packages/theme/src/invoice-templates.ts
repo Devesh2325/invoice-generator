@@ -440,13 +440,27 @@ export const INVOICE_TEMPLATES: TemplatePreset[] = [
     supplyTitle: 'No sales tax / VAT applies',
     supplyFields: ['Place of supply'],
   }),
+  T('modern', 'Modern Clean', 'GLOBAL', {
+    ...gf('Inter'),
+    currency: '$',
+    taxLabel: 'Tax',
+    taxRate: 0,
+    taxIdLabel: 'Tax ID',
+    title: 'Invoice',
+    routingLabel: 'IBAN / SWIFT',
+    header: 'left',
+    card: 'round',
+    tableHead: 'tint',
+    accent: '#2563eb',
+    supplyTitle: '',
+    supplyFields: ['Place of supply'],
+  }),
 ];
 
 const ALIAS_MAP: Record<string, string> = {
   cleartax_gst: 'in-gst',
   tally_prime: 'in-gst',
   vyapar_classic: 'in-gst',
-  modern: 'in-gst',
   stripe_fintech: 'dark-tech',
   stripe_clean: 'dark-tech',
   classic: 'eu-reverse-charge',

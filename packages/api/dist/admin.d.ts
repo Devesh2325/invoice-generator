@@ -22,6 +22,7 @@ export declare class AdminApi {
     static updateUser(userId: string, patch: Partial<AdminUser>): boolean;
     static banUser(userId: string): boolean;
     static unbanUser(userId: string): boolean;
+    static deleteUser(userIdOrEmail: string): boolean;
     static getPlans(): Record<PlanId, PlanLimits>;
     static updatePlan(planId: PlanId, limits: Partial<PlanLimits>): boolean;
     static getTemplates(): AdminTemplateSetting[];

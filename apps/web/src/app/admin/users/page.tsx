@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Search, Ban, CheckCircle, UserCheck, Shield, Users, UserCog } from 'lucide-react';
+import { Search, Ban, CheckCircle, UserCheck, Shield, Users, UserCog, Trash2 } from 'lucide-react';
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -38,6 +38,31 @@ export default function AdminUsersPage() {
       AdminApi.unbanUser(user.id);
     }
     loadUsers();
+  };
+
+  const handleDeleteUser = (u: AdminUser) => {
+    if (typeof window === 'undefined') return;
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete user "${u.name}" (${u.email})?\n\nThis will remove their registered account, active session, and custom workspace data. This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    const ok = AdminApi.deleteUser(u.id);
+    AdminApi.deleteUser(u.email);
+
+    if (ok) {
+      toast({
+        title: 'User Deleted',
+        description: `Account for ${u.email} has been permanently deleted.`,
+      });
+      loadUsers();
+    } else {
+      toast({
+        title: 'Error Deleting User',
+        description: 'Failed to delete user account.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleImpersonate = (u: AdminUser) => {
@@ -216,16 +241,16 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="py-3 px-4 text-slate-400">{u.createdAt}</td>
                   <td className="py-3 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1.5">
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => handleToggleBan(u)}
                         className={`text-xs h-7 px-2 ${
-                          u.status === 'active' ? 'text-rose-400 hover:text-rose-300' : 'text-emerald-400'
+                          u.status === 'active' ? 'text-slate-400 hover:text-amber-400' : 'text-emerald-400'
                         }`}
                       >
-                        {u.status === 'active' ? 'Ban User' : 'Unban'}
+                        {u.status === 'active' ? 'Ban' : 'Unban'}
                       </Button>
                       <Button
                         size="sm"
@@ -235,6 +260,15 @@ export default function AdminUsersPage() {
                         title={`Impersonate ${u.name} and view dashboard`}
                       >
                         <UserCog className="h-3 w-3" /> Impersonate
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteUser(u)}
+                        className="text-xs text-rose-500 hover:text-rose-400 hover:bg-rose-950/30 h-7 px-2 font-semibold flex items-center gap-1"
+                        title={`Permanently delete ${u.name} (${u.email})`}
+                      >
+                        <Trash2 className="h-3 w-3" /> Delete
                       </Button>
                     </div>
                   </td>

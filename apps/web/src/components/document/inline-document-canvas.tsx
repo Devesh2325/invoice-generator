@@ -103,7 +103,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
         tplId === 'cleartax_gst' ||
         tplId === 'in-gst' ||
         tplId === 'tally_prime' ||
-        tplId === 'vyapar_classic')
+        tplId === 'vyapar_classic' ||
+        tplId === 'zoho_gst')
     ) {
       tplId = taxProfile.defaultTemplateId;
     }
@@ -144,13 +145,13 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
 
   const effectiveTaxIdLabel = isIndiaGst
     ? 'GSTIN'
-    : (tpl.id === 'in-gst' ? taxProfile.taxIdLabel : (tpl.taxIdLabel || taxProfile.taxIdLabel));
+    : (taxProfile.taxIdLabel || (tpl.id === 'in-gst' ? 'Tax ID' : (tpl.taxIdLabel || 'Tax ID')));
   const effectiveTaxLabel = isIndiaGst
     ? 'GST'
-    : (tpl.id === 'in-gst' ? taxProfile.taxLabel : (tpl.taxLabel || taxProfile.taxLabel));
+    : (taxProfile.taxLabel || (tpl.id === 'in-gst' ? 'Tax' : (tpl.taxLabel || 'Tax')));
   const effectiveRoutingLabel = isIndiaGst
     ? 'IFSC'
-    : (tpl.id === 'in-gst' ? taxProfile.routingLabel : (tpl.routingLabel || taxProfile.routingLabel));
+    : (taxProfile.routingLabel || (tpl.id === 'in-gst' ? 'IBAN / SWIFT' : (tpl.routingLabel || 'IBAN / SWIFT')));
 
   const summary = document.summary;
   const isInterState = isIndiaGst && summary.gstSupplyType === 'inter';
@@ -277,7 +278,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
 
   return (
     <div
-      className={`shadow-2xl overflow-hidden max-w-4xl mx-auto ${fontClass} relative transition-all border`}
+      id="invoice-document-capture"
+      className={`shadow-2xl overflow-hidden max-w-4xl mx-auto ${fontClass} relative transition-all border print:shadow-none print:border-none print:m-0 print:w-full print:max-w-none print:rounded-none canvas-print-target`}
       style={{
         backgroundColor: paperColor,
         color: textColor,
@@ -1047,7 +1049,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
               >
                 <div className="space-y-2 text-xs">
                   <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: mutedTextColor }}>
-                    {tpl.supplyTitle || 'Tax & Supply Determination'}
+                    {isIndiaGst ? (tpl.supplyTitle || 'Tax & Supply Determination') : `${taxProfile.taxLabel} Tax & Regulatory Standard`}
                   </span>
                   <div className="p-2.5 rounded-lg border space-y-1.5" style={{ backgroundColor: paperColor, borderColor }}>
                     {isIndiaGst ? (
@@ -1074,15 +1076,21 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       <>
                         <div className="flex justify-between">
                           <span style={{ color: mutedTextColor }}>Tax Rule:</span>
-                          <span className="font-bold">{tpl.taxLabel} Standard ({tpl.taxRate}%)</span>
+                          <span className="font-bold">
+                            {taxProfile.taxLabel} Standard ({taxProfile.defaultTaxRate}%)
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span style={{ color: mutedTextColor }}>Jurisdiction:</span>
-                          <span className="font-bold">{tpl.region} Standards</span>
+                          <span className="font-bold">{taxProfile.defaultCountry} Standards</span>
                         </div>
-                        {tpl.note && (
+                        <div className="flex justify-between">
+                          <span style={{ color: mutedTextColor }}>Billing Region:</span>
+                          <span className="font-bold">{document.client.billingAddress?.country || taxProfile.defaultCountry}</span>
+                        </div>
+                        {taxProfile.defaultNotes && (
                           <div className="pt-1 border-t text-[10px]" style={{ borderColor, color: mutedTextColor }}>
-                            {tpl.note}
+                            {taxProfile.defaultCountry} Standard Compliance
                           </div>
                         )}
                       </>

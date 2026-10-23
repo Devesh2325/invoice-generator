@@ -120,37 +120,58 @@ export class AdminApi {
             return [];
         try {
             const stored = localStorage.getItem("billcraft_admin_users");
+            let adminUsers = [];
             if (stored) {
                 const parsed = JSON.parse(stored);
                 if (Array.isArray(parsed))
-                    return parsed;
+                    adminUsers = parsed;
             }
-            // Also check registered users
+            // Also merge registered users
             const regRaw = localStorage.getItem("billcraft_registered_users");
             if (regRaw) {
                 const registered = JSON.parse(regRaw);
                 if (Array.isArray(registered) && registered.length > 0) {
-                    const mapped = registered.map((u) => ({
-                        id: u.id || `usr_${Date.now()}`,
-                        email: u.email,
-                        name: u.name || "User",
-                        plan: u.plan || "starter",
-                        status: "active",
-                        createdAt: u.createdAt || new Date().toISOString().split("T")[0],
-                        invoicesCount: u.invoicesCount || 0,
-                    }));
-                    return mapped;
+                    registered.forEach((u) => {
+                        const exists = adminUsers.some((au) => au.id === u.id ||
+                            (au.email && au.email.toLowerCase() === (u.email || "").toLowerCase()));
+                        if (!exists) {
+                            adminUsers.push({
+                                id: u.id || `usr_${Date.now()}`,
+                                email: u.email,
+                                name: u.name || "User",
+                                plan: u.plan || "starter",
+                                status: "active",
+                                createdAt: u.createdAt || new Date().toISOString().split("T")[0],
+                                invoicesCount: u.invoicesCount || 0,
+                            });
+                        }
+                    });
                 }
             }
+            return adminUsers;
         }
         catch { }
         return [];
     }
     static updateUser(userId, patch) {
         const users = this.getUsers();
-        const updated = users.map((u) => u.id === userId ? { ...u, ...patch } : u);
+        const updated = users.map((u) => u.id === userId || (patch.email && u.email === patch.email)
+            ? { ...u, ...patch }
+            : u);
         if (typeof window !== "undefined") {
             localStorage.setItem("billcraft_admin_users", JSON.stringify(updated));
+            // Also update registered users if present
+            try {
+                const regRaw = localStorage.getItem("billcraft_registered_users");
+                if (regRaw) {
+                    const registered = JSON.parse(regRaw);
+                    if (Array.isArray(registered)) {
+                        const regUpdated = registered.map((u) => u.id === userId ? { ...u, ...patch } : u);
+                        localStorage.setItem("billcraft_registered_users", JSON.stringify(regUpdated));
+                    }
+                }
+            }
+            catch { }
             this.recordAuditLog("UPDATE_USER", `User #${userId}`, "Super Admin");
         }
         return true;
@@ -160,6 +181,63 @@ export class AdminApi {
     }
     static unbanUser(userId) {
         return this.updateUser(userId, { status: "active" });
+    }
+    static deleteUser(userIdOrEmail) {
+        if (typeof window === "undefined")
+            return false;
+        try {
+            const target = (userIdOrEmail || "").trim().toLowerCase();
+            if (!target)
+                return false;
+            // 1. Remove from billcraft_admin_users
+            const adminUsers = this.getUsers().filter((u) => (u.id || "").toLowerCase() !== target &&
+                (u.email || "").toLowerCase() !== target);
+            localStorage.setItem("billcraft_admin_users", JSON.stringify(adminUsers));
+            // 2. Remove from billcraft_registered_users
+            try {
+                const regRaw = localStorage.getItem("billcraft_registered_users");
+                if (regRaw) {
+                    const registered = JSON.parse(regRaw);
+                    if (Array.isArray(registered)) {
+                        const filtered = registered.filter((u) => (u.id || "").toLowerCase() !== target &&
+                            (u.email || "").toLowerCase() !== target);
+                        localStorage.setItem("billcraft_registered_users", JSON.stringify(filtered));
+                    }
+                }
+            }
+            catch { }
+            // 3. Remove custom tenants associated with this user
+            try {
+                const tenantsRaw = localStorage.getItem("billcraft_custom_tenants");
+                if (tenantsRaw) {
+                    const tenants = JSON.parse(tenantsRaw);
+                    if (Array.isArray(tenants)) {
+                        const filteredTenants = tenants.filter((t) => (t.ownerUserId || "").toLowerCase() !== target &&
+                            (t.id || "").toLowerCase() !== `tenant_${target}`);
+                        localStorage.setItem("billcraft_custom_tenants", JSON.stringify(filteredTenants));
+                    }
+                }
+            }
+            catch { }
+            // 4. Clear impersonation session if active for this user
+            try {
+                const impTargetRaw = localStorage.getItem("billcraft_impersonated_target");
+                if (impTargetRaw) {
+                    const imp = JSON.parse(impTargetRaw);
+                    if ((imp.id || "").toLowerCase() === target ||
+                        (imp.email || "").toLowerCase() === target) {
+                        localStorage.removeItem("billcraft_impersonated_target");
+                        localStorage.removeItem("billcraft_is_impersonating");
+                    }
+                }
+            }
+            catch { }
+            this.recordAuditLog("DELETE_USER", `User: ${userIdOrEmail}`, "Super Admin");
+            return true;
+        }
+        catch {
+            return false;
+        }
     }
     // Plans Management
     static getPlans() {

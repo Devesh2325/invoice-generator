@@ -188,10 +188,63 @@ export function getCurrencyTaxProfile(currencyCode: string = 'INR'): CurrencyTax
         defaultTerms: 'Net 30 Days',
         defaultNotes: '1. Payment is due within 30 days of invoice date.',
       };
-    case 'INR':
-    default:
+    case 'KWD':
       return {
-        currency: code,
+        currency: 'KWD',
+        taxLabel: 'Tax',
+        taxIdLabel: 'Civil ID / Tax No.',
+        defaultTaxRate: 0,
+        routingLabel: 'IBAN / SWIFT',
+        defaultCountry: 'Kuwait',
+        defaultState: 'Al Asimah (Kuwait City)',
+        defaultTemplateId: 'hk-no-tax',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'National Bank of Kuwait (NBK)',
+        defaultBankBranch: 'Kuwait City Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.\n2. Please remit payment via bank transfer to the IBAN indicated.',
+      };
+    case 'CHF':
+      return {
+        currency: 'CHF',
+        taxLabel: 'MWST/TVA',
+        taxIdLabel: 'CHE-UID / MWST',
+        defaultTaxRate: 8.1,
+        routingLabel: 'IBAN / BIC',
+        defaultCountry: 'Switzerland',
+        defaultState: 'Zurich',
+        defaultTemplateId: 'ch-sidebar',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'UBS Switzerland AG',
+        defaultBankBranch: 'Zurich Main Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.\n2. Please quote invoice reference in transfer.',
+      };
+    case 'JPY':
+      return {
+        currency: 'JPY',
+        taxLabel: 'Consumption Tax',
+        taxIdLabel: 'Invoice Reg. No. (T+13 digits)',
+        defaultTaxRate: 10,
+        routingLabel: 'Bank Code / Branch',
+        defaultCountry: 'Japan',
+        defaultState: 'Tokyo',
+        defaultTemplateId: 'jp-qualified',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'Mitsubishi UFJ Bank',
+        defaultBankBranch: 'Tokyo Main Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.\n2. 支払期日は請求書発行日から30日以内です。',
+      };
+    case 'INR':
+      return {
+        currency: 'INR',
         taxLabel: 'GST',
         taxIdLabel: 'GSTIN',
         defaultTaxRate: 18,
@@ -199,13 +252,31 @@ export function getCurrencyTaxProfile(currencyCode: string = 'INR'): CurrencyTax
         defaultCountry: 'India',
         defaultState: '27 - Maharashtra',
         defaultTemplateId: 'in-gst',
-        isIndiaGst: code === 'INR',
-        supportsUpi: code === 'INR',
-        supportsHsn: code === 'INR',
-        defaultBankName: 'Demo Bank Ltd',
+        isIndiaGst: true,
+        supportsUpi: true,
+        supportsHsn: true,
+        defaultBankName: 'HDFC Bank Ltd',
         defaultBankBranch: 'Main Branch, Mumbai',
         defaultTerms: 'Net 15 Days',
-        defaultNotes: '1. Payment is due within 15 days of invoice date.\n2. Goods/services once billed are subject to Mumbai jurisdiction.',
+        defaultNotes: '1. Payment is due within 15 days of invoice date.\n2. Goods/services once billed are subject to local jurisdiction.',
+      };
+    default:
+      return {
+        currency: code,
+        taxLabel: 'Tax / VAT',
+        taxIdLabel: 'Tax ID / VAT No.',
+        defaultTaxRate: 0,
+        routingLabel: 'IBAN / SWIFT',
+        defaultCountry: 'International',
+        defaultState: 'General',
+        defaultTemplateId: 'hk-no-tax',
+        isIndiaGst: false,
+        supportsUpi: false,
+        supportsHsn: false,
+        defaultBankName: 'Standard International Bank',
+        defaultBankBranch: 'Main Branch',
+        defaultTerms: 'Net 30 Days',
+        defaultNotes: '1. Payment is due within 30 days of invoice date.\n2. Please quote invoice number in bank transfer reference.',
       };
   }
 }

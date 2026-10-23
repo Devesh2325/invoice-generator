@@ -54,11 +54,12 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
         docTpl === 'cleartax_gst' ||
         docTpl === 'in-gst' ||
         docTpl === 'tally_prime' ||
-        docTpl === 'vyapar_classic')
+        docTpl === 'vyapar_classic' ||
+        docTpl === 'zoho_gst')
     ) {
       return getCurrencyTaxProfile(docCurr).defaultTemplateId;
     }
-    return docTpl || 'in-gst';
+    return docTpl || (docCurr === 'INR' ? 'in-gst' : getCurrencyTaxProfile(docCurr).defaultTemplateId);
   }, [document.templateId, document.currency]);
   const templateMeta = useMemo(() => getInvoiceTemplate(templateId), [templateId]);
 

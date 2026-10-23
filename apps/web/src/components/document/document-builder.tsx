@@ -429,19 +429,26 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     const newProfile = getCurrencyTaxProfile(newCurrency);
     const prevProfile = getCurrencyTaxProfile(currency);
 
-    // If switching between Indian GST (INR) and International (GBP, USD, EUR, etc.)
+    // If switching between Indian GST (INR) and International (GBP, USD, EUR, KWD, etc.)
     if (prevProfile.isIndiaGst && !newProfile.isIndiaGst) {
       // Switching from INR to foreign currency:
-      if (['cleartax_gst', 'tally_prime', 'vyapar_classic', 'in-gst'].includes(templateId)) {
+      if (['cleartax_gst', 'tally_prime', 'vyapar_classic', 'in-gst', 'zoho_gst'].includes(templateId)) {
         setTemplateId(newProfile.defaultTemplateId);
       }
-      if (senderCountry.toLowerCase() === 'india' || !senderCountry) {
+      if (senderCountry.toLowerCase() === 'india' || !senderCountry || senderState.includes('27 - Maharashtra')) {
         setSenderCountry(newProfile.defaultCountry);
         setSenderState(newProfile.defaultState);
       }
-      if (clientCountry.toLowerCase() === 'india' || !clientCountry) {
+      if (clientCountry.toLowerCase() === 'india' || !clientCountry || clientState.includes('27 - Maharashtra')) {
         setClientCountry(newProfile.defaultCountry);
         setClientState(newProfile.defaultState);
+      }
+      if (newCurrency === 'KWD') {
+        setDecimalPrecision(3);
+      } else if (newCurrency === 'JPY') {
+        setDecimalPrecision(0);
+      } else {
+        setDecimalPrecision(2);
       }
       setItems((prev) =>
         prev.map((it) => ({
@@ -459,12 +466,16 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         },
         autoGenerateUpiQr: false,
         bankAccounts: prev.bankAccounts.map((b) =>
-          b.country === 'India' || b.ifscOrRoutingCode === 'DEM00000000'
+          b.country === 'India' || b.ifscOrRoutingCode === 'DEM00000000' || b.ifscOrRoutingCode === 'DEMO0000000'
             ? {
                 ...b,
                 bankName: newProfile.defaultBankName,
                 branchName: newProfile.defaultBankBranch,
-                ifscOrRoutingCode: newProfile.routingLabel === 'Sort code' ? '20-00-00' : '021000021',
+                ifscOrRoutingCode: newProfile.routingLabel.includes('IBAN')
+                  ? 'KW81NBOK00000000000000'
+                  : newProfile.routingLabel === 'Sort code'
+                  ? '20-00-00'
+                  : '021000021',
                 country: newProfile.defaultCountry,
               }
             : b
@@ -479,18 +490,19 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     } else if (!prevProfile.isIndiaGst && newProfile.isIndiaGst) {
       // Switching from foreign currency to INR:
       setTemplateId('cleartax_gst');
-      if (['United Kingdom', 'United States', 'Germany', 'Australia', 'Canada'].includes(senderCountry)) {
+      setDecimalPrecision(2);
+      if (['United Kingdom', 'United States', 'Germany', 'Australia', 'Canada', 'Kuwait', 'Switzerland', 'Japan', 'Singapore', 'United Arab Emirates', 'International'].includes(senderCountry)) {
         setSenderCountry('India');
         setSenderState('27 - Maharashtra');
       }
-      if (['United Kingdom', 'United States', 'Germany', 'Australia', 'Canada'].includes(clientCountry)) {
+      if (['United Kingdom', 'United States', 'Germany', 'Australia', 'Canada', 'Kuwait', 'Switzerland', 'Japan', 'Singapore', 'United Arab Emirates', 'International'].includes(clientCountry)) {
         setClientCountry('India');
         setClientState('27 - Maharashtra');
       }
       setItems((prev) =>
         prev.map((it) => ({
           ...it,
-          taxRate: it.taxRate === 20 || it.taxRate === 0 ? 18 : it.taxRate,
+          taxRate: it.taxRate === 20 || it.taxRate === 0 || it.taxRate === 13 || it.taxRate === 10 || it.taxRate === 8.1 || it.taxRate === 5 ? 18 : it.taxRate,
         }))
       );
       setPaymentConfig((prev) => ({
@@ -505,13 +517,20 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       setNotes('1. Payment is due within 15 days of invoice date.\n2. Goods/services once billed are subject to Mumbai jurisdiction.');
       setPaymentInstructions('NEFT / RTGS / IMPS / UPI accepted. Please mention Invoice No. in payment remarks.');
     } else if (!prevProfile.isIndiaGst && !newProfile.isIndiaGst) {
-      // Switching between foreign currencies (e.g. USD <-> GBP)
+      // Switching between foreign currencies (e.g. USD <-> GBP <-> KWD)
       setTemplateId(newProfile.defaultTemplateId);
-      if (senderCountry === prevProfile.defaultCountry) {
+      if (newCurrency === 'KWD') {
+        setDecimalPrecision(3);
+      } else if (newCurrency === 'JPY') {
+        setDecimalPrecision(0);
+      } else {
+        setDecimalPrecision(2);
+      }
+      if (senderCountry === prevProfile.defaultCountry || !senderCountry) {
         setSenderCountry(newProfile.defaultCountry);
         setSenderState(newProfile.defaultState);
       }
-      if (clientCountry === prevProfile.defaultCountry) {
+      if (clientCountry === prevProfile.defaultCountry || !clientCountry) {
         setClientCountry(newProfile.defaultCountry);
         setClientState(newProfile.defaultState);
       }
@@ -521,6 +540,27 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           taxRate: it.taxRate === prevProfile.defaultTaxRate ? newProfile.defaultTaxRate : it.taxRate,
         }))
       );
+      setPaymentConfig((prev) => ({
+        ...prev,
+        bankAccounts: prev.bankAccounts.map((b) =>
+          b.country === prevProfile.defaultCountry
+            ? {
+                ...b,
+                bankName: newProfile.defaultBankName,
+                branchName: newProfile.defaultBankBranch,
+                ifscOrRoutingCode: newProfile.routingLabel.includes('IBAN')
+                  ? 'KW81NBOK00000000000000'
+                  : newProfile.routingLabel === 'Sort code'
+                  ? '20-00-00'
+                  : '021000021',
+                country: newProfile.defaultCountry,
+              }
+            : b
+        ),
+      }));
+      if (notes === prevProfile.defaultNotes) {
+        setNotes(newProfile.defaultNotes);
+      }
     }
   };
 
@@ -2088,8 +2128,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       {/* VIEW MODE 1: INLINE SHEET EDITOR (Default) */}
       {/* ==================================================================== */}
       {viewMode === 'sheet' && (
-        <div className="flex-1 bg-slate-200/50 dark:bg-slate-900/60 p-4 md:p-8 flex justify-center items-start overflow-y-auto no-print pb-28 md:pb-8">
-          <div className="w-full max-w-4xl">
+        <div className="flex-1 bg-slate-200/50 dark:bg-slate-900/60 p-4 md:p-8 flex justify-center items-start overflow-y-auto print:p-0 print:m-0 print:overflow-visible print:bg-white print:block pb-28 md:pb-8">
+          <div className="w-full max-w-4xl print:max-w-none print:w-full">
             <InlineDocumentCanvas
               document={documentModel}
               savedCustomers={savedCustomers}
@@ -2127,8 +2167,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       {/* VIEW MODE 2: PRINT / PDF CLEAN PREVIEW */}
       {/* ==================================================================== */}
       {viewMode === 'pdf_preview' && (
-        <div className="flex-1 bg-slate-300/50 dark:bg-slate-900 p-4 md:p-8 flex flex-col items-center overflow-y-auto no-print pb-28 md:pb-8">
-          <div className="mb-4 flex flex-wrap items-center gap-3 bg-card px-4 py-2 rounded-full shadow-sm border border-border text-xs text-card-foreground">
+        <div className="flex-1 bg-slate-300/50 dark:bg-slate-900 p-4 md:p-8 flex flex-col items-center overflow-y-auto print:p-0 print:m-0 print:overflow-visible print:bg-white print:block pb-28 md:pb-8">
+          <div className="mb-4 flex flex-wrap items-center gap-3 bg-card px-4 py-2 rounded-full shadow-sm border border-border text-xs text-card-foreground no-print">
             <span className="font-semibold text-foreground">
               A4 Print & PDF Output Preview ({activeTemplateMeta.name})
             </span>
@@ -2152,7 +2192,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               <QrCode className="h-3.5 w-3.5 mr-1 text-primary" /> Payment Display Controls
             </Button>
           </div>
-          <div className="w-full max-w-4xl">
+          <div className="w-full max-w-4xl print:max-w-none print:w-full">
             <DocumentPreview
               document={documentModel}
               onLogoUpload={(dataUrl) => setSenderLogo(dataUrl)}
@@ -2166,10 +2206,10 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       {/* VIEW MODE 3: 2-COLUMN SPLIT FORM & LIVE PREVIEW */}
       {/* ==================================================================== */}
       {viewMode === 'split' && (
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden no-print pb-28 md:pb-0">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden pb-28 md:pb-0 print:p-0 print:m-0 print:overflow-visible print:block">
           {/* LEFT COLUMN: Structured Editing Form */}
           <div
-            className={`w-full lg:w-1/2 p-4 md:p-6 overflow-y-auto max-h-[calc(100vh-110px)] ${
+            className={`w-full lg:w-1/2 p-4 md:p-6 overflow-y-auto max-h-[calc(100vh-110px)] no-print ${
               mobileTab === 'preview' ? 'hidden lg:block' : 'block'
             }`}
           >
@@ -2882,11 +2922,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
           {/* RIGHT COLUMN: Live Realtime Invoice Preview */}
           <div
-            className={`w-full lg:w-1/2 bg-slate-200/70 dark:bg-slate-900/60 p-4 md:p-6 overflow-y-auto max-h-[calc(100vh-110px)] flex justify-center items-start ${
+            className={`w-full lg:w-1/2 bg-slate-200/70 dark:bg-slate-900/60 p-4 md:p-6 overflow-y-auto max-h-[calc(100vh-110px)] flex justify-center items-start print:w-full print:max-h-none print:overflow-visible print:p-0 print:m-0 print:bg-white print:block ${
               mobileTab === 'editor' ? 'hidden lg:flex' : 'flex'
             }`}
           >
-            <div className="w-full max-w-3xl">
+            <div className="w-full max-w-3xl print:max-w-none print:w-full">
               <DocumentPreview
                 document={documentModel}
                 onLogoUpload={(dataUrl) => setSenderLogo(dataUrl)}

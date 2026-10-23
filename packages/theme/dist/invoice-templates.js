@@ -361,12 +361,26 @@ export const INVOICE_TEMPLATES = [
         supplyTitle: 'No sales tax / VAT applies',
         supplyFields: ['Place of supply'],
     }),
+    T('modern', 'Modern Clean', 'GLOBAL', {
+        ...gf('Inter'),
+        currency: '$',
+        taxLabel: 'Tax',
+        taxRate: 0,
+        taxIdLabel: 'Tax ID',
+        title: 'Invoice',
+        routingLabel: 'IBAN / SWIFT',
+        header: 'left',
+        card: 'round',
+        tableHead: 'tint',
+        accent: '#2563eb',
+        supplyTitle: '',
+        supplyFields: ['Place of supply'],
+    }),
 ];
 const ALIAS_MAP = {
     cleartax_gst: 'in-gst',
     tally_prime: 'in-gst',
     vyapar_classic: 'in-gst',
-    modern: 'in-gst',
     stripe_fintech: 'dark-tech',
     stripe_clean: 'dark-tech',
     classic: 'eu-reverse-charge',
@@ -765,6 +779,7 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
             taxRate: it.taxRate !== undefined ? Number(it.taxRate) : 18,
         };
     });
+    const isIndia = (doc.currency || 'INR') === 'INR';
     const supplierState = doc.sender.address?.state || '';
     const placeOfSupply = doc.client.billingAddress?.state || doc.placeOfSupply || supplierState;
     const anyDoc = doc;
@@ -772,8 +787,9 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
     let payment = undefined;
     if (payConfig) {
         const bank = (payConfig.bankAccounts && payConfig.bankAccounts[0]) || payConfig;
+        const isGbp = doc.currency === 'GBP';
         const showBank = payConfig.display ? payConfig.display.showBankDetails : true;
-        const showUpi = payConfig.display ? payConfig.display.showUpiId : Boolean(payConfig.upiId);
+        const showUpi = isIndia && (payConfig.display ? payConfig.display.showUpiId : Boolean(payConfig.upiId));
         const showQr = payConfig.display ? payConfig.display.showQrCode : Boolean(payConfig.qrCodeDataUrl);
         payment = {
             accountName: showBank ? (bank?.accountHolderName || doc.sender.name) : undefined,
@@ -782,9 +798,9 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
             routingValue: showBank ? (bank?.ifscOrRoutingCode || bank?.ifscCode || bank?.routingValue) : undefined,
             branch: showBank ? (bank?.branchName || bank?.branch) : undefined,
             vpa: showUpi ? (payConfig.upiId || bank?.upiId) : undefined,
-            vpaLabel: 'UPI ID / VPA',
-            qrImage: showQr ? (payConfig.qrCodeDataUrl || bank?.qrImage || '') : undefined,
-            qrLabel: 'Scan to pay (UPI)',
+            vpaLabel: isIndia ? 'UPI ID / VPA' : 'Payment reference',
+            qrImage: showQr && (isIndia || !payConfig.autoGenerateUpiQr) ? (payConfig.qrCodeDataUrl || bank?.qrImage || '') : undefined,
+            qrLabel: isIndia ? 'Scan to pay (UPI)' : 'Scan to pay',
         };
     }
     return {
@@ -795,18 +811,18 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
             : doc.type === 'purchase_order'
                 ? anyDoc.deliveryDate || doc.dueDate
                 : doc.dueDate,
-        title: doc.customTerminology?.[doc.type] || titles[doc.type] || 'Tax Invoice',
+        title: doc.customTerminology?.[doc.type] || titles[doc.type] || (doc.currency === 'GBP' ? 'VAT Invoice' : 'Tax Invoice'),
         dueLabel: dueLabels[doc.type] || 'Due date',
         balanceLabel: balanceLabels[doc.type] || 'Balance due',
         currency: cur,
-        locale: doc.currency === 'INR' ? 'en-IN' : 'en-US',
+        locale: doc.currency === 'INR' ? 'en-IN' : doc.currency === 'GBP' ? 'en-GB' : 'en-US',
         seller: {
             name: doc.sender.name || 'Your Business',
             address: sAddr,
             email: doc.sender.email,
             phone: doc.sender.phone,
             taxId: doc.sender.taxId,
-            taxIdLabel: doc.sender.taxId && doc.sender.taxId.length === 15 ? 'GSTIN' : 'Tax ID',
+            taxIdLabel: doc.sender.taxId && doc.sender.taxId.length === 15 ? 'GSTIN' : (doc.currency === 'GBP' ? 'VAT Reg No.' : 'Tax ID'),
             logoUrl: doc.sender.logoUrl,
         },
         buyer: {
@@ -815,13 +831,18 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
             email: doc.client.email,
             phone: doc.client.phone,
             taxId: doc.client.taxId,
-            taxIdLabel: doc.client.taxId && doc.client.taxId.length === 15 ? 'GSTIN' : 'Tax ID',
+            taxIdLabel: doc.client.taxId && doc.client.taxId.length === 15 ? 'GSTIN' : (doc.currency === 'GBP' ? 'VAT Reg No.' : 'Tax ID'),
         },
         items,
-        supply: {
+        supply: isIndia ? {
             fields: {
                 'Supplier state': supplierState,
                 'Place of supply': placeOfSupply,
+            },
+        } : {
+            fields: {
+                'Tax point': doc.issueDate,
+                'Place of supply': doc.client.billingAddress?.country || (doc.currency === 'GBP' ? 'United Kingdom' : 'Standard'),
             },
         },
         payment,
