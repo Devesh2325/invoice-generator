@@ -297,6 +297,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         id: '1',
         description: '',
         hsnCode: '',
+        unit: 'PCS',
         quantity: 1,
         unitPrice: 0,
         taxRate: initialTaxProfile.defaultTaxRate,
@@ -732,6 +733,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       clientState,
       items: items.map((i) => ({
         ...i,
+        unit: i.unit || 'PCS',
         quantity: Number(i.quantity) || 0,
         unitPrice: Number(i.unitPrice) || 0,
         discountValue: Number(i.discountValue) || 0,
@@ -910,6 +912,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         id: `item_${Date.now()}`,
         description: '',
         hsnCode: '',
+        unit: 'PCS',
         quantity: 1,
         unitPrice: 0,
         taxRate: brandSettings?.defaultTaxRate ?? 18,
@@ -2688,7 +2691,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                         )}
                       </div>
 
-                      <div className={`grid grid-cols-2 ${(showSplitAdvanced || generatorSettings.showDiscountColumn || generatorSettings.showTaxRateColumn) ? 'md:grid-cols-4' : 'md:grid-cols-2'} gap-2`}>
+                      <div className={`grid grid-cols-2 ${(showSplitAdvanced || generatorSettings.showDiscountColumn || generatorSettings.showTaxRateColumn) ? 'md:grid-cols-5' : 'md:grid-cols-3'} gap-2`}>
                         <div>
                           <label className="text-[10px] font-semibold text-slate-500 block">
                             Qty
@@ -2699,6 +2702,18 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                             onChange={(e) =>
                               handleUpdateItem(index, 'quantity', Number(e.target.value))
                             }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-500 block">
+                            Unit
+                          </label>
+                          <Input
+                            value={item.unit || ''}
+                            onChange={(e) =>
+                              handleUpdateItem(index, 'unit', e.target.value)
+                            }
+                            placeholder="PCS"
                           />
                         </div>
                         <div>

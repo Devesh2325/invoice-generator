@@ -689,7 +689,7 @@ const table = (x: any, narrow: boolean = false) => {
               i + 1,
               nl(l.description),
               esc(l.code ?? '—'),
-              +l.qty,
+              l.unit ? `${+l.qty} <span style="font-size:8px;opacity:0.75">${esc(l.unit)}</span>` : +l.qty,
               m(l.rate, false),
               l.dis ? `${+l.dis}%` : '—',
               m(l.taxable),
@@ -702,7 +702,22 @@ const table = (x: any, narrow: boolean = false) => {
             'inv-row'
           )
         )
-        .join('')
+        .join('') +
+      row(
+        [
+          '',
+          '<b>Total</b>',
+          '',
+          `<b>${C.lines.reduce((acc: number, l: any) => acc + (+l.qty || 0), 0)}</b>`,
+          '',
+          '',
+          `<b>${m(C.taxable)}</b>`,
+          `<b>${m(C.tax)}</b>`,
+          `<b>${m(C.total)}</b>`,
+        ],
+        `border-top:2px solid ${t.ink};border-bottom:2px solid ${t.ink};font-weight:700;padding:8px 6px;margin-top:2px;`,
+        'inv-total-row'
+      )
   );
 };
 
@@ -1044,6 +1059,7 @@ export function mapCanonicalDocumentToTemplateInv(doc: CanonicalDocument): any {
     return {
       description: it.description || 'Item description',
       code: it.hsnCode || (it as any).code || '—',
+      unit: it.unit || '',
       qty,
       rate,
       discountPct,

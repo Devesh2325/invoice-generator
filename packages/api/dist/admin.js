@@ -880,12 +880,12 @@ export class AdminApi {
         }
         catch { }
     }
-    // Generator Field Visibility Controls (Description, Qty, Price, Amount default)
+    // Generator Field Visibility Controls (Description, Qty, Unit, Price, Amount default)
     static getGeneratorSettings() {
         const defaults = {
             showHsnColumn: false,
             showTaxRateColumn: false,
-            showUnitColumn: false,
+            showUnitColumn: true,
             showDiscountColumn: false,
         };
         if (typeof window === "undefined")
@@ -905,6 +905,7 @@ export class AdminApi {
         if (typeof window !== "undefined") {
             localStorage.setItem("invoxa_generator_field_settings", JSON.stringify(updated));
             window.dispatchEvent(new Event("invoxa-generator-settings-updated"));
+            window.dispatchEvent(new Event("billcraft-generator-settings-updated"));
             this.recordAuditLog("UPDATE_GENERATOR_FIELDS", "Generator Field Settings", "Super Admin");
         }
         return updated;

@@ -28,6 +28,11 @@ import {
   CheckCircle2,
   SlidersHorizontal,
 } from 'lucide-react';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/components/ui/popover';
 
 interface InlineDocumentCanvasProps {
   document: DocumentModel;
@@ -140,8 +145,13 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   // India GST rule: ONLY applies when currency is INR
   const isIndiaGst = currency === 'INR';
   const showHsn = isIndiaGst && (showAdvancedColumns || Boolean(fieldSettings?.showHsnColumn));
+  const showUnit = showAdvancedColumns || Boolean(fieldSettings?.showUnitColumn ?? true);
   const showTaxColumns = showAdvancedColumns || Boolean(fieldSettings?.showTaxRateColumn);
   const showDiscount = showAdvancedColumns || Boolean(fieldSettings?.showDiscountColumn);
+
+  const totalQuantity = useMemo(() => {
+    return document.items.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+  }, [document.items]);
 
   const effectiveTaxIdLabel = isIndiaGst
     ? 'GSTIN'
@@ -178,6 +188,11 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   const editableInput = isDarkPaper
     ? 'bg-white/5 hover:bg-white/10 focus:bg-slate-900 text-slate-100 placeholder-slate-500 border border-slate-700/60 focus:border-lime-400 rounded px-1.5 py-0.5 outline-none transition-all'
     : 'bg-transparent hover:bg-slate-50/80 focus:bg-white text-slate-900 placeholder-slate-400 border border-dashed border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded px-1.5 py-0.5 outline-none transition-all';
+
+  // Crisp, modern, seamless input styling for line items table (no messy dashed outlines)
+  const tableCellInput = isDarkPaper
+    ? 'bg-transparent hover:bg-white/5 focus:bg-slate-900 text-slate-100 placeholder:text-slate-500 border border-transparent hover:border-slate-700/80 focus:border-primary focus:ring-1 focus:ring-primary/30 rounded-md px-2 py-1.5 outline-none transition-all text-xs md:text-sm font-medium'
+    : 'bg-transparent hover:bg-slate-100/70 focus:bg-white text-slate-900 placeholder:text-slate-400 border border-transparent hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary/30 rounded-md px-2 py-1.5 outline-none transition-all text-xs md:text-sm font-medium';
 
   const bannerEditableInput =
     'bg-white/15 hover:bg-white/25 focus:bg-white focus:text-slate-900 text-white placeholder-white/60 border border-white/30 rounded px-1.5 py-0.5 outline-none transition-all';
@@ -1128,65 +1143,75 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   /* HELPER SUB-RENDERERS: LINE ITEMS TABLE & TOTALS */
   /* ======================================================================== */
   function renderLineItemsTable() {
-    // Determine table header style
-    const headBg =
-      tpl.tableHead === 'fill'
-        ? effectiveAccent
-        : tpl.tableHead === 'tint'
-        ? tintBg
-        : 'transparent';
-
-    const headColor =
-      tpl.tableHead === 'fill' ? '#FFFFFF' : textColor;
+    // Determine table header style - clean solid accent header banner matching modern invoice standard
+    const headBg = effectiveAccent;
+    const headColor = '#FFFFFF';
 
     const hasExtraCols = showHsn || showTaxColumns || showDiscount;
     const tableMinW = hasExtraCols ? 'min-w-[920px]' : 'min-w-[560px]';
 
     return (
       <div className="space-y-3">
-        <div className="overflow-x-auto border rounded-xl shadow-2xs" style={{ borderColor }}>
+        <datalist id="common-invoice-units">
+          <option value="PCS">Pieces (PCS)</option>
+          <option value="NOS">Numbers (NOS)</option>
+          <option value="BOX">Boxes (BOX)</option>
+          <option value="KGS">Kilograms (KGS)</option>
+          <option value="MTR">Meters (MTR)</option>
+          <option value="SET">Sets (SET)</option>
+          <option value="HRS">Hours (HRS)</option>
+          <option value="DAYS">Days (DAYS)</option>
+          <option value="PKT">Packets (PKT)</option>
+          <option value="LTR">Liters (LTR)</option>
+        </datalist>
+
+        <div className="overflow-x-auto border rounded-xl shadow-xs" style={{ borderColor }}>
           <table className={`w-full ${tableMinW} text-left border-collapse text-xs`}>
             <thead>
               <tr
-                className="uppercase tracking-wider text-[10px] font-bold select-none"
+                className="uppercase tracking-wider text-[11px] font-bold select-none"
                 style={{
                   backgroundColor: headBg,
                   color: headColor,
-                  borderBottom: `2px solid ${borderColor}`,
                 }}
               >
-                <th className="py-2.5 px-2 w-8 min-w-[32px] text-center">#</th>
-                <th className="py-2.5 px-2.5 min-w-[200px]">Description</th>
+                <th className="py-2.5 px-3 w-10 min-w-[36px] text-center font-bold">#</th>
+                <th className="py-2.5 px-3 min-w-[200px] text-left font-bold">Item name</th>
                 {showHsn && (
-                  <th className="py-2.5 px-2 w-24 min-w-[90px] text-center">{isIndiaGst ? 'HSN/SAC' : 'Code'}</th>
+                  <th className="py-2.5 px-2 w-24 min-w-[90px] text-center font-bold">
+                    {isIndiaGst ? 'HSN/SAC' : 'Code'}
+                  </th>
                 )}
-                <th className="py-2.5 px-2 w-16 min-w-[60px] text-right">Qty</th>
-                <th className="py-2.5 px-2 w-28 min-w-[95px] text-right">Price ({currency})</th>
+                <th className="py-2.5 px-2 w-20 min-w-[70px] text-right font-bold">Quantity</th>
+                {showUnit && (
+                  <th className="py-2.5 px-2 w-20 min-w-[70px] text-center font-bold">Unit</th>
+                )}
+                <th className="py-2.5 px-2 w-28 min-w-[95px] text-right font-bold">Price/ Unit</th>
                 {showDiscount && (
-                  <th className="py-2.5 px-2 w-20 min-w-[70px] text-right">Disc %</th>
+                  <th className="py-2.5 px-2 w-20 min-w-[70px] text-right font-bold">Disc %</th>
                 )}
                 {showTaxColumns && (
                   isIndiaGst ? (
                     <>
-                      <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">GST %</th>
+                      <th className="py-2.5 px-2 w-20 min-w-[75px] text-right font-bold">GST %</th>
                       {isInterState ? (
-                        <th className="py-2.5 px-2 w-24 min-w-[90px] text-right">IGST Amt</th>
+                        <th className="py-2.5 px-2 w-24 min-w-[90px] text-right font-bold">IGST Amt</th>
                       ) : (
                         <>
-                          <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">CGST</th>
-                          <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">SGST</th>
+                          <th className="py-2.5 px-2 w-20 min-w-[75px] text-right font-bold">CGST</th>
+                          <th className="py-2.5 px-2 w-20 min-w-[75px] text-right font-bold">SGST</th>
                         </>
                       )}
                     </>
                   ) : (
                     <>
-                      <th className="py-2.5 px-2 w-20 min-w-[75px] text-right">{effectiveTaxLabel} %</th>
-                      <th className="py-2.5 px-2 w-24 min-w-[90px] text-right">{effectiveTaxLabel} Amt</th>
+                      <th className="py-2.5 px-2 w-20 min-w-[75px] text-right font-bold">{effectiveTaxLabel} %</th>
+                      <th className="py-2.5 px-2 w-24 min-w-[90px] text-right font-bold">{effectiveTaxLabel} Amt</th>
                     </>
                   )
                 )}
-                <th className="py-2.5 px-2.5 w-28 min-w-[100px] text-right">Amount</th>
-                <th className="py-2.5 px-2 w-14 min-w-[56px] text-center no-print">Act</th>
+                <th className="py-2.5 px-3 w-32 min-w-[110px] text-right font-bold">Amount</th>
+                <th className="py-2.5 px-2 w-14 min-w-[56px] text-center font-bold no-print">Act</th>
               </tr>
             </thead>
 
@@ -1202,78 +1227,101 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 return (
                   <tr
                     key={item.id}
-                    className="group transition-colors"
+                    className="group transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
                     style={{ backgroundColor: rowBg }}
                   >
-                    <td className="py-2.5 px-2 text-center font-mono" style={{ color: mutedTextColor }}>
+                    <td className="py-2.5 px-3 text-center font-mono font-medium" style={{ color: mutedTextColor }}>
                       {idx + 1}
                     </td>
-                    <td className="py-2.5 px-2 space-y-1">
-                      {onSelectCatalogItem && !isAnonymous && savedItems.length > 0 && (
-                        <div className="no-print">
-                          <select
-                            aria-label={`Select Saved Item for Row ${idx + 1}`}
-                            value={(item as any).productId || ''}
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                onSelectCatalogItem(idx, e.target.value);
-                              }
-                            }}
-                            className="w-full text-[11px] font-semibold border rounded px-1.5 py-0.5 cursor-pointer"
-                            style={{ backgroundColor: paperColor, borderColor, color: textColor }}
-                          >
-                            <option value="">
-                              Select Saved Item ({savedItems.length})...
-                            </option>
-                            {savedItems.map((prod) => (
-                              <option key={prod.id} value={prod.id}>
-                                {prod.name} — {formatCurrency(prod.unitPrice, currency)}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                      <input
-                        type="text"
-                        value={item.description}
-                        onChange={(e) => onUpdateItem(idx, 'description', e.target.value)}
-                        placeholder="Description of service or product..."
-                        className={`${editableInput} w-full font-medium`}
-                      />
+                    <td className="py-2 px-2.5">
+                      <div className="relative flex items-center gap-1.5 w-full">
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => onUpdateItem(idx, 'description', e.target.value)}
+                          placeholder="Item name / Description"
+                          className={`${tableCellInput} w-full font-medium`}
+                        />
+                        {onSelectCatalogItem && !isAnonymous && savedItems.length > 0 && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                title="Pick saved product"
+                                className="no-print p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0 transition-colors cursor-pointer"
+                              >
+                                <Package className="h-3.5 w-3.5" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="p-2 w-72 text-xs shadow-lg" align="start">
+                              <div className="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-1.5 px-1">
+                                Select Saved Product ({savedItems.length})
+                              </div>
+                              <div className="max-h-52 overflow-y-auto space-y-1">
+                                {savedItems.map((prod) => (
+                                  <button
+                                    key={prod.id}
+                                    type="button"
+                                    onClick={() => onSelectCatalogItem(idx, prod.id)}
+                                    className="w-full text-left p-1.5 rounded hover:bg-accent hover:text-accent-foreground text-xs flex justify-between items-center transition-colors cursor-pointer"
+                                  >
+                                    <span className="truncate font-medium">{prod.name}</span>
+                                    <span className="text-[11px] font-mono text-muted-foreground shrink-0 ml-2">
+                                      {formatCurrency(prod.unitPrice, currency)}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      </div>
                     </td>
                     {showHsn && (
-                      <td className="py-2.5 px-2 min-w-[90px]">
+                      <td className="py-2 px-2 min-w-[90px]">
                         <input
                           type="text"
                           value={item.hsnCode || ''}
                           onChange={(e) => onUpdateItem(idx, 'hsnCode', e.target.value)}
                           placeholder={isIndiaGst ? '998314' : 'SKU-01'}
-                          className={`${editableInput} w-full min-w-[75px] text-center font-mono`}
+                          className={`${tableCellInput} w-full text-center font-mono`}
                         />
                       </td>
                     )}
-                    <td className="py-2.5 px-2 min-w-[60px]">
+                    <td className="py-2 px-2 min-w-[70px]">
                       <input
                         type="number"
                         min="0"
                         step="any"
                         value={item.quantity}
                         onChange={(e) => onUpdateItem(idx, 'quantity', Number(e.target.value))}
-                        className={`${editableInput} w-full min-w-[50px] text-right font-mono`}
+                        className={`${tableCellInput} w-full text-right font-mono font-medium`}
                       />
                     </td>
-                    <td className="py-2.5 px-2 min-w-[95px]">
+                    {showUnit && (
+                      <td className="py-2 px-2 min-w-[70px]">
+                        <input
+                          type="text"
+                          value={(item as any).unit || ''}
+                          onChange={(e) => onUpdateItem(idx, 'unit', e.target.value)}
+                          placeholder="PCS"
+                          list="common-invoice-units"
+                          className={`${tableCellInput} w-full text-center font-medium uppercase`}
+                        />
+                      </td>
+                    )}
+                    <td className="py-2 px-2 min-w-[95px]">
                       <input
                         type="number"
                         min="0"
                         step="any"
                         value={item.unitPrice}
                         onChange={(e) => onUpdateItem(idx, 'unitPrice', Number(e.target.value))}
-                        className={`${editableInput} w-full min-w-[85px] text-right font-mono`}
+                        className={`${tableCellInput} w-full text-right font-mono font-medium`}
                       />
                     </td>
                     {showDiscount && (
-                      <td className="py-2.5 px-2 min-w-[70px]">
+                      <td className="py-2 px-2 min-w-[70px]">
                         <input
                           type="number"
                           min="0"
@@ -1283,7 +1331,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                           onChange={(e) =>
                             onUpdateItem(idx, 'discountValue', Number(e.target.value))
                           }
-                          className={`${editableInput} w-full min-w-[60px] text-right font-mono`}
+                          className={`${tableCellInput} w-full text-right font-mono`}
                         />
                       </td>
                     )}
@@ -1292,11 +1340,11 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     {showTaxColumns && (
                       isIndiaGst ? (
                         <>
-                          <td className="py-2.5 px-2 min-w-[75px]">
+                          <td className="py-2 px-2 min-w-[75px]">
                             <select
                               value={item.taxRate ?? 18}
                               onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
-                              className={`${editableInput} w-full min-w-[70px] text-right font-mono cursor-pointer`}
+                              className={`${tableCellInput} w-full text-right font-mono cursor-pointer`}
                               style={{ backgroundColor: paperColor }}
                             >
                               <option value={0}>0%</option>
@@ -1307,17 +1355,17 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                             </select>
                           </td>
                           {isInterState ? (
-                            <td className="py-2.5 px-2 text-right font-mono min-w-[90px]" style={{ color: mutedTextColor }}>
+                            <td className="py-2 px-2 text-right font-mono min-w-[90px]" style={{ color: mutedTextColor }}>
                               <div>{formatCurrency(item.igstAmount ?? item.taxAmount, currency)}</div>
                               <div className="text-[10px] opacity-75">({item.taxRate || 0}%)</div>
                             </td>
                           ) : (
                             <>
-                              <td className="py-2.5 px-2 text-right font-mono min-w-[75px]" style={{ color: mutedTextColor }}>
+                              <td className="py-2 px-2 text-right font-mono min-w-[75px]" style={{ color: mutedTextColor }}>
                                 <div>{formatCurrency(item.cgstAmount ?? item.taxAmount / 2, currency)}</div>
                                 <div className="text-[10px] opacity-75">({(item.taxRate || 0) / 2}%)</div>
                               </td>
-                              <td className="py-2.5 px-2 text-right font-mono min-w-[75px]" style={{ color: mutedTextColor }}>
+                              <td className="py-2 px-2 text-right font-mono min-w-[75px]" style={{ color: mutedTextColor }}>
                                 <div>{formatCurrency(item.sgstAmount ?? item.taxAmount / 2, currency)}</div>
                                 <div className="text-[10px] opacity-75">({(item.taxRate || 0) / 2}%)</div>
                               </td>
@@ -1326,34 +1374,34 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         </>
                       ) : (
                         <>
-                          <td className="py-2.5 px-2 min-w-[75px]">
+                          <td className="py-2 px-2 min-w-[75px]">
                             <input
                               type="number"
                               min="0"
                               step="any"
                               value={item.taxRate ?? (tpl.id === 'in-gst' ? taxProfile.defaultTaxRate : (tpl.taxRate ?? taxProfile.defaultTaxRate))}
                               onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
-                              className={`${editableInput} w-full min-w-[65px] text-right font-mono`}
+                              className={`${tableCellInput} w-full min-w-[65px] text-right font-mono`}
                             />
                           </td>
-                          <td className="py-2.5 px-2 text-right font-mono min-w-[90px]" style={{ color: mutedTextColor }}>
+                          <td className="py-2 px-2 text-right font-mono min-w-[90px]" style={{ color: mutedTextColor }}>
                             {formatCurrency(item.taxAmount, currency)}
                           </td>
                         </>
                       )
                     )}
 
-                    <td className="py-2.5 px-2.5 text-right font-mono font-bold min-w-[100px]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-sm min-w-[110px]">
                       {formatCurrency(item.lineTotal, currency)}
                     </td>
 
-                    <td className="py-2.5 px-1.5 text-center no-print w-14 min-w-[56px]">
+                    <td className="py-2 px-1.5 text-center no-print w-14 min-w-[56px]">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           type="button"
                           onClick={() => onDuplicateItem(idx)}
                           title="Duplicate Item"
-                          className="p-1 hover:text-blue-500 rounded cursor-pointer"
+                          className="p-1 hover:text-blue-500 rounded cursor-pointer transition-colors"
                           style={{ color: mutedTextColor }}
                         >
                           <Copy className="h-3.5 w-3.5" />
@@ -1363,7 +1411,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                           onClick={() => onRemoveItem(idx)}
                           disabled={document.items.length <= 1}
                           title="Remove Item"
-                          className="p-1 hover:text-rose-500 disabled:opacity-30 rounded cursor-pointer"
+                          className="p-1 hover:text-rose-500 disabled:opacity-20 rounded cursor-pointer transition-colors"
                           style={{ color: mutedTextColor }}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1374,6 +1422,62 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 );
               })}
             </tbody>
+
+            {/* Bottom Totals Row directly underneath items matching clean invoice standard */}
+            <tfoot
+              className="border-t-2 font-bold"
+              style={{
+                borderColor: isDarkPaper ? '#334155' : '#CBD5E1',
+                borderBottom: `2px solid ${isDarkPaper ? '#334155' : '#0F172A'}`,
+              }}
+            >
+              <tr className="text-xs md:text-sm">
+                <td
+                  className="py-3 px-3 font-black text-slate-800 dark:text-slate-100"
+                  colSpan={showHsn ? 3 : 2}
+                >
+                  Total
+                </td>
+                <td className="py-3 px-2 text-right font-mono font-black text-slate-900 dark:text-white">
+                  {totalQuantity}
+                </td>
+                {showUnit && <td className="py-3 px-2 text-center" />}
+                <td className="py-3 px-2 text-right" />
+                {showDiscount && <td className="py-3 px-2 text-right" />}
+                {showTaxColumns && (
+                  isIndiaGst ? (
+                    <>
+                      <td className="py-3 px-2" />
+                      {isInterState ? (
+                        <td className="py-3 px-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                          {formatCurrency(summary.totalTax, currency)}
+                        </td>
+                      ) : (
+                        <>
+                          <td className="py-3 px-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {formatCurrency(summary.totalTax / 2, currency)}
+                          </td>
+                          <td className="py-3 px-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {formatCurrency(summary.totalTax / 2, currency)}
+                          </td>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-3 px-2" />
+                      <td className="py-3 px-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {formatCurrency(summary.totalTax, currency)}
+                      </td>
+                    </>
+                  )
+                )}
+                <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white text-sm md:text-base">
+                  {formatCurrency(summary.subtotal, currency)}
+                </td>
+                <td className="py-3 px-2 no-print" />
+              </tr>
+            </tfoot>
           </table>
         </div>
 
@@ -1429,7 +1533,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             <SlidersHorizontal className="h-3.5 w-3.5" />
             <span>
               {showAdvancedColumns
-                ? 'Simplified 4-Column View (Description, Qty, Price only)'
+                ? 'Simplified Standard View'
                 : '+ Add HSN / Tax / Discount Columns'}
             </span>
           </button>

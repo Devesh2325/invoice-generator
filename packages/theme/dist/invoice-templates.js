@@ -537,14 +537,25 @@ const table = (x, narrow = false) => {
             i + 1,
             nl(l.description),
             esc(l.code ?? '—'),
-            +l.qty,
+            l.unit ? `${+l.qty} <span style="font-size:8px;opacity:0.75">${esc(l.unit)}</span>` : +l.qty,
             m(l.rate, false),
             l.dis ? `${+l.dis}%` : '—',
             m(l.taxable),
             `${m(l.tax)}<br/><span style="font-size:8px;opacity:.6">(${+l.tr}%)</span>`,
             `<b>${m(l.total)}</b>`,
         ], `border-bottom:1px solid ${t.line};${t.zebra && i % 2 === 0 ? `background:${t.tint};` : ''}`, 'inv-row'))
-            .join(''));
+            .join('') +
+        row([
+            '',
+            '<b>Total</b>',
+            '',
+            `<b>${C.lines.reduce((acc, l) => acc + (+l.qty || 0), 0)}</b>`,
+            '',
+            '',
+            `<b>${m(C.taxable)}</b>`,
+            `<b>${m(C.tax)}</b>`,
+            `<b>${m(C.total)}</b>`,
+        ], `border-top:2px solid ${t.ink};border-bottom:2px solid ${t.ink};font-weight:700;padding:8px 6px;margin-top:2px;`, 'inv-total-row'));
 };
 const taxSummary = (x) => {
     const { t, C, m } = x;
@@ -773,6 +784,7 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
         return {
             description: it.description || 'Item description',
             code: it.hsnCode || it.code || '—',
+            unit: it.unit || '',
             qty,
             rate,
             discountPct,

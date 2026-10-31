@@ -1035,12 +1035,12 @@ export class AdminApi {
     } catch {}
   }
 
-  // Generator Field Visibility Controls (Description, Qty, Price, Amount default)
+  // Generator Field Visibility Controls (Description, Qty, Unit, Price, Amount default)
   static getGeneratorSettings(): GeneratorFieldSettings {
     const defaults: GeneratorFieldSettings = {
       showHsnColumn: false,
       showTaxRateColumn: false,
-      showUnitColumn: false,
+      showUnitColumn: true,
       showDiscountColumn: false,
     };
     if (typeof window === "undefined") return defaults;
@@ -1064,6 +1064,7 @@ export class AdminApi {
         JSON.stringify(updated),
       );
       window.dispatchEvent(new Event("invoxa-generator-settings-updated"));
+      window.dispatchEvent(new Event("billcraft-generator-settings-updated"));
       this.recordAuditLog(
         "UPDATE_GENERATOR_FIELDS",
         "Generator Field Settings",
