@@ -18,6 +18,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import {
   FileText,
   Plus,
   Search,
@@ -33,6 +40,7 @@ import {
   Ban,
   Copy,
   Trash2,
+  MoreHorizontal,
 } from 'lucide-react';
 import { exportDocumentToPdf, triggerPrint } from '@/lib/pdf/export-pdf';
 import { deleteDocument } from '@/lib/storage/indexed-db';
@@ -294,61 +302,62 @@ export default function TenantInvoicesPage() {
         </div>
 
         {/* Filter Toolbar */}
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-card p-3 sm:p-4 rounded-xl border border-border">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by invoice name, number, customer..."
+              placeholder="Search by number, customer..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 text-xs"
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {/* Quick Status Filter Pills */}
+            <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border border-border">
+              {(['all', 'paid', 'pending', 'overdue', 'draft'] as const).map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold capitalize transition-all ${
+                    statusFilter === st
+                      ? 'bg-background text-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
+
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="text-xs border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200"
+              className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-background text-foreground"
             >
-              <option value="all">All Invoice Types</option>
-              <option value="invoice">Tax Invoices</option>
-              <option value="estimate">Estimates / Quotes</option>
-              <option value="pro_forma">Pro Forma Invoices</option>
-              <option value="purchase_order">Purchase Orders</option>
+              <option value="all">All Types</option>
+              <option value="invoice">Invoices</option>
+              <option value="estimate">Estimates</option>
               <option value="receipt">Receipts</option>
-              <option value="credit_note">Credit Notes</option>
-            </select>
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-xs border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200"
-            >
-              <option value="all">All Statuses</option>
-              <option value="draft">Draft</option>
-              <option value="pending">Pending</option>
-              <option value="partially_paid">Partially Paid</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="refunded">Refunded</option>
+              <option value="pro_forma">Pro Forma</option>
             </select>
           </div>
         </div>
 
         {/* Invoices Table */}
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
+        <Card className="border-border bg-card overflow-hidden">
           <CardContent className="p-0">
             {loading ? (
-              <div className="p-12 text-center text-xs text-slate-400">
-                Loading workspace invoices...
+              <div className="p-12 text-center text-xs text-muted-foreground">
+                Loading invoices...
               </div>
             ) : filteredDocs.length === 0 ? (
               <div className="p-12 text-center space-y-3">
-                <FileText className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto" />
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No invoices found</h3>
-                <p className="text-xs text-slate-400">
+                <FileText className="h-10 w-10 text-muted-foreground/40 mx-auto" />
+                <h3 className="text-sm font-bold text-foreground">No invoices found</h3>
+                <p className="text-xs text-muted-foreground">
                   Try adjusting your search filters or create a new invoice.
                 </p>
                 <Link href="/create" className="inline-block pt-1">
@@ -361,19 +370,16 @@ export default function TenantInvoicesPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-950/75 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
-                      <th className="py-3 px-4">Invoice Name / No.</th>
+                    <tr className="border-b border-border bg-muted/40 text-muted-foreground font-semibold uppercase tracking-wider">
+                      <th className="py-3 px-4">Invoice #</th>
                       <th className="py-3 px-4">Customer</th>
-                      <th className="py-3 px-4">Issue / Due Date</th>
-                      <th className="py-3 px-4 text-right">Invoice Total</th>
-                      <th className="py-3 px-4 text-right">Collected</th>
-                      <th className="py-3 px-4 text-right">Refunded</th>
-                      <th className="py-3 px-4 text-right">Balance Due</th>
+                      <th className="py-3 px-4">Dates</th>
+                      <th className="py-3 px-4 text-right">Amount</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  <tbody className="divide-y divide-border">
                     {filteredDocs.map((doc) => {
                       const effStatus = computeEffectiveInvoiceStatus(doc);
                       const docCurr = doc.currency || tenantCurrency;
@@ -383,178 +389,152 @@ export default function TenantInvoicesPage() {
                           Number(doc.summary.refundedAmount || 0)
                       );
                       return (
-                        <tr key={doc.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                        <tr key={doc.id} className="hover:bg-muted/30 transition-colors">
                           <td className="py-3.5 px-4">
-                            <div className="font-bold text-slate-900 dark:text-slate-100">{doc.documentNumber}</div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                            <Link href={`/edit/${doc.id}`} className="font-bold text-foreground hover:text-primary hover:underline">
+                              {doc.documentNumber}
+                            </Link>
+                            <div className="text-[11px] text-muted-foreground line-clamp-1">
                               {doc.invoiceName || doc.type.replace('_', ' ').toUpperCase()}
                             </div>
                           </td>
                           <td className="py-3.5 px-4">
-                            <div className="font-medium text-slate-800 dark:text-slate-200">{doc.client.name}</div>
+                            <div className="font-medium text-foreground">{doc.client.name}</div>
                             {doc.client.taxId && (
-                              <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                              <div className="text-[10px] font-mono text-muted-foreground">
                                 GSTIN: {doc.client.taxId}
                               </div>
                             )}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
-                            <div>Issued: {doc.issueDate}</div>
-                            <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                          <td className="py-3.5 px-4 text-muted-foreground">
+                            <div className="text-foreground font-medium">{doc.issueDate}</div>
+                            <div className="text-[11px]">
                               Due: {doc.dueDate || 'On Receipt'}
                             </div>
                           </td>
-                          <td className="py-3.5 px-4 text-right font-black text-slate-900 dark:text-slate-100 tabular-nums">
-                            <div>{formatCurrency(doc.summary.grandTotal, docCurr)}</div>
-                            {doc.summary.roundOffAmount !== undefined &&
-                              doc.summary.roundOffAmount !== 0 && (
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
-                                  Round-off:{' '}
-                                  {formatCurrency(doc.summary.roundOffAmount, docCurr, {
-                                    showSign: true,
-                                  })}
-                                </div>
-                              )}
-                          </td>
-                          <td className="py-3.5 px-4 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
-                            {formatCurrency(doc.summary.amountPaid || 0, docCurr)}
-                          </td>
-                          <td className="py-3.5 px-4 text-right tabular-nums font-semibold text-rose-600 dark:text-rose-400">
-                            {(doc.summary.refundedAmount || 0) > 0
-                              ? formatCurrency(doc.summary.refundedAmount || 0, docCurr)
-                              : '—'}
-                          </td>
-                          <td className="py-3.5 px-4 text-right tabular-nums font-bold">
+                          <td className="py-3.5 px-4 text-right tabular-nums">
+                            <div className="font-bold text-foreground">
+                              {formatCurrency(doc.summary.grandTotal, docCurr)}
+                            </div>
                             {doc.summary.balanceDue > 0 ? (
-                              <span className="text-amber-600 dark:text-amber-400">
-                                {formatCurrency(doc.summary.balanceDue, docCurr)}
-                              </span>
+                              <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                                Due: {formatCurrency(doc.summary.balanceDue, docCurr)}
+                              </div>
                             ) : (
-                              <span className="text-emerald-600 dark:text-emerald-400">Settled</span>
+                              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                Settled
+                              </div>
                             )}
                           </td>
                           <td className="py-3.5 px-4">
                             <Badge
                               variant={statusBadgeVariant(effStatus) as any}
-                              className="text-[10px]"
+                              className="text-[10px] capitalize"
                             >
                               {formatInvoiceStatusLabel(effStatus)}
                             </Badge>
                           </td>
                           <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1 flex-wrap">
-                              {/* Preview / PDF / Print */}
+                            <div className="flex items-center justify-end gap-1">
+                              {/* Quick Preview */}
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => setPreviewDoc(doc)}
-                                className="h-7 px-2 text-[11px] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                                title="Preview Invoice, Download PDF or Print"
+                                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                title="Preview Invoice"
                               >
-                                <Eye className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300 mr-1" /> Preview
+                                <Eye className="h-3.5 w-3.5 mr-1" />
+                                <span>View</span>
                               </Button>
 
-                              {/* Record Payment */}
-                              {doc.summary.balanceDue > 0 && effStatus !== 'cancelled' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setSelectedDocForPayment(doc);
-                                    setPaymentAmount(doc.summary.balanceDue);
-                                  }}
-                                  className="h-7 px-2 text-[11px] text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                                  title="Record Full or Partial Payment"
-                                >
-                                  <CreditCard className="h-3 w-3 mr-1" /> Pay
-                                </Button>
-                              )}
-
-                              {/* Issue Refund */}
-                              {maxRefundable > 0 && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setSelectedDocForRefund(doc);
-                                    setRefundAmount(maxRefundable);
-                                  }}
-                                  className="h-7 px-2 text-[11px] text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/60 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                                  title="Issue Partial or Full Refund"
-                                >
-                                  <Undo2 className="h-3 w-3 mr-1" /> Refund
-                                </Button>
-                              )}
-
-                              {/* Payment History */}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setSelectedDocForHistory(doc)}
-                                className="h-7 w-7 p-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                title="View Payment & Refund History"
-                              >
-                                <History className="h-3.5 w-3.5" />
-                              </Button>
-
-                              {/* Send / Share */}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setSelectedDocForShare(doc)}
-                                className="h-7 w-7 p-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                title="Send or Share Invoice"
-                              >
-                                <Share2 className="h-3.5 w-3.5" />
-                              </Button>
-
-                              {doc.type === 'estimate' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleConvertEstimateToInvoice(doc)}
-                                  className="h-7 px-2 text-[11px]"
-                                  title="Convert Quote to Invoice"
-                                >
-                                  <ArrowRightLeft className="h-3 w-3 mr-1" /> To Invoice
-                                </Button>
-                              )}
-
-                              {/* Edit Invoice */}
+                              {/* Quick Edit */}
                               <Link href={`/edit/${doc.id}`}>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 w-7 p-0"
+                                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
                                   title="Edit Invoice"
                                 >
-                                  <Edit className="h-3.5 w-3.5 text-slate-500" />
+                                  <Edit className="h-3.5 w-3.5 mr-1" />
+                                  <span>Edit</span>
                                 </Button>
                               </Link>
 
-                              {/* Cancel Invoice */}
-                              {effStatus !== 'cancelled' && effStatus !== 'paid' && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleCancelInvoice(doc)}
-                                  className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
-                                  title="Cancel Invoice"
-                                >
-                                  <Ban className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
+                              {/* More Actions Dropdown */}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                  {doc.summary.balanceDue > 0 && effStatus !== 'cancelled' && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedDocForPayment(doc);
+                                        setPaymentAmount(doc.summary.balanceDue);
+                                      }}
+                                    >
+                                      <CreditCard className="h-3.5 w-3.5 mr-2 text-emerald-600" />
+                                      Record Payment
+                                    </DropdownMenuItem>
+                                  )}
 
-                              {/* Delete Invoice */}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteInvoice(doc)}
-                                className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
-                                title="Delete Invoice permanently"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                                  {maxRefundable > 0 && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedDocForRefund(doc);
+                                        setRefundAmount(maxRefundable);
+                                      }}
+                                    >
+                                      <Undo2 className="h-3.5 w-3.5 mr-2 text-rose-600" />
+                                      Issue Refund
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  <DropdownMenuItem onClick={() => setSelectedDocForShare(doc)}>
+                                    <Share2 className="h-3.5 w-3.5 mr-2 text-blue-500" />
+                                    Share Invoice
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem onClick={() => setSelectedDocForHistory(doc)}>
+                                    <History className="h-3.5 w-3.5 mr-2 text-purple-500" />
+                                    Payment History
+                                  </DropdownMenuItem>
+
+                                  {doc.type === 'estimate' && (
+                                    <DropdownMenuItem onClick={() => handleConvertEstimateToInvoice(doc)}>
+                                      <ArrowRightLeft className="h-3.5 w-3.5 mr-2 text-indigo-500" />
+                                      Convert to Invoice
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  <DropdownMenuSeparator />
+
+                                  {effStatus !== 'cancelled' && effStatus !== 'paid' && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleCancelInvoice(doc)}
+                                      className="text-amber-600 focus:text-amber-600"
+                                    >
+                                      <Ban className="h-3.5 w-3.5 mr-2" />
+                                      Cancel Invoice
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteInvoice(doc)}
+                                    className="text-rose-600 focus:text-rose-600"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                    Delete Permanently
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </td>
                         </tr>
