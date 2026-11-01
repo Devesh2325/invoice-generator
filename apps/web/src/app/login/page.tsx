@@ -7,14 +7,12 @@ import { useTenant } from '@/lib/auth/tenant-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Sparkles, Lock, Mail, AlertCircle, Sun, Moon } from 'lucide-react';
-import { useTheme } from '@/lib/theme/theme-provider';
+import { Sparkles, Lock, Mail, AlertCircle } from 'lucide-react';
 import { APP_CONFIG } from '@invoice/core';
 
 export default function LoginPage() {
   const router = useRouter();
   const { refreshTenants } = useTenant();
-  const { theme, toggleTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -126,35 +124,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col justify-center items-center p-6 font-sans relative transition-colors">
-      <div className="absolute top-4 right-4">
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="h-9 w-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          title="Toggle theme"
-          aria-label="Toggle theme"
-        >
-          {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
-        </button>
-      </div>
-
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center items-center p-6 font-sans">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 font-black text-2xl text-primary tracking-tight">
             <Sparkles className="h-6 w-6 text-primary" />
             <span>{APP_CONFIG.brandName}</span>
           </Link>
-          <h2 className="text-xl font-bold text-foreground">Sign in to your Workspace</h2>
-          <p className="text-xs text-muted-foreground">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Sign in to your Workspace</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Access your private GST & financial documents, customers, and analytics
           </p>
         </div>
 
-        <Card className="border-border bg-card shadow-lg">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-bold text-foreground">Account Credentials</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
+            <CardTitle className="text-base font-bold text-slate-900 dark:text-slate-100">Account Credentials</CardTitle>
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
               Enter your registered email and password
             </CardDescription>
           </CardHeader>
@@ -168,30 +154,30 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-foreground block mb-1">Email Address</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 text-xs bg-background"
+                    className="pl-9 text-xs bg-transparent"
                     placeholder="you@company.in"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-foreground block mb-1">Password</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9 text-xs bg-background"
+                    className="pl-9 text-xs bg-transparent"
                     placeholder="••••••••"
                   />
                 </div>
@@ -208,7 +194,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <div className="text-center text-xs text-muted-foreground">
+        <div className="text-center text-xs text-slate-500">
           Don't have an account yet?{' '}
           <Link href="/signup" className="font-semibold text-primary hover:underline">
             Create a workspace
