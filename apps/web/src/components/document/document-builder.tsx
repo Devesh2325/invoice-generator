@@ -42,6 +42,7 @@ import { InlineDocumentCanvas } from './inline-document-canvas';
 import { DocumentTypeSelector } from './document-type-selector';
 import { ShareInvoiceModal } from '@/components/modals/share-invoice-modal';
 import { UpgradePlanModal } from '@/components/modals/upgrade-plan-modal';
+import { IntegrationsModal } from '@/components/modals/integrations-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -92,6 +93,8 @@ import {
   Sun,
   Moon,
   Save,
+  Plug,
+  Check,
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
@@ -670,6 +673,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [integrationsModalOpen, setIntegrationsModalOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<string>('');
 
@@ -1499,8 +1503,20 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           </button>
         </div>
 
-        {/* Right: Customize button (opens popover), Download PDF, Finalize Invoice (primary), More dropdown */}
+        {/* Right: Integrations, Customize button, Download PDF, Save Invoice, More dropdown */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Integrations button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIntegrationsModalOpen(true)}
+            className="h-9 px-3 text-xs font-bold flex items-center gap-1.5 border-border bg-background hover:bg-accent text-foreground hover:border-emerald-500/50 cursor-pointer transition-all"
+            title="Integrations: Tally, Zoho, QuickBooks, Razorpay, Stripe, Webhooks"
+          >
+            <Plug className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Integrations</span>
+          </Button>
+
           {/* Customize popover */}
           <Popover open={customizeOpen} onOpenChange={setCustomizeOpen}>
             <PopoverTrigger asChild>
@@ -1768,6 +1784,14 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 bg-popover border-border p-1.5 shadow-xl z-50">
               <DropdownMenuItem
+                onClick={() => setIntegrationsModalOpen(true)}
+                className="text-xs flex items-center gap-2.5 py-2 cursor-pointer font-semibold text-emerald-600 dark:text-emerald-400"
+              >
+                <Plug className="h-4 w-4" />
+                <span>Integrations & Sync</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
                 onClick={handleSaveDraft}
                 className="text-xs flex items-center gap-2.5 py-2 cursor-pointer"
               >
@@ -1983,6 +2007,18 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   type="button"
                   onClick={() => {
                     setMobileMenuOpen(false);
+                    setIntegrationsModalOpen(true);
+                  }}
+                  className="w-full min-h-[44px] px-3 py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-3 transition-colors"
+                >
+                  <Plug className="h-4 w-4" />
+                  <span>Integrations (Tally, Zoho, Payments)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
                     setShareModalOpen(true);
                   }}
                   className="w-full min-h-[44px] px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-accent text-foreground text-xs font-bold flex items-center gap-3 transition-colors"
@@ -2131,7 +2167,266 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       {/* VIEW MODE 1: INLINE SHEET EDITOR (Default) */}
       {/* ==================================================================== */}
       {viewMode === 'sheet' && (
-        <div className="flex-1 bg-slate-200/50 dark:bg-slate-900/60 p-4 md:p-8 flex justify-center items-start overflow-y-auto print:p-0 print:m-0 print:overflow-visible print:bg-white print:block pb-28 md:pb-8">
+        <div className="flex-1 bg-slate-200/50 dark:bg-slate-900/60 p-4 md:p-8 flex flex-col items-center overflow-y-auto print:p-0 print:m-0 print:overflow-visible print:bg-white print:block pb-28 md:pb-8">
+          {/* Quick Action Ribbon directly above the invoice canvas */}
+          <div className="no-print mb-4 w-full max-w-4xl bg-card/90 backdrop-blur-xs border border-border/80 rounded-2xl p-2 sm:p-2.5 shadow-sm flex flex-wrap items-center justify-between gap-2 text-xs">
+            {/* Left: Template, Theme, Currency, Columns */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {/* Template Picker Popover */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-8 px-2.5 sm:px-3 rounded-xl bg-primary/10 hover:bg-primary/15 text-primary border border-primary/20 font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                    title="Change Invoice Template"
+                  >
+                    <Palette className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate max-w-[130px] sm:max-w-none">{activeTemplatePreset.name}</span>
+                    <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/40 text-primary shrink-0 hidden sm:inline-block">
+                      {activeTemplatePreset.region}
+                    </Badge>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-80 sm:w-96 p-3 bg-popover border-border shadow-2xl z-50">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
+                    <div className="font-bold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Palette className="h-3.5 w-3.5 text-primary" />
+                      <span>Choose Template</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {categorizedTemplates.reduce((acc, c) => acc + c.templates.length, 0)} available
+                    </span>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto space-y-3 pr-1">
+                    {categorizedTemplates.map((group) => (
+                      <div key={group.category} className="space-y-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block px-1">
+                          {group.label}
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                          {group.templates.map((tmpl) => {
+                            const isSelected = tmpl.id === templateId;
+                            const isAllowed = isTemplateAllowedForPlan(activeTenant?.plan || 'starter', tmpl.id);
+                            return (
+                              <button
+                                key={tmpl.id}
+                                type="button"
+                                onClick={() => {
+                                  if (!isAllowed) {
+                                    setUpgradeReason(`The "${tmpl.name}" template is a Pro design. Upgrade to unlock all templates.`);
+                                    setUpgradeModalOpen(true);
+                                    return;
+                                  }
+                                  setTemplateId(tmpl.id);
+                                  setCustomPrimaryColor(undefined);
+                                }}
+                                className={`p-2 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
+                                    : 'border-border/70 hover:border-primary/40 bg-card text-foreground hover:bg-accent/40'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-1 w-full">
+                                  <span className="text-xs font-semibold truncate">{tmpl.name}</span>
+                                  {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                                  {!isAllowed && <span className="text-[9px] px-1 bg-amber-500/10 text-amber-600 rounded">PRO</span>}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground truncate opacity-80 mt-0.5">
+                                  {tmpl.competitorStyle}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Theme Colors Quick Swatches */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-8 px-2.5 rounded-xl border border-border bg-background hover:bg-accent text-foreground font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                    title="Customize Color & Typography"
+                  >
+                    <span className="w-3.5 h-3.5 rounded-full border border-black/20 shadow-2xs" style={{ backgroundColor: effectivePrimaryColor }} />
+                    <span className="hidden sm:inline">Color</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-72 p-3 bg-popover border-border shadow-2xl z-50 space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      Brand Accent Color
+                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {THEME_COLOR_SWATCHES.map((swatch) => (
+                        <button
+                          key={swatch.hex}
+                          type="button"
+                          onClick={() => setCustomPrimaryColor(swatch.hex)}
+                          title={swatch.name}
+                          className={`w-6 h-6 rounded-full border transition-transform ${
+                            effectivePrimaryColor.toLowerCase() === swatch.hex.toLowerCase()
+                              ? 'scale-120 ring-2 ring-offset-2 ring-primary border-white'
+                              : 'border-border/60 hover:scale-110'
+                          }`}
+                          style={{ backgroundColor: swatch.hex }}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={effectivePrimaryColor}
+                        onChange={(e) => setCustomPrimaryColor(e.target.value)}
+                        className="w-7 h-7 rounded-lg cursor-pointer border border-border p-0.5 bg-background"
+                        title="Custom Hex Color"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 pt-2 border-t border-border">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      Font Typography
+                    </label>
+                    <select
+                      value={effectiveFontFamily}
+                      onChange={(e) => setCustomFontFamily(e.target.value as 'sans' | 'serif' | 'mono')}
+                      className="w-full text-xs font-semibold bg-muted/60 border border-border rounded-lg px-2.5 py-1.5 text-foreground cursor-pointer"
+                    >
+                      <option value="sans">Modern Sans (Clean & Tech)</option>
+                      <option value="serif">Executive Serif (Legal & Formal)</option>
+                      <option value="mono">Technical Mono (Engineering & Data)</option>
+                    </select>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Currency Selector */}
+              <div className="flex items-center">
+                <select
+                  value={currency}
+                  onChange={(e) => handleCurrencyChange(e.target.value)}
+                  className="h-8 text-xs font-bold bg-background border border-border rounded-xl px-2 text-foreground cursor-pointer hover:border-primary/50 transition-colors"
+                  title="Change Currency & Tax Rules"
+                >
+                  {Object.values(CURRENCIES).map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code} ({c.symbol})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Column Visibility Popover */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-8 px-2.5 rounded-xl border border-border bg-background hover:bg-accent text-foreground font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                    title="Toggle Table Columns (Unit, HSN, Tax, Discount)"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>Columns</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-56 p-2.5 bg-popover border-border shadow-2xl z-50 space-y-1.5 text-xs">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block px-1 mb-1">
+                    Line Item Columns
+                  </span>
+                  <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-accent cursor-pointer font-medium">
+                    <span>Unit of Measure</span>
+                    <input
+                      type="checkbox"
+                      checked={generatorSettings.showUnitColumn ?? true}
+                      onChange={() => {
+                        const updated = {
+                          ...generatorSettings,
+                          showUnitColumn: !Boolean(generatorSettings.showUnitColumn ?? true),
+                        };
+                        AdminApi.updateGeneratorSettings(updated);
+                        setGeneratorSettings(updated);
+                      }}
+                      className="rounded border-border text-primary h-3.5 w-3.5 cursor-pointer"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-accent cursor-pointer font-medium">
+                    <span>HSN / SAC Code</span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(generatorSettings.showHsnColumn)}
+                      onChange={() => {
+                        const updated = {
+                          ...generatorSettings,
+                          showHsnColumn: !Boolean(generatorSettings.showHsnColumn),
+                        };
+                        AdminApi.updateGeneratorSettings(updated);
+                        setGeneratorSettings(updated);
+                      }}
+                      className="rounded border-border text-primary h-3.5 w-3.5 cursor-pointer"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-accent cursor-pointer font-medium">
+                    <span>Tax % & Amount</span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(generatorSettings.showTaxRateColumn)}
+                      onChange={() => {
+                        const updated = {
+                          ...generatorSettings,
+                          showTaxRateColumn: !Boolean(generatorSettings.showTaxRateColumn),
+                        };
+                        AdminApi.updateGeneratorSettings(updated);
+                        setGeneratorSettings(updated);
+                      }}
+                      className="rounded border-border text-primary h-3.5 w-3.5 cursor-pointer"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-accent cursor-pointer font-medium">
+                    <span>Discount %</span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(generatorSettings.showDiscountColumn)}
+                      onChange={() => {
+                        const updated = {
+                          ...generatorSettings,
+                          showDiscountColumn: !Boolean(generatorSettings.showDiscountColumn),
+                        };
+                        AdminApi.updateGeneratorSettings(updated);
+                        setGeneratorSettings(updated);
+                      }}
+                      className="rounded border-border text-primary h-3.5 w-3.5 cursor-pointer"
+                    />
+                  </label>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Right: Payment Details & Integrations Quick Button */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentSettingsModalOpen(true)}
+                className="h-8 px-2.5 rounded-xl border border-border bg-background hover:bg-accent text-foreground font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Payment Coordinates (Bank Details & UPI QR)"
+              >
+                <QrCode className="h-3.5 w-3.5 text-primary" />
+                <span className="hidden sm:inline">Bank & QR</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIntegrationsModalOpen(true)}
+                className="h-8 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                title="Connect Payment Gateways, Tally, Zoho, QuickBooks & Webhooks"
+              >
+                <Plug className="h-3.5 w-3.5" />
+                <span>Integrations</span>
+              </button>
+            </div>
+          </div>
+
           <div className="w-full max-w-4xl print:max-w-none print:w-full">
             <InlineDocumentCanvas
               document={documentModel}
@@ -3839,6 +4134,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         document={documentModel}
         onDownloadPdf={handleDownloadPdf}
         onPrint={triggerPrint}
+      />
+
+      {/* ==================================================================== */}
+      {/* INTEGRATIONS MODAL (Payment Gateways, Tally, Zoho, QBO & Webhooks) */}
+      {/* ==================================================================== */}
+      <IntegrationsModal
+        open={integrationsModalOpen}
+        onOpenChange={setIntegrationsModalOpen}
+        document={documentModel}
       />
 
       {/* ==================================================================== */}
