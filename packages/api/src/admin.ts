@@ -36,7 +36,7 @@ export class AdminApi {
             0,
           );
         }
-      } catch {}
+      } catch { }
     }
 
     // Signups per month for the last six months, from each user's real signup date.
@@ -97,7 +97,7 @@ export class AdminApi {
       }
 
       return adminUsers;
-    } catch {}
+    } catch { }
 
     return [];
   }
@@ -123,7 +123,7 @@ export class AdminApi {
             localStorage.setItem("billcraft_registered_users", JSON.stringify(regUpdated));
           }
         }
-      } catch {}
+      } catch { }
       this.recordAuditLog("UPDATE_USER", `User #${userId}`, "Super Admin");
     }
     return true;
@@ -165,7 +165,7 @@ export class AdminApi {
             localStorage.setItem("billcraft_registered_users", JSON.stringify(filtered));
           }
         }
-      } catch {}
+      } catch { }
 
       // 3. Remove custom tenants associated with this user
       try {
@@ -181,7 +181,7 @@ export class AdminApi {
             localStorage.setItem("billcraft_custom_tenants", JSON.stringify(filteredTenants));
           }
         }
-      } catch {}
+      } catch { }
 
       // 4. Clear impersonation session if active for this user
       try {
@@ -196,7 +196,7 @@ export class AdminApi {
             localStorage.removeItem("billcraft_is_impersonating");
           }
         }
-      } catch {}
+      } catch { }
 
       this.recordAuditLog("DELETE_USER", `User: ${userIdOrEmail}`, "Super Admin");
       return true;
@@ -213,7 +213,7 @@ export class AdminApi {
       if (stored) {
         return JSON.parse(stored);
       }
-    } catch {}
+    } catch { }
     return PLANS;
   }
 
@@ -289,7 +289,7 @@ export class AdminApi {
           }));
         }
       }
-    } catch {}
+    } catch { }
     return [];
   }
 
@@ -343,7 +343,7 @@ export class AdminApi {
           "billcraft_custom_tenants",
           JSON.stringify([newTenant, ...existingTenants]),
         );
-      } catch {}
+      } catch { }
       // Store white-label brand settings if provided
       if (
         params.isWhiteLabel &&
@@ -361,7 +361,7 @@ export class AdminApi {
             fontFamily: "Inter",
           };
           localStorage.setItem(brandKey, JSON.stringify(brandSettings));
-        } catch {}
+        } catch { }
       }
       // Store owner credentials if password provided
       if (params.ownerPassword) {
@@ -378,7 +378,7 @@ export class AdminApi {
             createdAt: newTeam.createdAt,
           });
           localStorage.setItem("billcraft_admin_users", JSON.stringify(users));
-        } catch {}
+        } catch { }
       }
       // Synchronize with registered users so owner can immediately log in at /login
       try {
@@ -407,7 +407,7 @@ export class AdminApi {
           "billcraft_registered_users",
           JSON.stringify(regUsers),
         );
-      } catch {}
+      } catch { }
       this.recordAuditLog(
         "CREATE_WORKSPACE",
         `Team: ${newTeam.name} (${newTeam.id})${params.isWhiteLabel ? " [White-Label]" : ""}`,
@@ -437,7 +437,7 @@ export class AdminApi {
           localStorage.setItem(`billcraft_tenant_plan_${teamId}`, patch.plan);
           window.dispatchEvent(new Event("billcraft-plan-updated"));
           window.dispatchEvent(new Event("billcraft-auth-updated"));
-        } catch {}
+        } catch { }
       }
 
       // Sync custom tenants
@@ -466,7 +466,7 @@ export class AdminApi {
             JSON.stringify(nextTenants),
           );
         }
-      } catch {}
+      } catch { }
 
       // Sync brand settings
       try {
@@ -486,7 +486,7 @@ export class AdminApi {
               : currentBrand.whiteLabelEnabled,
         };
         localStorage.setItem(brandKey, JSON.stringify(updatedBrand));
-      } catch {}
+      } catch { }
 
       // Sync with registered users
       if (
@@ -519,7 +519,7 @@ export class AdminApi {
               );
             }
           }
-        } catch {}
+        } catch { }
       }
 
       this.recordAuditLog("UPDATE_WORKSPACE", `Team: ${teamId}`, "Super Admin");
@@ -536,7 +536,7 @@ export class AdminApi {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) return parsed;
       }
-    } catch {}
+    } catch { }
     return [];
   }
 
@@ -585,7 +585,7 @@ export class AdminApi {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) return parsed;
       }
-    } catch {}
+    } catch { }
     return [];
   }
 
@@ -608,7 +608,7 @@ export class AdminApi {
         "billcraft_admin_audit_logs",
         JSON.stringify(logs.slice(0, 100)),
       );
-    } catch {}
+    } catch { }
   }
 
   // Generator Field Visibility Controls (Description, Qty, Unit, Price, Amount default)
@@ -625,7 +625,7 @@ export class AdminApi {
       if (stored) {
         return { ...defaults, ...JSON.parse(stored) };
       }
-    } catch {}
+    } catch { }
     return defaults;
   }
 
