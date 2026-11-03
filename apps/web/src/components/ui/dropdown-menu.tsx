@@ -5,7 +5,14 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 import { cn } from '@invoice/ui';
 
-export const DropdownMenu = DropdownMenuPrimitive.Root;
+/**
+ * Not modal by default. A modal menu locks scrolling by making <body> position: relative, and with
+ * our always-on page scrollbar that places the menu off-screen once the page has been scrolled.
+ */
+export const DropdownMenu = ({
+  modal = false,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) => <DropdownMenuPrimitive.Root modal={modal} {...props} />;
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 export const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 export const DropdownMenuPortal = DropdownMenuPrimitive.Portal;

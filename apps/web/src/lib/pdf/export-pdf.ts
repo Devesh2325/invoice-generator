@@ -1,7 +1,8 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-export async function exportDocumentToPdf(elementId: string, filename: string): Promise<void> {
+/** Renders the finished invoice to a canvas, after its template's font has loaded. */
+export async function captureInvoice(elementId: string): Promise<HTMLCanvasElement> {
   const element =
     document.getElementById(elementId) ||
     document.getElementById('invoice-pdf-export-sheet') ||
@@ -11,15 +12,23 @@ export async function exportDocumentToPdf(elementId: string, filename: string): 
     throw new Error(`Element for PDF export not found.`);
   }
 
+  // Without this, a download can use a fallback font and stop matching the preview.
+  await document.fonts.ready;
+
   // Render high-resolution 3x DPI canvas
-  const canvas = await html2canvas(element, {
+  return html2canvas(element, {
     scale: 2.5,
     useCORS: true,
-    allowTaint: true,
+    // A tainted canvas can't be exported, so an image without CORS is left out instead.
+    allowTaint: false,
     logging: false,
     backgroundColor: '#ffffff',
     windowWidth: 920,
   });
+}
+
+export async function exportDocumentToPdf(elementId: string, filename: string): Promise<void> {
+  const canvas = await captureInvoice(elementId);
 
   const imgData = canvas.toDataURL('image/png');
   const pdf = new jsPDF({

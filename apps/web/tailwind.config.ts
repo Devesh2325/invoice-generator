@@ -16,6 +16,9 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Arial', 'sans-serif'],
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -23,14 +26,14 @@ const config: Config = {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: '#3157D5',
-          hover: '#2544B8',
+          DEFAULT: '#5B4BFF',
+          hover: '#4A39EA',
           foreground: '#FFFFFF',
-          50: '#EEF2FF',
-          100: '#E0E7FF',
-          500: '#3157D5',
-          600: '#2544B8',
-          700: '#1D3594',
+          50: '#F1EFFF',
+          100: '#E4E0FF',
+          500: '#5B4BFF',
+          600: '#4A39EA',
+          700: '#3A2BC4',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',

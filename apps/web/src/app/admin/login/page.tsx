@@ -16,35 +16,45 @@ export default function AdminLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
 
-    const res = AdminApi.login(email, password);
-    setSubmitting(false);
-
-    if (res.success) {
-      router.push('/admin');
-    } else {
-      setError(res.error || 'Authentication failed');
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      if (res.ok) {
+        AdminApi.recordAuditLog('SUPER_ADMIN_LOGIN', 'Portal Access', email.trim().toLowerCase());
+        router.replace('/admin');
+        router.refresh();
+        return;
+      }
+      const data = await res.json().catch(() => null);
+      setError(data?.error || 'Could not sign in. Please try again.');
+    } catch {
+      setError('Could not reach the server. Please try again.');
     }
+    setSubmitting(false);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen text-foreground flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="h-12 w-12 rounded-2xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center mx-auto shadow-lg">
+          <div className="h-12 w-12 rounded-xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center mx-auto shadow-lg">
             <ShieldAlert className="h-6 w-6" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-white">Super Admin Portal</h1>
-          <p className="text-xs text-slate-400">
-            Secure, rate-limited administrative authentication
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Super Admin Portal</h1>
+          <p className="text-xs text-muted-foreground">
+            Sign in to manage users, plans and content
           </p>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900/90 backdrop-blur-md shadow-2xl rounded-2xl">
+        <Card className="border-border bg-card backdrop-blur-md shadow-2xl rounded-xl">
           <CardContent className="p-6 sm:p-8 space-y-4">
             {error && (
               <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold flex items-center gap-2">
@@ -55,9 +65,9 @@ export default function AdminLoginPage() {
 
             <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4 text-xs">
               <div>
-                <label className="text-slate-300 font-semibold block mb-1">Admin Email</label>
+                <label className="text-foreground font-semibold block mb-1">Admin Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="email"
                     required
@@ -65,23 +75,23 @@ export default function AdminLoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="admin@yourcompany.com"
-                    className="pl-9 bg-slate-800/80 border-slate-700 text-white font-mono text-xs"
+                    className="pl-9 bg-muted border-border text-foreground tabular-nums text-xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-slate-300 font-semibold block mb-1">Master Password</label>
+                <label className="text-foreground font-semibold block mb-1">Password</label>
                 <div className="relative">
-                  <Key className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                  <Key className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="password"
                     required
-                    autoComplete="new-password"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••"
-                    className="pl-9 bg-slate-800/80 border-slate-700 text-white font-mono text-xs"
+                    className="pl-9 bg-muted border-border text-foreground tabular-nums text-xs"
                   />
                 </div>
               </div>
@@ -96,16 +106,13 @@ export default function AdminLoginPage() {
             </form>
 
             <div className="pt-2 text-center">
-              <Link href="/" className="text-[11px] text-slate-500 hover:text-slate-300">
+              <Link href="/" className="text-xs text-muted-foreground hover:text-foreground">
                 ← Return to Public Site
               </Link>
             </div>
           </CardContent>
         </Card>
 
-        <div className="text-center text-[10px] text-slate-600 font-mono">
-          Security Alert: All access attempts are recorded in the immutable audit log.
-        </div>
       </div>
     </div>
   );

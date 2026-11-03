@@ -51,23 +51,7 @@ export declare const listTemplates: () => {
     name: string;
     region: string;
 }[];
-export declare function computeTotals(inv: any, tpl: string | TemplatePreset): {
-    lines: any;
-    gross: number;
-    discount: number;
-    taxable: number;
-    tax: number;
-    total: number;
-    roundOff: number;
-    final: number;
-    paid: number;
-    balance: number;
-    groups: {
-        rate: number;
-        taxable: number;
-        tax: number;
-    }[];
-};
+export declare function computeTotals(inv: any, tpl: string | TemplatePreset): any;
 export declare function renderInvoice(inv: any, templateId?: string, opts?: {
     preview?: boolean;
     override?: any;

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { APP_CONFIG } from '@invoice/core';
 import { TenantProvider } from '@/lib/auth/tenant-context';
@@ -6,11 +7,14 @@ import { ThemeProvider } from '@/lib/theme/theme-provider';
 import { I18nProvider } from '@/lib/i18n/i18n-context';
 import { Toaster } from '@/components/ui/toaster';
 import { CommandPalette } from '@/components/ui/command-palette';
+import { NavigationProgress } from '@/components/layout/navigation-progress';
+
+const sans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: `${APP_CONFIG.brandName} — Modern Invoice & Inventory Studio`,
+  title: `${APP_CONFIG.brandName} — Invoice generator for GST and global billing`,
   description:
-    `Production-ready SaaS for creating Invoices, Purchase Orders & Estimates with decimal-safe calculations, multi-tenant white-label workspaces, and UPI payment rails.`,
+    'Create GST-ready invoices, estimates and purchase orders with automatic tax calculation, UPI QR codes and PDF download.',
   keywords: [
     'invoice generator',
     'gst invoice',
@@ -23,17 +27,17 @@ export const metadata: Metadata = {
   authors: [{ name: `${APP_CONFIG.brandName} Team` }],
   metadataBase: new URL(`https://${APP_CONFIG.brandDomain}`),
   openGraph: {
-    title: `${APP_CONFIG.brandName} — Modern Invoice & Inventory Studio`,
+    title: `${APP_CONFIG.brandName} — Invoice generator for GST and global billing`,
     description:
-      'Fast, modern, decimal-safe invoicing with GST compliance, scannable UPI QR codes, and 8+ designer templates.',
+      'Create GST-ready invoices with automatic tax calculation, UPI QR codes and PDF download.',
     url: `https://${APP_CONFIG.brandDomain}`,
     siteName: APP_CONFIG.brandName,
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${APP_CONFIG.brandName} — Modern Invoice Studio`,
-    description: 'Fast, modern, decimal-safe invoicing with GST compliance and designer templates.',
+    title: `${APP_CONFIG.brandName} — Invoice generator for GST and global billing`,
+    description: 'Create GST-ready invoices with automatic tax calculation, UPI QR codes and PDF download.',
   },
 };
 
@@ -52,11 +56,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={sans.variable} suppressHydrationWarning>
       <head>
-        <link rel="stylesheet" href="https://unpkg.com/ahdjs/build/css/index.css" />
+        {/* Applies the saved theme before first paint, so pages don't flash the wrong one. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('billcraft_theme');if(t==='dark'||((t==='system'||!t)&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`,
+          }}
+        />
       </head>
-      <body className="min-h-screen bg-background font-sans antialiased text-foreground">
+      <body className="min-h-screen font-sans antialiased text-foreground">
+        <NavigationProgress />
         <ThemeProvider>
           <I18nProvider>
             <TenantProvider>

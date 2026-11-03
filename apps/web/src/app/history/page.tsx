@@ -141,7 +141,7 @@ export default function DocumentHistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen text-foreground flex flex-col font-sans">
       {/* Top Header */}
       <header className="bg-white border-b border-slate-200 px-6 lg:px-12 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -162,7 +162,7 @@ export default function DocumentHistoryPage() {
               onChange={handleImportJson}
               className="hidden"
             />
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-slate-200 rounded-md bg-white hover:bg-slate-50 text-slate-700">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold border border-slate-200 rounded-md bg-white hover:bg-slate-50 text-slate-700">
               <Upload className="h-3.5 w-3.5" /> Restore Backup
             </span>
           </label>
@@ -171,13 +171,13 @@ export default function DocumentHistoryPage() {
             variant="outline"
             size="sm"
             onClick={handleExportJson}
-            className="flex items-center gap-1.5 text-xs"
+            className="flex items-center gap-1.5 text-sm"
           >
             <Download className="h-3.5 w-3.5" /> Backup JSON
           </Button>
 
           <Link href="/create">
-            <Button size="sm" className="bg-primary hover:bg-primary-hover text-white flex items-center gap-1.5 text-xs font-semibold">
+            <Button size="sm" className="bg-primary hover:bg-primary-hover text-white flex items-center gap-1.5 text-sm font-semibold">
               <Plus className="h-3.5 w-3.5" /> Create Invoice
             </Button>
           </Link>
@@ -200,7 +200,7 @@ export default function DocumentHistoryPage() {
               placeholder="Search by invoice #, name, customer..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 text-xs"
+              className="pl-9 text-sm"
             />
           </div>
 
@@ -208,7 +208,7 @@ export default function DocumentHistoryPage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700"
+              className="text-sm border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700"
             >
               <option value="all">All Invoice Types</option>
               <option value="invoice">Invoices</option>
@@ -222,7 +222,7 @@ export default function DocumentHistoryPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700"
+              className="text-sm border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700"
             >
               <option value="all">All Statuses</option>
               <option value="draft">Draft</option>
@@ -242,7 +242,7 @@ export default function DocumentHistoryPage() {
             Loading saved invoices...
           </div>
         ) : filteredDocs.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-4">
             <div className="h-14 w-14 rounded-full bg-blue-50 text-primary mx-auto flex items-center justify-center">
               <FileText className="h-7 w-7" />
             </div>
@@ -265,7 +265,7 @@ export default function DocumentHistoryPage() {
                   <CardContent className="p-5 space-y-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        <span className="text-sm font-bold text-slate-400">
                           {doc.invoiceName || 'Tax Invoice'}
                         </span>
                         <h4 className="text-base font-bold text-slate-900">
@@ -285,7 +285,7 @@ export default function DocumentHistoryPage() {
                       </Badge>
                     </div>
 
-                    <div className="space-y-1.5 text-xs text-slate-600">
+                    <div className="space-y-1.5 text-sm text-slate-600">
                       <div className="flex items-center gap-1.5">
                         <User className="h-3.5 w-3.5 text-slate-400" />
                         <span className="font-medium text-slate-800">
@@ -299,15 +299,15 @@ export default function DocumentHistoryPage() {
                     </div>
 
                     <div className="pt-2 border-t border-slate-100 flex justify-between items-baseline">
-                      <span className="text-xs text-slate-500">Final Payable</span>
-                      <span className="text-base font-black text-slate-900 tabular-nums">
+                      <span className="text-sm text-slate-500">Final Payable</span>
+                      <span className="text-base font-semibold text-slate-900 tabular-nums">
                         {formatCurrency(Number(doc.summary?.grandTotal || 0), doc.currency || 'INR')}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-end gap-1.5 pt-2">
                       <Link href={`/edit/${doc.id}`}>
-                        <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs">
+                        <Button variant="outline" size="sm" className="h-8 px-2.5 text-sm">
                           <Edit className="h-3.5 w-3.5 mr-1" /> Open Invoice
                         </Button>
                       </Link>
@@ -315,7 +315,7 @@ export default function DocumentHistoryPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDuplicate(doc)}
-                        className="h-8 px-2.5 text-xs"
+                        className="h-8 px-2.5 text-sm"
                         title="Duplicate"
                       >
                         <Copy className="h-3.5 w-3.5" />
@@ -324,7 +324,7 @@ export default function DocumentHistoryPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDelete(doc.id)}
-                        className="h-8 px-2.5 text-xs text-red-600 hover:text-red-700"
+                        className="h-8 px-2.5 text-sm text-red-600 hover:text-red-700"
                         title="Delete"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

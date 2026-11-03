@@ -148,7 +148,7 @@ export const ShareInvoiceModal: React.FC<ShareInvoiceModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-6 sm:p-7 border-border bg-card rounded-2xl shadow-2xl space-y-5">
+      <DialogContent className="max-w-lg p-6 sm:p-7 border-border bg-card rounded-xl shadow-2xl space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2.5">
@@ -156,10 +156,10 @@ export const ShareInvoiceModal: React.FC<ShareInvoiceModalProps> = ({
               <Share2 className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-black text-base text-foreground">
+              <h3 className="font-semibold text-base text-foreground">
                 Share Invoice #{docNumber}
               </h3>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Billed to {clientName} • {formatCurrency(grandTotal, currency)}
               </p>
             </div>
@@ -173,7 +173,7 @@ export const ShareInvoiceModal: React.FC<ShareInvoiceModalProps> = ({
               <Globe className="h-3.5 w-3.5 text-primary" />
               Tokenized Public Link (Read-Only)
             </span>
-            <span className="text-[10px] text-muted-foreground">Unguessable & Scoped</span>
+            <span className="text-xs text-muted-foreground">Unguessable & Scoped</span>
           </label>
           <div className="flex items-center gap-2">
             <Input
@@ -201,7 +201,7 @@ export const ShareInvoiceModal: React.FC<ShareInvoiceModalProps> = ({
 
         {/* Instant Dispatch Channels */}
         <div className="space-y-2">
-          <div className="text-xs font-bold text-foreground uppercase tracking-wider text-[10px]">
+          <div className="text-xs font-bold text-foreground text-xs">
             Instant Send Channels
           </div>
 

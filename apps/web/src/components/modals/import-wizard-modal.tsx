@@ -166,14 +166,14 @@ export const ImportWizardModal: React.FC<ImportWizardModalProps> = ({
                           <div className="font-bold text-slate-900">
                             {doc.documentNumber} ({doc.client.name})
                           </div>
-                          <div className="text-[11px] text-slate-500">
+                          <div className="text-xs text-slate-500">
                             {formatCurrency(doc.summary.grandTotal, doc.currency)} • Issued {doc.issueDate}
                           </div>
                         </div>
                       </label>
 
                       {isDuplicate && (
-                        <Badge variant="warning" className="text-[10px]">
+                        <Badge variant="warning" className="text-xs">
                           Duplicate Number in Cloud
                         </Badge>
                       )}

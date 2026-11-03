@@ -152,27 +152,27 @@ export default function AdminUsersPage() {
   return (
     <div className="p-6 lg:p-10 space-y-6 max-w-7xl mx-auto w-full">
       <div>
-        <h1 className="text-2xl font-black text-white tracking-tight">Users & Subscriptions</h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Users & Subscriptions</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
           Manage registered workspace accounts, manually adjust tiers, and manage account access
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-900 p-4 rounded-xl border border-slate-800">
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-card p-4 rounded-xl border border-border">
         <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search users by name, email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-slate-800 border-slate-700 text-white text-xs"
+            className="pl-9 bg-muted border-border text-foreground text-xs"
           />
         </div>
 
         <select
           value={planFilter}
           onChange={(e) => setPlanFilter(e.target.value)}
-          className="bg-slate-800 border border-slate-700 text-white rounded-md text-xs px-3 py-1.5 w-full sm:w-auto"
+          className="bg-muted border border-border text-foreground rounded-md text-xs px-3 py-1.5 w-full sm:w-auto"
         >
           <option value="all">All Plans</option>
           <option value="starter">Starter / Free</option>
@@ -181,26 +181,26 @@ export default function AdminUsersPage() {
         </select>
       </div>
 
-      <Card className="border-slate-800 bg-slate-900 rounded-2xl overflow-hidden shadow-xs">
+      <Card className="border-border bg-card rounded-xl overflow-hidden shadow-xs">
         <CardContent className="p-0">
           {users.length === 0 ? (
             <div className="p-12 text-center space-y-3">
-              <div className="h-12 w-12 rounded-xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400 border border-slate-700">
+              <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center mx-auto text-muted-foreground border border-border">
                 <Users className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-sm font-bold text-white">No Registered Users Yet</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              <h3 className="text-sm font-bold text-foreground">No Registered Users Yet</h3>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 Users who register via the sign-up page or get invited by team workspaces will appear here in real time.
               </p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-400">
+            <div className="p-8 text-center text-xs text-muted-foreground">
               No users matching your search filters.
             </div>
           ) : (
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-800/40 text-slate-400 uppercase text-[10px] font-semibold">
+                <tr className="border-b border-border bg-muted text-muted-foreground uppercase text-xs font-semibold">
                   <th className="py-3 px-4">User</th>
                   <th className="py-3 px-4">Current Plan</th>
                   <th className="py-3 px-4">Invoices</th>
@@ -209,37 +209,37 @@ export default function AdminUsersPage() {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-border text-foreground">
                 {filtered.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-800/30">
-                  <td className="py-3 px-4 font-semibold text-white">
+                <tr key={u.id} className="hover:bg-accent">
+                  <td className="py-3 px-4 font-semibold text-foreground">
                     <div>{u.name}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">{u.email}</div>
+                    <div className="text-xs text-muted-foreground tabular-nums">{u.email}</div>
                   </td>
                   <td className="py-3 px-4">
                     <select
                       value={u.plan}
                       onChange={(e) => handlePlanChange(u.id, e.target.value as PlanId)}
-                      className="bg-slate-800 border border-slate-700 text-white rounded px-2 py-1 text-xs"
+                      className="bg-muted border border-border text-foreground rounded px-2 py-1 text-xs"
                     >
                       <option value="starter">Starter</option>
                       <option value="pro">Professional</option>
                       <option value="enterprise">Enterprise</option>
                     </select>
                   </td>
-                  <td className="py-3 px-4 font-mono">{u.invoicesCount}</td>
+                  <td className="py-3 px-4 tabular-nums">{u.invoicesCount}</td>
                   <td className="py-3 px-4">
                     <Badge
                       className={
                         u.status === 'active'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-800 text-[10px]'
-                          : 'bg-rose-500/10 text-rose-400 border-rose-800 text-[10px]'
+                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-xs'
+                          : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30 text-xs'
                       }
                     >
                       {u.status}
                     </Badge>
                   </td>
-                  <td className="py-3 px-4 text-slate-400">{u.createdAt}</td>
+                  <td className="py-3 px-4 text-muted-foreground">{u.createdAt}</td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <Button
@@ -247,7 +247,7 @@ export default function AdminUsersPage() {
                         variant="ghost"
                         onClick={() => handleToggleBan(u)}
                         className={`text-xs h-7 px-2 ${
-                          u.status === 'active' ? 'text-slate-400 hover:text-amber-400' : 'text-emerald-400'
+                          u.status === 'active' ? 'text-muted-foreground hover:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'
                         }`}
                       >
                         {u.status === 'active' ? 'Ban' : 'Unban'}
@@ -256,7 +256,7 @@ export default function AdminUsersPage() {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleImpersonate(u)}
-                        className="text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 h-7 px-2 font-semibold flex items-center gap-1"
+                        className="text-xs text-amber-700 dark:text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 h-7 px-2 font-semibold flex items-center gap-1"
                         title={`Impersonate ${u.name} and view dashboard`}
                       >
                         <UserCog className="h-3 w-3" /> Impersonate
@@ -265,7 +265,7 @@ export default function AdminUsersPage() {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleDeleteUser(u)}
-                        className="text-xs text-rose-500 hover:text-rose-400 hover:bg-rose-950/30 h-7 px-2 font-semibold flex items-center gap-1"
+                        className="text-xs text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 h-7 px-2 font-semibold flex items-center gap-1"
                         title={`Permanently delete ${u.name} (${u.email})`}
                       >
                         <Trash2 className="h-3 w-3" /> Delete

@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { TEMPLATES, TEMPLATE_CATEGORIES, DocumentTemplateMeta } from '@invoice/theme';
-import { APP_CONFIG, isTemplateAllowedForPlan, AdminTemplateSetting } from '@invoice/core';
+import { APP_CONFIG, isTemplateAllowedForPlan } from '@invoice/core';
 import { AdminApi } from '@invoice/api';
 import { PublicHeader } from '@/components/layout/public-header';
+import { PublicFooter } from '@/components/layout/public-footer';
 import { UpgradePlanModal } from '@/components/modals/upgrade-plan-modal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,24 +26,19 @@ import {
 } from 'lucide-react';
 
 export default function TemplateGalleryPage() {
+  const router = useRouter();
   const [selectedCat, setSelectedCat] = useState<string>('all');
   const [upgradeModalOpen, setUpgradeModalOpen] = useState<boolean>(false);
   const [upgradeReason, setUpgradeReason] = useState<string>('');
-  const [adminTemplates, setAdminTemplates] = useState<AdminTemplateSetting[]>(() =>
-    AdminApi.getTemplates()
-  );
+  // Read after mount: the server can't see localStorage, and the first render must match its HTML.
+  const [disabledIds, setDisabledIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
-    const handleUpdate = () => {
-      setAdminTemplates(AdminApi.getTemplates());
-    };
+    const handleUpdate = () => setDisabledIds(new Set(AdminApi.getDisabledTemplateIds()));
+    handleUpdate();
     window.addEventListener('invoxa-templates-updated', handleUpdate);
     return () => window.removeEventListener('invoxa-templates-updated', handleUpdate);
   }, []);
-
-  const disabledIds = useMemo(() => {
-    return new Set(adminTemplates.filter((t) => t.enabled === false).map((t) => t.id));
-  }, [adminTemplates]);
 
   const activeTemplates = useMemo(() => {
     return Object.values(TEMPLATES).filter((t) => !disabledIds.has(t.id));
@@ -67,11 +64,11 @@ export default function TemplateGalleryPage() {
       setUpgradeModalOpen(true);
       return;
     }
-    window.location.href = `/create?template=${tmpl.id}`;
+    router.push(`/create?template=${tmpl.id}`);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
+    <div className="min-h-screen text-slate-900 dark:text-slate-100 flex flex-col font-sans">
       <PublicHeader />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-8 py-10 md:py-14 space-y-10 flex-1 w-full">
@@ -92,7 +89,7 @@ export default function TemplateGalleryPage() {
 
         {/* Hero Header matching Image 2 */}
         <div className="space-y-4 max-w-3xl">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-slate-900 dark:text-white">
             Free invoice templates
           </h1>
           <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
@@ -167,7 +164,7 @@ export default function TemplateGalleryPage() {
             return (
               <div
                 key={tmpl.id}
-                className="group flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs hover:shadow-xl transition-all"
+                className="group flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs hover:shadow-xl transition-all"
               >
                 {/* Visual Invoice Miniature Preview */}
                 <Link
@@ -183,7 +180,7 @@ export default function TemplateGalleryPage() {
                             className="h-4 w-4 rounded-full"
                             style={{ backgroundColor: primaryColor }}
                           />
-                          <span className="font-extrabold text-[11px] tracking-tight text-slate-800 uppercase">
+                          <span className="font-semibold text-[11px] tracking-tight text-slate-800 uppercase">
                             INVOICE
                           </span>
                         </div>
@@ -235,7 +232,7 @@ export default function TemplateGalleryPage() {
                     {/* Miniature summary footer */}
                     <div className="border-t border-slate-100 pt-1.5 flex justify-between items-center text-[9px]">
                       <span className="text-slate-400 font-medium">Balance Due</span>
-                      <span className="font-black text-slate-900 font-mono">₹12,450.00</span>
+                      <span className="font-semibold text-slate-900 font-mono">₹12,450.00</span>
                     </div>
 
                     {/* Plan Badge Overlay */}
@@ -262,9 +259,6 @@ export default function TemplateGalleryPage() {
                     >
                       {tmpl.name}
                     </Link>
-                    <div className="text-[11px] font-semibold text-primary mt-1">
-                      {tmpl.competitorStyle}
-                    </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">
                       {tmpl.description}
                     </p>
@@ -306,8 +300,8 @@ export default function TemplateGalleryPage() {
         </div>
 
         {/* Bottom Banner */}
-        <div className="p-8 sm:p-10 rounded-3xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-center space-y-4">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+        <div className="p-8 sm:p-10 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-center space-y-4">
+          <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white">
             Need a custom corporate template?
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
@@ -334,9 +328,7 @@ export default function TemplateGalleryPage() {
         reason={upgradeReason}
       />
 
-      <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 py-8 text-center text-xs text-slate-500 dark:text-slate-400">
-        © 2026 {APP_CONFIG.brandName} Template Studio. All templates adapt seamlessly to Light, Dark, and Print output.
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

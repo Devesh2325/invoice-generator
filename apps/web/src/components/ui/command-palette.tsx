@@ -37,6 +37,8 @@ export const CommandPalette: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        // Inside another site's iframe, app navigation doesn't belong.
+        if (window.location.pathname.startsWith('/embed')) return;
         e.preventDefault();
         setOpen((prev) => !prev);
       }

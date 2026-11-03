@@ -86,7 +86,7 @@ const T = (id, name, region, o) => ({
     ...o,
 });
 export const INVOICE_TEMPLATES = [
-    T('in-gst', 'India GST (IGST)', 'IN', {
+    T('in-gst', 'India GST', 'IN', {
         currency: '₹',
         locale: 'en-IN',
         roundOff: true,
@@ -422,6 +422,9 @@ export function computeTotals(inv, tpl) {
     const lines = (inv.items || []).map((it) => {
         const qty = +it.qty || 0, rate = +it.rate || 0, dis = +it.discountPct || 0, tr = +(it.taxRate ?? defRate);
         const gross = r(qty * rate), taxable = r(gross * (1 - dis / 100)), tax = r((taxable * tr) / 100);
+        if (it.calculated) {
+            return { ...it, qty, rate, dis, tr, ...it.calculated };
+        }
         return { ...it, qty, rate, dis, tr, gross, taxable, tax, total: r(taxable + tax) };
     });
     const sum = (k) => r(lines.reduce((a, l) => a + l[k], 0));
@@ -434,8 +437,23 @@ export function computeTotals(inv, tpl) {
         g.taxable = r(g.taxable + l.taxable);
         g.tax = r(g.tax + l.tax);
     });
+    const calculated = inv.calculatedTotals;
+    if (calculated) {
+        return {
+            lines,
+            lineTaxable: taxable,
+            lineTax: tax,
+            lineTotal: total,
+            groups: calculated.groups?.length ? calculated.groups : Object.values(groups).sort((a, b) => a.rate - b.rate),
+            ...calculated,
+            ...(calculated.groups?.length ? {} : { groups: Object.values(groups).sort((a, b) => a.rate - b.rate) }),
+        };
+    }
     return {
         lines,
+        lineTaxable: taxable,
+        lineTax: tax,
+        lineTotal: total,
         gross,
         discount: r(gross - taxable),
         taxable,
@@ -552,20 +570,26 @@ const table = (x, narrow = false) => {
             `<b>${C.lines.reduce((acc, l) => acc + (+l.qty || 0), 0)}</b>`,
             '',
             '',
-            `<b>${m(C.taxable)}</b>`,
-            `<b>${m(C.tax)}</b>`,
-            `<b>${m(C.total)}</b>`,
+            `<b>${m(C.lineTaxable)}</b>`,
+            `<b>${m(C.lineTax)}</b>`,
+            `<b>${m(C.lineTotal)}</b>`,
         ], `border-top:2px solid ${t.ink};border-bottom:2px solid ${t.ink};font-weight:700;padding:8px 6px;margin-top:2px;`, 'inv-total-row'));
 };
 const taxSummary = (x) => {
-    const { t, C, m } = x;
+    const { inv, t, C, m } = x;
     const g = 'display:grid;grid-template-columns:repeat(4,1fr);font-size:10px;text-align:right;gap:6px;';
     return card(x, lab('Tax summary breakdown') +
-        d(g + `font-weight:700;opacity:.65;font-size:9px;padding-bottom:4px;border-bottom:1px solid ${t.line};`, ['Taxable value', `${t.taxLabel} %`, `${t.taxLabel} amount`, 'Total tax']
+        d(g + `font-weight:700;opacity:.65;font-size:9px;padding-bottom:4px;border-bottom:1px solid ${t.line};`, (inv.gstSplit
+            ? ['Taxable value', 'GST %', 'CGST', 'SGST']
+            : ['Taxable value', `${t.taxLabel} %`, `${t.taxLabel} amount`, 'Total tax'])
             .map((h) => d('', esc(h)))
             .join('')) +
         C.groups
-            .map((r) => d(g + 'padding-top:6px;', [m(r.taxable), `${+r.rate}%`, m(r.tax), m(r.tax)].map((v) => d('', v)).join('')))
+            .map((r) => d(g + 'padding-top:6px;', (inv.gstSplit
+            ? [m(r.taxable), `${+r.rate}%`, m(r.cgst ?? 0), m(r.sgst ?? 0)]
+            : [m(r.taxable), `${+r.rate}%`, m(r.tax), m(r.tax)])
+            .map((v) => d('', v))
+            .join('')))
             .join(''));
 };
 const totals = (x) => {
@@ -574,7 +598,14 @@ const totals = (x) => {
         ['Subtotal (gross)', m(C.gross)],
         C.discount > 0 && ['Discount', m(-C.discount)],
         ['Taxable amount', m(C.taxable)],
-        [`${t.taxLabel} total`, m(C.tax)],
+        ...(inv.gstSplit
+            ? [
+                ['CGST', m(C.cgst ?? 0)],
+                ['SGST', m(C.sgst ?? 0)],
+            ]
+            : [[`${t.taxLabel} total`, m(C.tax)]]),
+        C.shipping > 0 && ['Shipping', m(C.shipping)],
+        C.extra > 0 && ['Other charges', m(C.extra)],
         C.roundOff !== 0 && ['Round-off', m(C.roundOff)],
         C.paid > 0 && ['Amount paid', m(-C.paid)],
     ].filter(Boolean);
@@ -594,6 +625,9 @@ const bank = (x, narrow = false) => {
     const { inv, t, opts } = x, p = inv.payment;
     if (!p)
         return '';
+    const hasBank = Boolean(p.accountName || p.bankName || p.accountNo || p.routingValue || p.branch);
+    if (p.realDocument && !hasBank && !p.vpa && !p.qrImage)
+        return '';
     const f = (k, v) => v ? d('', d('font-size:9px;opacity:.6;', esc(k)) + d('font-weight:700;', esc(v))) : '';
     // Render real vector QR (if SVG string) or image/dataURL
     const isSvg = typeof p.qrImage === 'string' && p.qrImage.trim().startsWith('<svg');
@@ -601,7 +635,7 @@ const bank = (x, narrow = false) => {
         ? isSvg
             ? p.qrImage
             : `<img src="${esc(p.qrImage)}" width="84" height="84" alt="Payment QR code" style="display:block">`
-        : opts.preview
+        : opts.preview && !p.realDocument
             ? PLACEHOLDER_QR
             : '';
     const qrBox = qr
@@ -610,7 +644,7 @@ const bank = (x, narrow = false) => {
     const vpa = p.vpa
         ? d(`font-size:10px;margin-top:10px;padding-top:8px;border-top:1px solid ${t.line};`, `<b>${esc(p.vpaLabel ?? t.vpaLabel)}:</b> ${esc(p.vpa)}`)
         : '';
-    return card(x, lab('Bank account details (transfer)') +
+    return card(x, lab(hasBank || !p.realDocument ? 'Bank account details (transfer)' : 'Pay by UPI') +
         d('display:flex;gap:14px;' + (narrow ? 'flex-direction:column;' : ''), d('flex:1;', d(`display:grid;grid-template-columns:${narrow ? '1fr' : '1fr 1fr'};gap:8px 12px;font-size:10px;line-height:1.4;word-break:break-word;overflow:visible;`, f('Account holder', p.accountName) +
             f('Bank name', p.bankName) +
             f('Account no.', p.accountNo) +
@@ -628,13 +662,17 @@ const signature = (x) => {
 const terms = (x) => {
     const { inv, t } = x, notes = [...(inv.notes ?? t.defaultNotes), t.note].filter(Boolean);
     return d('font-size:10px;line-height:1.6;', d('margin-bottom:6px;', `<b>Payment terms:</b> ${esc(inv.terms ?? t.terms)}`) +
-        lab('Terms & conditions / notes') +
-        notes.map((n, i) => d('', `${i + 1}. ${esc(n)}`)).join(''));
+        (notes.length ? lab('Terms & conditions / notes') : '') +
+        notes.map((n, i) => d('', notes.length > 1 ? `${i + 1}. ${nl(n)}` : nl(n))).join(''));
 };
 const wrap = (t, inner) => d(`width:794px;min-height:1123px;height:auto;overflow:visible;box-sizing:border-box;position:relative;font-family:${t.font};font-size:11px;background:${t.paper};color:${t.ink};${t.strip ? `border-top:10px solid ${t.accent};` : ''}`, inner, 'inv');
 /* ---------- public render functions ---------- */
 export function renderInvoice(inv, templateId = 'in-gst', opts = {}) {
-    const t = { ...getInvoiceTemplate(templateId), ...(opts.override || {}) };
+    const t = {
+        ...getInvoiceTemplate(templateId),
+        ...(opts.override || {}),
+        ...(inv.taxLabel ? { taxLabel: inv.taxLabel } : {}),
+    };
     const C = computeTotals(inv, t);
     const dp = inv.decimals ?? t.decimals, loc = inv.locale ?? t.locale, cur = inv.currency ?? t.currency;
     const nf = new Intl.NumberFormat(loc, {
@@ -772,6 +810,8 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
         debit_note: 'Total payable',
     };
     const items = (doc.items || []).map((it) => {
+        const line = it;
+        const hasCalculated = line.lineNet !== undefined && line.lineTotal !== undefined && line.taxAmount !== undefined;
         const qty = Number(it.quantity) || 1;
         const rate = Number(it.unitPrice) || 0;
         let discountPct = 0;
@@ -789,9 +829,46 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
             rate,
             discountPct,
             taxRate: it.taxRate !== undefined ? Number(it.taxRate) : 18,
+            calculated: hasCalculated
+                ? {
+                    gross: Number(line.lineGross ?? line.lineNet),
+                    taxable: Number(line.lineNet),
+                    tax: Number(line.taxAmount),
+                    total: Number(line.lineTotal),
+                }
+                : undefined,
         };
     });
+    const summary = doc.summary;
+    const hasSummary = summary && summary.grandTotal !== undefined && summary.taxableSubtotal !== undefined;
+    const calculatedTotals = hasSummary
+        ? {
+            gross: Number(summary.subtotal) || 0,
+            discount: Number(summary.discountTotal) || 0,
+            taxable: Number(summary.taxableSubtotal) || 0,
+            tax: Number(summary.totalTax) || 0,
+            cgst: Number(summary.cgstTotal) || 0,
+            sgst: Number(summary.sgstTotal) || 0,
+            shipping: Number(summary.shippingFee) || 0,
+            extra: Number(summary.extraCharges) || 0,
+            total: Number(summary.totalBeforeRoundOff ?? summary.grandTotal) || 0,
+            roundOff: Number(summary.roundOffAmount) || 0,
+            final: Number(summary.grandTotal) || 0,
+            paid: Number(summary.amountPaid) || 0,
+            balance: Number(summary.balanceDue) || 0,
+            groups: Array.isArray(summary.taxBreakdown)
+                ? summary.taxBreakdown.map((g) => ({
+                    rate: Number(g.rate) || 0,
+                    taxable: Number(g.taxableAmount) || 0,
+                    tax: Number(g.taxAmount) || 0,
+                    cgst: Number(g.cgstAmount) || 0,
+                    sgst: Number(g.sgstAmount) || 0,
+                }))
+                : [],
+        }
+        : undefined;
     const isIndia = (doc.currency || 'INR') === 'INR';
+    const isInterState = doc.summary?.gstSupplyType === 'inter';
     const supplierState = doc.sender.address?.state || '';
     const placeOfSupply = doc.client.billingAddress?.state || doc.placeOfSupply || supplierState;
     const anyDoc = doc;
@@ -804,6 +881,8 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
         const showUpi = isIndia && (payConfig.display ? payConfig.display.showUpiId : Boolean(payConfig.upiId));
         const showQr = payConfig.display ? payConfig.display.showQrCode : Boolean(payConfig.qrCodeDataUrl);
         payment = {
+            // Real documents never show the sample QR used in the template gallery
+            realDocument: true,
             accountName: showBank ? (bank?.accountHolderName || doc.sender.name) : undefined,
             bankName: showBank ? bank?.bankName : undefined,
             accountNo: showBank ? (bank?.accountNumber || bank?.accountNo) : undefined,
@@ -847,6 +926,9 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
         },
         items,
         supply: isIndia ? {
+            title: isInterState
+                ? 'Inter-state supply (IGST applicable)'
+                : 'Intra-state supply (CGST + SGST applicable)',
             fields: {
                 'Supplier state': supplierState,
                 'Place of supply': placeOfSupply,
@@ -858,7 +940,10 @@ export function mapCanonicalDocumentToTemplateInv(doc) {
             },
         },
         payment,
-        notes: doc.notes ? [doc.notes] : undefined,
+        calculatedTotals,
+        taxLabel: isIndia ? (isInterState ? 'IGST' : 'GST') : undefined,
+        gstSplit: isIndia && !isInterState && hasSummary,
+        notes: doc.notes ? [doc.notes] : [],
         terms: doc.paymentTerms || anyDoc.terms || payConfig?.paymentInstructions,
         amountPaid: doc.summary?.amountPaid || 0,
         signatory: doc.signatoryName || anyDoc.signature?.signatoryName || 'Authorized Signatory',

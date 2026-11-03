@@ -34,6 +34,7 @@ export interface PlanLimits {
   canRemoveWatermark: boolean;
   canUseCustomDomain: boolean;
   hasPrioritySupport: boolean;
+  hasIntegrationDocs: boolean;
 }
 
 export const PLANS: Record<PlanId, PlanLimits> = {
@@ -48,6 +49,7 @@ export const PLANS: Record<PlanId, PlanLimits> = {
     canRemoveWatermark: false,
     canUseCustomDomain: false,
     hasPrioritySupport: false,
+    hasIntegrationDocs: false,
   },
   pro: {
     id: 'pro',
@@ -60,6 +62,7 @@ export const PLANS: Record<PlanId, PlanLimits> = {
     canRemoveWatermark: true,
     canUseCustomDomain: false,
     hasPrioritySupport: true,
+    hasIntegrationDocs: true,
   },
   enterprise: {
     id: 'enterprise',
@@ -72,5 +75,11 @@ export const PLANS: Record<PlanId, PlanLimits> = {
     canRemoveWatermark: true,
     canUseCustomDomain: true,
     hasPrioritySupport: true,
+    hasIntegrationDocs: true,
   },
 };
+
+/** Whether a plan includes the Integration Docs. Unknown plans don't. */
+export function canUseIntegrationDocs(planId: string | null | undefined): boolean {
+  return Boolean(planId && PLANS[planId as PlanId]?.hasIntegrationDocs);
+}

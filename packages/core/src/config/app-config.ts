@@ -25,6 +25,7 @@ export interface AppConfig {
       canSave: boolean;
       inventory: boolean;
       whiteLabel: boolean;
+      integrationDocs: boolean;
     };
     starter: {
       id: string;
@@ -35,6 +36,7 @@ export interface AppConfig {
       canSave: boolean;
       inventory: boolean;
       whiteLabel: boolean;
+      integrationDocs: boolean;
     };
     pro: {
       id: string;
@@ -45,6 +47,7 @@ export interface AppConfig {
       canSave: boolean;
       inventory: boolean;
       whiteLabel: boolean;
+      integrationDocs: boolean;
     };
     enterprise: {
       id: string;
@@ -55,6 +58,7 @@ export interface AppConfig {
       canSave: boolean;
       inventory: boolean;
       whiteLabel: boolean;
+      integrationDocs: boolean;
     };
   };
   defaultTerminology: Record<string, string>;
@@ -74,6 +78,63 @@ export interface AppConfig {
       assets: string;
     };
   };
+}
+
+/**
+ * Every country template is free, because each is the default for its currency and free users must
+ * be able to save with it. Paid plans add dark-tech, reverse charge and the special documents.
+ */
+const FREE_TEMPLATE_IDS = [
+  'in-gst',
+  'modern',
+  'creative',
+  'hk-no-tax',
+  'uk-vat',
+  'eu-vat',
+  'us-sales-tax',
+  'ca-hst',
+  'au-gst',
+  'sg-gst',
+  'ae-vat',
+  'jp-qualified',
+  'ch-sidebar',
+];
+
+/** Older template IDs that saved invoices and links may still use, and the design each one renders with. */
+const LEGACY_TEMPLATE_IDS: Record<string, string> = {
+  cleartax_gst: 'in-gst',
+  tally_prime: 'in-gst',
+  vyapar_classic: 'in-gst',
+  zoho_gst: 'in-gst',
+  agency_retainer: 'in-gst',
+  stripe_fintech: 'dark-tech',
+  stripe_clean: 'dark-tech',
+  behance_dark: 'dark-tech',
+  classic: 'eu-vat',
+  elegant: 'eu-vat',
+  bold_header: 'uk-vat',
+  medical_rx: 'uk-vat',
+  corporate: 'au-gst',
+  professional: 'au-gst',
+  logistics_waybill: 'au-gst',
+  canva_studio: 'creative',
+  dribbble_bold: 'creative',
+  minimal: 'hk-no-tax',
+  apple_clean: 'hk-no-tax',
+  notion_minimal: 'hk-no-tax',
+  compact: 'ch-sidebar',
+  retail: 'ch-sidebar',
+  retail_pos: 'ch-sidebar',
+  zoho_standard: 'sg-gst',
+  freshbooks_classic: 'ca-hst',
+  freshbooks_cloud: 'ca-hst',
+  quickbooks_enterprise: 'us-sales-tax',
+  service_business: 'us-sales-tax',
+};
+
+/** Returns the current ID for a template, whether it's given an old ID or a current one. */
+export function resolveTemplateId(templateId: string): string {
+  return LEGACY_TEMPLATE_IDS[templateId] || templateId;
 }
 
 export const APP_CONFIG: AppConfig = {
@@ -109,20 +170,22 @@ export const APP_CONFIG: AppConfig = {
       id: 'anonymous',
       name: 'Anonymous Visitor',
       invoiceLimit: 0,
-      allowedTemplateIds: ['cleartax_gst', 'tally_prime', 'apple_clean'],
+      allowedTemplateIds: FREE_TEMPLATE_IDS,
       canSave: false,
       inventory: false,
       whiteLabel: false,
+      integrationDocs: false,
     },
     starter: {
       id: 'starter',
       name: 'Free Trial',
       price: 0,
       invoiceLimit: 7,
-      allowedTemplateIds: ['cleartax_gst', 'tally_prime', 'apple_clean'],
+      allowedTemplateIds: FREE_TEMPLATE_IDS,
       canSave: true,
       inventory: false,
       whiteLabel: false,
+      integrationDocs: false,
     },
     pro: {
       id: 'pro',
@@ -133,6 +196,7 @@ export const APP_CONFIG: AppConfig = {
       canSave: true,
       inventory: true,
       whiteLabel: false,
+      integrationDocs: true,
     },
     enterprise: {
       id: 'enterprise',
@@ -143,6 +207,7 @@ export const APP_CONFIG: AppConfig = {
       canSave: true,
       inventory: true,
       whiteLabel: true,
+      integrationDocs: true,
     },
   },
   defaultTerminology: {
@@ -162,11 +227,12 @@ export const APP_CONFIG: AppConfig = {
  * Returns true if a given template ID is permitted under the user's plan.
  */
 export function isTemplateAllowedForPlan(planId: string | undefined, templateId: string): boolean {
+  const id = resolveTemplateId(templateId);
   if (!planId || planId === 'anonymous') {
-    return APP_CONFIG.plans.anonymous.allowedTemplateIds.includes(templateId);
+    return APP_CONFIG.plans.anonymous.allowedTemplateIds.includes(id);
   }
   if (planId === 'starter') {
-    return APP_CONFIG.plans.starter.allowedTemplateIds.includes(templateId);
+    return APP_CONFIG.plans.starter.allowedTemplateIds.includes(id);
   }
   if (planId === 'pro' || planId === 'enterprise') {
     return true;

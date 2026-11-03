@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Sparkles, Search, Clock, ArrowRight, User, FilePlus } from 'lucide-react';
 import { APP_CONFIG } from '@invoice/core';
 import { PublicHeader } from '@/components/layout/public-header';
+import { PublicFooter } from '@/components/layout/public-footer';
 
 export default function BlogIndexPage() {
   const [posts, setPosts] = useState<BlogPost[]>(() => {
@@ -56,13 +57,13 @@ export default function BlogIndexPage() {
   const featured = posts.find((p) => p.featured) || posts[0];
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+    <div className="min-h-screen text-foreground flex flex-col font-sans">
       <PublicHeader />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-8 py-16 space-y-12">
+      <main className="w-full min-w-0 max-w-6xl mx-auto px-4 sm:px-8 py-16 space-y-12">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
-          <Badge variant="outline" className="text-xs">{APP_CONFIG.brandName} Knowledge Base</Badge>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground">
+          <Badge variant="outline" className="text-sm">{APP_CONFIG.brandName} Knowledge Base</Badge>
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-foreground">
             Invoicing, Tax Compliance & Fintech Guides
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
@@ -72,39 +73,39 @@ export default function BlogIndexPage() {
 
         {/* Featured Post Card */}
         {featured && (
-          <div className="rounded-3xl border border-border bg-card p-6 sm:p-10 shadow-xl relative overflow-hidden group hover:border-primary/50 transition-all">
+          <div className="rounded-xl border border-border bg-card p-6 sm:p-10 shadow-xl relative overflow-hidden group hover:border-primary/50 transition-all">
             <div className="max-w-3xl space-y-4">
               <div className="flex items-center gap-2.5">
-                <Badge variant="default" className="text-[10px] font-bold uppercase tracking-wider">
+                <Badge variant="default" className="text-sm font-bold">
                   Featured Guide
                 </Badge>
-                <span className="text-xs text-primary font-semibold">{featured.category}</span>
-                <span className="text-xs text-muted-foreground">• {featured.readingTimeMinutes} min read</span>
+                <span className="text-sm text-primary font-semibold">{featured.category}</span>
+                <span className="text-sm text-muted-foreground">• {featured.readingTimeMinutes} min read</span>
               </div>
 
               <Link href={`/blog/${featured.slug}`}>
-                <h2 className="text-2xl sm:text-3xl font-black text-foreground group-hover:text-primary transition-colors leading-tight">
+                <h2 className="text-2xl sm:text-3xl font-semibold text-foreground group-hover:text-primary transition-colors leading-tight">
                   {featured.title}
                 </h2>
               </Link>
 
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {featured.excerpt}
               </p>
 
               <div className="flex items-center justify-between pt-4 border-t border-border">
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="h-7 w-7 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-[10px]">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="h-7 w-7 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-sm">
                     {featured.author.name[0]}
                   </div>
                   <div>
                     <div className="font-bold text-foreground">{featured.author.name}</div>
-                    <div className="text-[10px] text-muted-foreground">{featured.author.role}</div>
+                    <div className="text-sm text-muted-foreground">{featured.author.role}</div>
                   </div>
                 </div>
 
                 <Link href={`/blog/${featured.slug}`}>
-                  <Button size="sm" className="text-xs font-bold">
+                  <Button size="sm" className="text-sm font-bold">
                     Read Article <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
                   </Button>
                 </Link>
@@ -120,7 +121,7 @@ export default function BlogIndexPage() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all capitalize ${
                   selectedCategory === cat
                     ? 'bg-primary text-primary-foreground shadow-xs'
                     : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -137,7 +138,7 @@ export default function BlogIndexPage() {
               placeholder="Search guides, tags..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 text-xs"
+              className="pl-9 text-sm"
             />
           </div>
         </div>
@@ -147,10 +148,10 @@ export default function BlogIndexPage() {
           {filteredPosts.map((post) => (
             <Card
               key={post.id}
-              className="border-border bg-card rounded-2xl hover:shadow-lg transition-all flex flex-col justify-between group p-6"
+              className="border-border bg-card rounded-xl hover:shadow-lg transition-all flex flex-col justify-between group p-6"
             >
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center justify-between text-sm">
                   <span className="font-semibold text-primary">{post.category}</span>
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Clock className="h-3 w-3" /> {post.readingTimeMinutes}m
@@ -163,18 +164,18 @@ export default function BlogIndexPage() {
                   </h3>
                 </Link>
 
-                <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
                   {post.excerpt}
                 </p>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-border flex items-center justify-between text-xs">
-                <div className="text-muted-foreground text-[11px]">
+              <div className="pt-4 mt-4 border-t border-border flex items-center justify-between text-sm">
+                <div className="text-muted-foreground text-sm">
                   By {post.author.name}
                 </div>
                 <Link
                   href={`/blog/${post.slug}`}
-                  className="text-primary font-bold flex items-center gap-1 group-hover:underline text-xs"
+                  className="text-primary font-bold flex items-center gap-1 group-hover:underline text-sm"
                 >
                   Read <ArrowRight className="h-3 w-3" />
                 </Link>
@@ -184,19 +185,19 @@ export default function BlogIndexPage() {
         </div>
 
         {/* Clear Next-Step Action Banner */}
-        <div className="p-8 sm:p-10 rounded-3xl bg-muted/30 border border-border text-center space-y-4">
-          <h2 className="text-2xl font-black text-foreground">Put these guides into practice</h2>
-          <p className="text-xs text-muted-foreground max-w-md mx-auto">
+        <div className="p-8 sm:p-10 rounded-xl bg-muted/30 border border-border text-center space-y-4">
+          <h2 className="text-2xl font-semibold text-foreground">Put these guides into practice</h2>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
             Create high-precision GST invoices with automatic tax splitting and verified UPI QR codes right now.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/create">
-              <Button size="sm" className="font-bold text-xs bg-primary text-primary-foreground">
+              <Button size="sm" className="font-bold text-sm bg-primary text-primary-foreground">
                 <FilePlus className="w-3.5 h-3.5 mr-1.5" /> Create Invoice Free
               </Button>
             </Link>
             <Link href="/templates">
-              <Button variant="outline" size="sm" className="font-bold text-xs">
+              <Button variant="outline" size="sm" className="font-bold text-sm">
                 Browse Templates
               </Button>
             </Link>
@@ -204,9 +205,7 @@ export default function BlogIndexPage() {
         </div>
       </main>
 
-      <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 {APP_CONFIG.brandName} Knowledge Hub. Educational tax and business resources.
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

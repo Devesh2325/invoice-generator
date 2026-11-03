@@ -25,6 +25,7 @@ interface DocumentPreviewProps {
   className?: string;
   captureId?: string;
   isPrintOnly?: boolean;
+  hideToolbar?: boolean;
   onLogoUpload?: (dataUrl: string) => void;
   onRemoveLogo?: () => void;
 }
@@ -34,6 +35,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   className = '',
   captureId = 'invoice-document-capture',
   isPrintOnly = false,
+  hideToolbar = false,
   onLogoUpload,
   onRemoveLogo,
 }) => {
@@ -134,11 +136,20 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   // IF PRINT ONLY: Return purely the capture node for html2pdf / print sheets
   if (isPrintOnly) {
     return (
-      <div
-        id={captureId}
-        className="w-[794px] bg-white mx-auto print-container"
-        dangerouslySetInnerHTML={{ __html: innerMarkup }}
-      />
+      <>
+        {/* The preview iframe loads this font itself. Downloads and printing render here, so they need it too. */}
+        {templateMeta.googleFont && (
+          <link
+            rel="stylesheet"
+            href={`https://fonts.googleapis.com/css2?family=${templateMeta.googleFont}&display=swap`}
+          />
+        )}
+        <div
+          id={captureId}
+          className="w-[794px] bg-white mx-auto print-container"
+          dangerouslySetInnerHTML={{ __html: innerMarkup }}
+        />
+      </>
     );
   }
 
@@ -156,7 +167,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
       )}
 
       {/* Top Preview Control Bar */}
-      <div className="w-full max-w-[820px] bg-white border border-slate-200 rounded-xl p-2.5 mb-3 flex flex-wrap items-center justify-between gap-2 shadow-xs no-print">
+      <div className={`${hideToolbar ? 'hidden' : 'flex'} w-full max-w-[820px] bg-white border border-slate-200 rounded-xl p-2.5 mb-3 flex-wrap items-center justify-between gap-2 shadow-xs no-print`}>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
             <FileText className="w-3.5 h-3.5" />

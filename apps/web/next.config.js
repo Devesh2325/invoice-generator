@@ -3,6 +3,9 @@ const nextConfig = {
   transpilePackages: ['@invoice/core', '@invoice/theme', '@invoice/api', '@invoice/ui'],
   reactStrictMode: true,
   poweredByHeader: false,
+  async redirects() {
+    return [{ source: '/developers', destination: '/dashboard/developers', permanent: false }];
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -81,7 +81,7 @@ export default function PublicShareInvoicePage() {
     const s = document.status || 'draft';
     if (s === 'paid') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
           <CheckCircle2 className="w-3.5 h-3.5" />
           Paid in Full
         </span>
@@ -89,14 +89,14 @@ export default function PublicShareInvoicePage() {
     }
     if (s === 'overdue') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
           <AlertCircle className="w-3.5 h-3.5" />
           Payment Overdue
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
         <Clock className="w-3.5 h-3.5" />
         Payment Due
       </span>
@@ -105,7 +105,7 @@ export default function PublicShareInvoicePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
         <p className="text-slate-600 dark:text-slate-400 font-medium text-sm">
           Loading secure invoice...
@@ -116,8 +116,8 @@ export default function PublicShareInvoicePage() {
 
   if (error || !document) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center mb-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center mb-4">
           <AlertCircle className="w-8 h-8" />
         </div>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
@@ -142,7 +142,7 @@ export default function PublicShareInvoicePage() {
   const upiId = document.paymentConfig?.upiId || brandSettings?.paymentConfig?.upiId;
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col">
+    <div className="min-h-screen flex flex-col">
       {/* Top Banner & Header */}
       <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 shadow-sm print:hidden">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
@@ -157,7 +157,7 @@ export default function PublicShareInvoicePage() {
                 </h1>
                 {statusBadge}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Issued by <span className="font-semibold text-slate-700 dark:text-slate-300">{senderName}</span>
               </p>
             </div>
@@ -200,7 +200,7 @@ export default function PublicShareInvoicePage() {
 
       {/* Trust & Verification Strip */}
       <div className="bg-indigo-50/70 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/50 px-4 py-2 print:hidden">
-        <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-indigo-800 dark:text-indigo-300">
+        <div className="max-w-6xl mx-auto flex items-center justify-between text-sm text-indigo-800 dark:text-indigo-300">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
             <span>
@@ -222,7 +222,7 @@ export default function PublicShareInvoicePage() {
 
       {/* Main Canvas with dynamic high-resolution preview */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex justify-center">
-        <div className="w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-2 sm:p-6 overflow-hidden">
+        <div className="w-full bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-2 sm:p-6 overflow-hidden">
           <DocumentPreview
             document={document}
             className="w-full"
@@ -234,14 +234,14 @@ export default function PublicShareInvoicePage() {
       {/* Payment / UPI Modal */}
       {showUpiModal && upiId && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-in fade-in zoom-in-95">
+          <div className="bg-white dark:bg-slate-900 rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-in fade-in zoom-in-95">
             <div className="w-12 h-12 mx-auto rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
               <QrCode className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
               Pay {formatCurrency(balanceDue, currency)} via UPI
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Scan with any UPI app (Google Pay, PhonePe, Paytm, BHIM)
             </p>
 
@@ -255,7 +255,7 @@ export default function PublicShareInvoicePage() {
               />
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3 text-left text-xs mb-4">
+            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3 text-left text-sm mb-4">
               <div className="flex justify-between py-1">
                 <span className="text-slate-500 dark:text-slate-400">Payee UPI ID:</span>
                 <span className="font-semibold text-slate-900 dark:text-slate-100 font-mono">{upiId}</span>
@@ -281,7 +281,7 @@ export default function PublicShareInvoicePage() {
       )}
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 print:hidden">
+      <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 py-6 text-center text-sm text-slate-500 dark:text-slate-400 print:hidden">
         <p>
           Generated securely via{' '}
           <Link

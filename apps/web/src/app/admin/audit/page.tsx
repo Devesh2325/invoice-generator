@@ -60,11 +60,11 @@ export default function AdminAuditPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight flex items-center gap-2.5">
             <History className="h-6 w-6 text-primary" />
             System Audit & Security Logs
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Immutable tracking of super admin actions, user plan modifications, and system cron jobs.
           </p>
         </div>
@@ -73,7 +73,7 @@ export default function AdminAuditPage() {
             variant="outline"
             size="sm"
             onClick={loadLogs}
-            className="text-xs bg-slate-900 border-slate-800 text-slate-300 hover:text-white"
+            className="text-xs bg-card border-border text-foreground hover:text-foreground"
           >
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
           </Button>
@@ -88,14 +88,14 @@ export default function AdminAuditPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-col md:flex-row items-center gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
+      <div className="flex flex-col md:flex-row items-center gap-4 bg-card border border-border p-4 rounded-xl">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by action name, actor, or target resource..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 text-xs h-9 w-full"
+            className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground text-xs h-9 w-full"
           />
         </div>
 
@@ -107,7 +107,7 @@ export default function AdminAuditPage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
                 actorFilter === actor
                   ? 'bg-primary text-white shadow-sm'
-                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                  : 'bg-background text-muted-foreground hover:text-foreground border border-border'
               }`}
             >
               {actor === 'all' ? 'All Actors' : actor}
@@ -117,25 +117,25 @@ export default function AdminAuditPage() {
       </div>
 
       {/* Logs Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
         {logs.length === 0 ? (
           <div className="p-12 text-center space-y-3">
-            <div className="h-12 w-12 rounded-xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400 border border-slate-700">
+            <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center mx-auto text-muted-foreground border border-border">
               <ShieldAlert className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-sm font-bold text-white">No Audit Logs Yet</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <h3 className="text-sm font-bold text-foreground">No Audit Logs Yet</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
               System events, workspace creations, plan upgrades, and admin actions will be recorded here automatically.
             </p>
           </div>
         ) : filteredLogs.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-400">
+          <div className="p-8 text-center text-xs text-muted-foreground">
             No audit logs matched &ldquo;{searchQuery}&rdquo;.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+            <table className="w-full text-left text-xs text-foreground">
+              <thead className="bg-background text-muted-foreground font-semibold border-b border-border">
                 <tr>
                   <th className="py-3.5 px-4">Timestamp (UTC/IST)</th>
                   <th className="py-3.5 px-4">Actor</th>
@@ -144,12 +144,12 @@ export default function AdminAuditPage() {
                   <th className="py-3.5 px-4 text-right">Log ID</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
+              <tbody className="divide-y divide-border tabular-nums text-xs">
                 {filteredLogs.map((log) => {
                   const isSuperAdmin = log.actor === 'Super Admin';
                   return (
-                    <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
+                    <tr key={log.id} className="hover:bg-accent transition-colors">
+                      <td className="py-3.5 px-4 whitespace-nowrap text-muted-foreground">
                         {new Date(log.timestamp).toLocaleString('en-IN', {
                           day: '2-digit',
                           month: 'short',
@@ -164,9 +164,9 @@ export default function AdminAuditPage() {
                           {isSuperAdmin ? (
                             <Shield className="h-3.5 w-3.5 text-primary" />
                           ) : (
-                            <Activity className="h-3.5 w-3.5 text-amber-400" />
+                            <Activity className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
                           )}
-                          <span className={isSuperAdmin ? 'text-primary' : 'text-slate-300'}>
+                          <span className={isSuperAdmin ? 'text-primary' : 'text-foreground'}>
                             {log.actor}
                           </span>
                         </div>
@@ -174,15 +174,15 @@ export default function AdminAuditPage() {
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <Badge
                           variant="outline"
-                          className="bg-slate-950 border-slate-800 text-slate-200 text-[10px]"
+                          className="bg-background border-border text-foreground text-xs"
                         >
                           {log.action}
                         </Badge>
                       </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-300">
+                      <td className="py-3.5 px-4 whitespace-nowrap text-foreground">
                         {log.target}
                       </td>
-                      <td className="py-3.5 px-4 text-right text-slate-500 text-[10px]">
+                      <td className="py-3.5 px-4 text-right text-muted-foreground text-xs">
                         {log.id}
                       </td>
                     </tr>

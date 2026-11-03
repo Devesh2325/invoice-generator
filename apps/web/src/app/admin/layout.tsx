@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { AdminApi } from '@invoice/api';
 import {
   ShieldAlert,
   LayoutDashboard,
@@ -13,42 +12,30 @@ import {
   BookOpen,
   Palette,
   Building,
-  Settings,
   History,
   LogOut,
   ExternalLink,
+  Menu,
+  Moon,
+  Sun,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTheme } from '@/lib/theme/theme-provider';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [authorized, setAuthorized] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { resolvedTheme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    // If on /admin/login, don't protect
-    if (pathname === '/admin/login') {
-      setAuthorized(true);
-      return;
-    }
+    setMenuOpen(false);
+  }, [pathname]);
 
-    if (!AdminApi.isAuthenticated()) {
-      router.push('/admin/login');
-    } else {
-      setAuthorized(true);
-    }
-  }, [pathname, router]);
-
+  // Access is enforced on the server by src/middleware.ts.
   if (pathname === '/admin/login') {
     return <>{children}</>;
-  }
-
-  if (!authorized) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-xs text-slate-400">
-        Verifying Super Admin Authorization...
-      </div>
-    );
   }
 
   const navItems = [
@@ -59,30 +46,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/blog', label: 'Blog & Content Manager', icon: BookOpen },
     { href: '/admin/templates', label: 'Template Manager', icon: Palette },
     { href: '/admin/teams', label: 'Teams & Workspaces', icon: Building },
-    { href: '/admin/settings', label: 'Site Settings', icon: Settings },
     { href: '/admin/audit', label: 'System Audit Logs', icon: History },
   ];
 
-  const handleLogout = () => {
-    AdminApi.logout();
-    router.push('/admin/login');
+  const handleLogout = async () => {
+    await fetch('/api/admin/logout', { method: 'POST' }).catch(() => null);
+    router.replace('/admin/login');
+    router.refresh();
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen text-foreground flex flex-col md:flex-row font-sans">
       {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0">
-        <div>
-          <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-            <Link href="/admin" className="flex items-center gap-2.5 font-black text-base text-white tracking-tight">
+      <aside className="sticky top-0 z-40 w-full md:h-screen md:w-64 bg-card border-b md:border-b-0 md:border-r border-border flex flex-col justify-between shrink-0">
+        <div className="md:overflow-y-auto">
+          <div className="px-4 py-3 md:p-5 border-b border-border flex items-center justify-between">
+            <Link href="/admin" className="flex items-center gap-2.5 font-semibold text-base text-foreground tracking-tight">
               <div className="h-8 w-8 rounded-lg bg-primary/20 text-primary border border-primary/30 flex items-center justify-center">
                 <ShieldAlert className="h-5 w-5" />
               </div>
               <span>Super Admin</span>
             </Link>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="md:hidden h-10 w-10 flex items-center justify-center rounded-lg text-foreground hover:bg-accent"
+              aria-label={menuOpen ? 'Close admin menu' : 'Open admin menu'}
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
 
-          <nav className="p-3 space-y-1">
+          <nav className={`${menuOpen ? 'block' : 'hidden'} md:block p-3 space-y-1`} aria-label="Admin">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = pathname === item.href;
@@ -90,10 +86,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     active
                       ? 'bg-primary text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                   }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
@@ -104,9 +101,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
         </div>
 
-        <div className="p-4 border-t border-slate-800 space-y-2">
+        <div className={`${menuOpen ? 'block' : 'hidden'} md:block p-4 border-t border-border space-y-2`}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleTheme}
+            className="w-full text-sm text-muted-foreground hover:text-foreground justify-start"
+          >
+            {resolvedTheme === 'dark' ? <Sun className="h-3.5 w-3.5 mr-2" /> : <Moon className="h-3.5 w-3.5 mr-2" />}
+            {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </Button>
           <Link href="/" target="_blank">
-            <Button variant="ghost" size="sm" className="w-full text-xs text-slate-400 hover:text-white justify-start">
+            <Button variant="ghost" size="sm" className="w-full text-sm text-muted-foreground hover:text-foreground justify-start">
               <ExternalLink className="h-3.5 w-3.5 mr-2" /> View Public Site
             </Button>
           </Link>
@@ -114,7 +120,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="w-full text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 justify-start"
+            className="w-full text-sm text-rose-700 dark:text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 justify-start"
           >
             <LogOut className="h-3.5 w-3.5 mr-2" /> Sign Out
           </Button>
@@ -122,7 +128,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto bg-slate-950">
+      <main className="flex-1 min-w-0 bg-background">
         {children}
       </main>
     </div>

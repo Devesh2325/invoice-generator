@@ -156,6 +156,17 @@ export const INDIAN_STATES: IndianStateInfo[] = [
   { code: '04', name: 'Chandigarh', label: '04 - Chandigarh' },
   { code: '01', name: 'Jammu & Kashmir', label: '01 - Jammu & Kashmir' },
   { code: '34', name: 'Puducherry', label: '34 - Puducherry' },
+  { code: '11', name: 'Sikkim', label: '11 - Sikkim' },
+  { code: '12', name: 'Arunachal Pradesh', label: '12 - Arunachal Pradesh' },
+  { code: '13', name: 'Nagaland', label: '13 - Nagaland' },
+  { code: '14', name: 'Manipur', label: '14 - Manipur' },
+  { code: '15', name: 'Mizoram', label: '15 - Mizoram' },
+  { code: '16', name: 'Tripura', label: '16 - Tripura' },
+  { code: '17', name: 'Meghalaya', label: '17 - Meghalaya' },
+  { code: '26', name: 'Dadra & Nagar Haveli and Daman & Diu', label: '26 - Dadra & Nagar Haveli and Daman & Diu' },
+  { code: '31', name: 'Lakshadweep', label: '31 - Lakshadweep' },
+  { code: '35', name: 'Andaman & Nicobar Islands', label: '35 - Andaman & Nicobar Islands' },
+  { code: '38', name: 'Ladakh', label: '38 - Ladakh' },
 ];
 
 export interface DocumentLineItemInput {

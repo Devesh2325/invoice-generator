@@ -31,10 +31,10 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl p-6 sm:p-8 border-border bg-card rounded-2xl shadow-2xl space-y-6">
+      <DialogContent className="max-w-xl p-6 sm:p-8 border-border bg-card rounded-xl shadow-2xl space-y-6">
         {/* Header Icon & Title */}
         <div className="text-center space-y-2">
-          <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto shadow-xs">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mx-auto shadow-xs">
             {isLimitReached ? (
               <Lock className="h-6 w-6 text-primary" />
             ) : (
@@ -42,7 +42,7 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
             )}
           </div>
 
-          <h3 className="text-xl font-black text-foreground tracking-tight">
+          <h3 className="text-xl font-semibold text-foreground tracking-tight">
             {isLimitReached ? `Free Trial Limit Reached (${maxCount}/${maxCount})` : title}
           </h3>
           <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
@@ -56,16 +56,16 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Pro Plan */}
           <div className="p-4 rounded-xl border-2 border-primary bg-primary/5 relative space-y-3">
-            <div className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full bg-primary text-white text-[9px] font-black uppercase tracking-wider shadow-xs">
+            <div className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full bg-primary text-white text-xs font-semibold shadow-xs">
               Most Popular
             </div>
 
             <div>
-              <div className="text-xs font-black uppercase tracking-wider text-primary">
+              <div className="text-xs font-semibold text-primary">
                 {APP_CONFIG.plans.pro.name}
               </div>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-black text-foreground">
+                <span className="text-2xl font-semibold text-foreground">
                   ₹{APP_CONFIG.plans.pro.price}
                 </span>
                 <span className="text-xs text-muted-foreground">/ month</span>
@@ -105,11 +105,11 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
           {/* Enterprise Plan */}
           <div className="p-4 rounded-xl border border-border bg-muted/30 space-y-3">
             <div>
-              <div className="text-xs font-black uppercase tracking-wider text-foreground">
+              <div className="text-xs font-semibold text-foreground">
                 {APP_CONFIG.plans.enterprise.name}
               </div>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-black text-foreground">
+                <span className="text-2xl font-semibold text-foreground">
                   ₹{APP_CONFIG.plans.enterprise.price}
                 </span>
                 <span className="text-xs text-muted-foreground">/ month</span>
@@ -123,7 +123,7 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
               </li>
               <li className="flex items-center gap-2">
                 <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                <span>Custom Domain & Logo Portal</span>
+                <span>White-Label Logo & Branding</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
@@ -149,7 +149,7 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-border">
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             Cancel anytime • Secure payment via UPI, Cards, NetBanking
           </span>
           <Button

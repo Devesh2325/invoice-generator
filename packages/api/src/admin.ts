@@ -1,150 +1,61 @@
 import {
   AdminUser,
   AdminInquiry,
-  AdminSiteSettings,
   AdminSystemAuditLog,
-  AdminTemplateSetting,
   GeneratorFieldSettings,
   AdminTeam,
   PlanId,
   PlanLimits,
   PLANS,
+  APP_CONFIG,
+  resolveTemplateId,
 } from "@invoice/core";
 
-const SUPER_ADMIN_EMAIL =
-  process.env.SUPER_ADMIN_EMAIL || "dmchaturvedi@gmail.com";
-const SUPER_ADMIN_PASSWORD =
-  process.env.SUPER_ADMIN_PASSWORD || "Devesh@23251995";
-
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 mins
-
 export class AdminApi {
-  private static getSessionKey() {
-    return "billcraft_admin_session";
-  }
-
-  private static getRateLimitKey() {
-    return "billcraft_admin_ratelimit";
-  }
-
-  // Rate-Limited Login
-  static login(
-    email: string,
-    pass: string,
-  ): { success: boolean; error?: string } {
-    if (typeof window === "undefined") {
-      return { success: false, error: "Cannot authenticate on server" };
-    }
-
-    // Check Lockout
-    try {
-      const rlRaw = localStorage.getItem(this.getRateLimitKey());
-      if (rlRaw) {
-        const rl = JSON.parse(rlRaw);
-        if (rl.lockedUntil && Date.now() < rl.lockedUntil) {
-          const remMin = Math.ceil((rl.lockedUntil - Date.now()) / 60000);
-          return {
-            success: false,
-            error: `Too many failed login attempts. Account temporarily locked. Please try again in ${remMin} minute(s).`,
-          };
-        }
-      }
-    } catch {}
-
-    const normalizedEmail = email.trim().toLowerCase();
-    const isMatch =
-      normalizedEmail === SUPER_ADMIN_EMAIL.toLowerCase() &&
-      pass === SUPER_ADMIN_PASSWORD;
-
-    if (!isMatch) {
-      // Record failed attempt
-      try {
-        const rlRaw = localStorage.getItem(this.getRateLimitKey());
-        const rl = rlRaw ? JSON.parse(rlRaw) : { attempts: 0 };
-        rl.attempts = (rl.attempts || 0) + 1;
-        if (rl.attempts >= MAX_FAILED_ATTEMPTS) {
-          rl.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
-          localStorage.setItem(this.getRateLimitKey(), JSON.stringify(rl));
-          return {
-            success: false,
-            error: `Too many failed attempts. Account locked for 15 minutes.`,
-          };
-        }
-        localStorage.setItem(this.getRateLimitKey(), JSON.stringify(rl));
-        return {
-          success: false,
-          error: `Invalid Super Admin credentials. ${MAX_FAILED_ATTEMPTS - rl.attempts} attempt(s) remaining.`,
-        };
-      } catch {}
-      return { success: false, error: "Invalid credentials." };
-    }
-
-    // Successful Login: Reset lockout and create session
-    try {
-      localStorage.removeItem(this.getRateLimitKey());
-      localStorage.setItem(
-        this.getSessionKey(),
-        JSON.stringify({
-          email: SUPER_ADMIN_EMAIL,
-          role: "super_admin",
-          authenticatedAt: new Date().toISOString(),
-        }),
-      );
-      this.recordAuditLog(
-        "SUPER_ADMIN_LOGIN",
-        "Portal Access",
-        SUPER_ADMIN_EMAIL,
-      );
-    } catch {}
-
-    return { success: true };
-  }
-
-  static isAuthenticated(): boolean {
-    if (typeof window === "undefined") return false;
-    try {
-      const raw = localStorage.getItem(this.getSessionKey());
-      if (!raw) return false;
-      const parsed = JSON.parse(raw);
-      return parsed && parsed.role === "super_admin";
-    } catch {
-      return false;
-    }
-  }
-
-  static logout() {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(this.getSessionKey());
-    }
-  }
-
   // Dashboard KPIs
   static getDashboardMetrics() {
     const users = this.getUsers();
     const activeSubscribers = users.filter((u) => u.plan !== "starter");
     const mrr = activeSubscribers.reduce((acc, u) => {
-      return acc + (u.plan === "pro" ? 799 : 2499);
+      return (
+        acc +
+        (u.plan === "pro"
+          ? APP_CONFIG.plans.pro.price
+          : APP_CONFIG.plans.enterprise.price)
+      );
     }, 0);
 
-    let invoicesCount = 0;
+    let documentsCount = 0;
     if (typeof window !== "undefined") {
       try {
-        const docsRaw = localStorage.getItem("billcraft_documents");
+        const docsRaw = localStorage.getItem("billcraft_tenant_documents");
         if (docsRaw) {
-          const parsed = JSON.parse(docsRaw);
-          invoicesCount = Array.isArray(parsed) ? parsed.length : 0;
+          const byTenant = JSON.parse(docsRaw) as Record<string, unknown[]>;
+          documentsCount = Object.values(byTenant).reduce(
+            (sum, list) => sum + (Array.isArray(list) ? list.length : 0),
+            0,
+          );
         }
       } catch {}
     }
+
+    // Signups per month for the last six months, from each user's real signup date.
+    const now = new Date();
+    const userGrowth = Array.from({ length: 6 }, (_, i) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      return {
+        month: date.toLocaleDateString("en-IN", { month: "short" }),
+        count: users.filter((u) => (u.createdAt || "").startsWith(key)).length,
+      };
+    });
 
     return {
       totalUsers: users.length,
       activeSubscribers: activeSubscribers.length,
       monthlyRecurringRevenue: mrr,
-      invoicesThisMonth: invoicesCount,
-      userGrowth:
-        users.length > 0 ? [{ month: "Current", count: users.length }] : [],
+      documentsCount,
+      userGrowth,
     };
   }
 
@@ -321,324 +232,34 @@ export class AdminApi {
     return true;
   }
 
-  // Template Management
-  static getTemplates(): AdminTemplateSetting[] {
-    const seeds: AdminTemplateSetting[] = [
-      {
-        id: "cleartax_gst",
-        name: "ClearTax Pro GST",
-        category: "GST & Tax Compliant (India)",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 1420,
-        description: "Modern GST-compliant tax invoice with HSN/SAC, Place of Supply, and CGST/SGST/IGST split.",
-        primaryColor: "#1D4ED8",
-      },
-      {
-        id: "tally_prime",
-        name: "Tally Prime Tax Grid",
-        category: "GST & Tax Compliant (India)",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 980,
-        description: "Traditional Indian accounting bordered box layout with GSTIN, State Code, HSN/SAC & Signatory.",
-        primaryColor: "#0F172A",
-      },
-      {
-        id: "vyapar_classic",
-        name: "Vyapar Business GST",
-        category: "GST & Tax Compliant (India)",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 1150,
-        description: "High-clarity commercial distributor & wholesale GST layout with bold accent header.",
-        primaryColor: "#EA580C",
-      },
-      {
-        id: "modern",
-        name: "Modern Fintech",
-        category: "SaaS & Modern Fintech",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 2340,
-        description: "Clean high-contrast layout with elegant colored accents and modern cards.",
-        primaryColor: "#3157D5",
-      },
-      {
-        id: "stripe_clean",
-        name: "Stripe Clean SaaS",
-        category: "SaaS & Modern Fintech",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 1890,
-        description: "Developer-first, hyper-minimal tech invoice inspired by Stripe Invoicing.",
-        primaryColor: "#6366F1",
-      },
-      {
-        id: "zoho_standard",
-        name: "Zoho Books Corporate",
-        category: "Corporate & Enterprise",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 1220,
-        description: "Classic corporate invoice with formal grid layout and balanced typography.",
-        primaryColor: "#0284C7",
-      },
-      {
-        id: "freshbooks_cloud",
-        name: "FreshBooks Cloud Retainer",
-        category: "Corporate & Enterprise",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 760,
-        description: "Friendly, polished freelance & agency billing format with prominent payment terms.",
-        primaryColor: "#059669",
-      },
-      {
-        id: "bold_header",
-        name: "Bold Color Block Header",
-        category: "SaaS & Modern Fintech",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 1040,
-        description: "Full-bleed primary color header banner for maximum brand recognition.",
-        primaryColor: "#4F46E5",
-      },
-      {
-        id: "professional",
-        name: "Executive Professional",
-        category: "Corporate & Enterprise",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 1650,
-        description: "Conservative, highly structured layout for enterprise B2B vendors.",
-        primaryColor: "#1E293B",
-      },
-      {
-        id: "corporate",
-        name: "Corporate Standard",
-        category: "Corporate & Enterprise",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 890,
-        description: "Traditional corporate invoice with full-width section headers and formal ledger table.",
-        primaryColor: "#1E40AF",
-      },
-      {
-        id: "classic",
-        name: "Classic Heritage Serif",
-        category: "Corporate & Enterprise",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 650,
-        description: "Timeless black-and-white layout with double borders and classic typography.",
-        primaryColor: "#0F172A",
-      },
-      {
-        id: "elegant",
-        name: "Luxury Boutique Serif",
-        category: "Creative & Agency",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 820,
-        description: "Sophisticated editorial aesthetic tailored for high-end consulting and premium brands.",
-        primaryColor: "#78350F",
-      },
-      {
-        id: "creative",
-        name: "Creative Studio Gradient",
-        category: "Creative & Agency",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 1490,
-        description: "Vibrant and expressive design for design agencies, video editors, and creators.",
-        primaryColor: "#7C3AED",
-      },
-      {
-        id: "canva_studio",
-        name: "Canva Studio Agency",
-        category: "Creative & Agency",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 1820,
-        description: "Contemporary creative agency invoice with rounded soft cards and pastel badges.",
-        primaryColor: "#06B6D4",
-      },
-      {
-        id: "agency_retainer",
-        name: "Digital Marketing Retainer",
-        category: "Creative & Agency",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 1100,
-        description: "Multi-service agency retainer layout with milestone tracking and deliverable notes.",
-        primaryColor: "#EC4899",
-      },
-      {
-        id: "minimal",
-        name: "Minimal Monochrome",
-        category: "Minimal & Industry Specialty",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 3100,
-        description: "Stripped-back typographic layout with zero visual clutter and maximum whitespace.",
-        primaryColor: "#18181B",
-      },
-      {
-        id: "compact",
-        name: "Dense Compact Ledger",
-        category: "Minimal & Industry Specialty",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 680,
-        description: "High-density multi-item invoice layout designed for long item catalogs.",
-        primaryColor: "#334155",
-      },
-      {
-        id: "retail",
-        name: "Retail POS Receipt",
-        category: "Minimal & Industry Specialty",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 920,
-        description: "Clean thermal slip receipt format for counter sales, retail stores, and pop-ups.",
-        primaryColor: "#059669",
-      },
-      {
-        id: "service_business",
-        name: "Trades & Field Services",
-        category: "Minimal & Industry Specialty",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 750,
-        description: "Job-site and contractor layout with labor vs parts itemization and signature line.",
-        primaryColor: "#D97706",
-      },
-      {
-        id: "in-gst",
-        name: "Standard Indian GST Tax Invoice",
-        category: "GST & Tax Compliant (India)",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 2200,
-        description: "Comprehensive Indian tax compliance format with e-invoice QR code and reverse charge notes.",
-        primaryColor: "#2563EB",
-      },
-      {
-        id: "uk-vat",
-        name: "UK HMRC Compliant VAT",
-        category: "Corporate & Enterprise",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 840,
-        description: "Standard British VAT invoice format compliant with HMRC Making Tax Digital rules.",
-        primaryColor: "#065F46",
-      },
-      {
-        id: "eu-reverse-charge",
-        name: "EU Cross-Border Reverse Charge",
-        category: "Corporate & Enterprise",
-        isPro: true,
-        enabled: true,
-        downloadsCount: 610,
-        description: "European cross-border invoice with intra-community Article 194 VAT reverse charge clause.",
-        primaryColor: "#1E3A8A",
-      },
-      {
-        id: "us-sales-tax",
-        name: "US Multi-Jurisdiction Sales Tax",
-        category: "Corporate & Enterprise",
-        isPro: false,
-        enabled: true,
-        downloadsCount: 1540,
-        description: "American corporate invoice supporting combined State, County, and City sales tax lines.",
-        primaryColor: "#0284C7",
-      },
-    ];
-
-    if (typeof window === "undefined") return seeds;
+  // Template availability. Only templates switched off are stored.
+  static getDisabledTemplateIds(): string[] {
+    if (typeof window === "undefined") return [];
     try {
-      const stored = localStorage.getItem("billcraft_admin_templates");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge seeds that might not exist in parsed to ensure 100% coverage
-          const existingIds = new Set(parsed.map((p: any) => p.id));
-          const missing = seeds.filter((s) => !existingIds.has(s.id));
-          return [...parsed, ...missing];
-        }
-      }
-      localStorage.setItem("billcraft_admin_templates", JSON.stringify(seeds));
-    } catch {}
-    return seeds;
+      const parsed = JSON.parse(localStorage.getItem("billcraft_admin_templates") || "[]");
+      return parsed
+        .filter((t: { enabled?: boolean }) => t.enabled === false)
+        .map((t: { id: string }) => resolveTemplateId(t.id));
+    } catch {
+      return [];
+    }
   }
 
-  static updateTemplate(
-    templateId: string,
-    patch: Partial<AdminTemplateSetting>,
-  ): boolean {
-    const templates = this.getTemplates();
-    const updated = templates.map((t) =>
-      t.id === templateId ? { ...t, ...patch } : t,
+  static setTemplateEnabled(templateId: string, enabled: boolean): void {
+    if (typeof window === "undefined") return;
+    const disabled = new Set(this.getDisabledTemplateIds());
+    if (enabled) disabled.delete(templateId);
+    else disabled.add(templateId);
+    localStorage.setItem(
+      "billcraft_admin_templates",
+      JSON.stringify([...disabled].map((id) => ({ id, enabled: false }))),
     );
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        "billcraft_admin_templates",
-        JSON.stringify(updated),
-      );
-      window.dispatchEvent(new Event("invoxa-templates-updated"));
-      this.recordAuditLog(
-        "UPDATE_TEMPLATE",
-        `Template: ${templateId}`,
-        "Super Admin",
-      );
-    }
-    return true;
-  }
-
-  static saveTemplate(tpl: AdminTemplateSetting): AdminTemplateSetting {
-    const templates = this.getTemplates();
-    const existingIndex = templates.findIndex((t) => t.id === tpl.id);
-    let updated: AdminTemplateSetting[];
-    if (existingIndex >= 0) {
-      updated = [...templates];
-      updated[existingIndex] = { ...updated[existingIndex], ...tpl };
-    } else {
-      updated = [
-        {
-          ...tpl,
-          id: tpl.id || `tpl_${Date.now()}`,
-          downloadsCount: tpl.downloadsCount || 0,
-        },
-        ...templates,
-      ];
-    }
-    if (typeof window !== "undefined") {
-      localStorage.setItem("billcraft_admin_templates", JSON.stringify(updated));
-      window.dispatchEvent(new Event("invoxa-templates-updated"));
-      this.recordAuditLog(
-        "SAVE_TEMPLATE",
-        `Template: ${tpl.id} (${tpl.name})`,
-        "Super Admin",
-      );
-    }
-    return tpl;
-  }
-
-  static deleteTemplate(templateId: string): boolean {
-    const templates = this.getTemplates();
-    const filtered = templates.filter((t) => t.id !== templateId);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("billcraft_admin_templates", JSON.stringify(filtered));
-      window.dispatchEvent(new Event("invoxa-templates-updated"));
-      this.recordAuditLog(
-        "DELETE_TEMPLATE",
-        `Deleted Template: ${templateId}`,
-        "Super Admin",
-      );
-      return true;
-    }
-    return false;
+    window.dispatchEvent(new Event("invoxa-templates-updated"));
+    this.recordAuditLog(
+      enabled ? "ENABLE_TEMPLATE" : "DISABLE_TEMPLATE",
+      `Template: ${templateId}`,
+      "Super Admin",
+    );
   }
 
   // Teams & Workspaces Management - Starts empty
@@ -775,7 +396,7 @@ export class AdminApi {
           tenantId: newTeam.id,
           password:
             params.ownerPassword ||
-            (existingIdx >= 0 ? regUsers[existingIdx].password : "password123"),
+            (existingIdx >= 0 ? regUsers[existingIdx].password : ""),
         };
         if (existingIdx >= 0) {
           regUsers[existingIdx] = { ...regUsers[existingIdx], ...userObj };
@@ -953,51 +574,6 @@ export class AdminApi {
       );
     }
     return true;
-  }
-
-  // Site Settings
-  static getSiteSettings(): AdminSiteSettings {
-    const defaults: AdminSiteSettings = {
-      announcementBanner: {
-        enabled: true,
-        text: "⚡ New: Real ISO/IEC 18004 UPI QR codes and 8+ Structural Layout Templates live!",
-        variant: "info",
-      },
-      maintenanceMode: false,
-      defaultCurrency: "INR",
-      allowPublicSignups: true,
-      seoDefaults: {
-        title: "BillCraft — Professional Invoicing Studio",
-        description:
-          "Decimal-safe calculations, India GST engine, and verified UPI QR codes.",
-      },
-    };
-
-    if (typeof window === "undefined") return defaults;
-    try {
-      const stored = localStorage.getItem("billcraft_admin_settings");
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch {}
-
-    return defaults;
-  }
-
-  static updateSiteSettings(settings: AdminSiteSettings): boolean {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        "billcraft_admin_settings",
-        JSON.stringify(settings),
-      );
-      this.recordAuditLog(
-        "UPDATE_SITE_SETTINGS",
-        "Site Configuration",
-        "Super Admin",
-      );
-      return true;
-    }
-    return false;
   }
 
   // System Audit Logs - Starts empty

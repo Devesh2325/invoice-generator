@@ -9,8 +9,9 @@ import { useTheme } from '@/lib/theme/theme-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Sparkles, Building, Mail, Lock, User, CheckCircle2, AlertCircle, Sun, Moon } from 'lucide-react';
+import { FileText, Building, Mail, Lock, User, CheckCircle2, AlertCircle, Sun, Moon } from 'lucide-react';
 import { APP_CONFIG } from '@invoice/core';
+import { hashPassword } from '@/lib/auth/password';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -27,8 +28,8 @@ export default function SignUpPage() {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!workspaceName.trim() || !fullName.trim() || !email.trim() || password.length < 6) {
-      setErrorMsg('Please complete all fields (password must be at least 6 characters).');
+    if (!workspaceName.trim() || !fullName.trim() || !email.trim() || password.length < 8) {
+      setErrorMsg('Please complete all fields (password must be at least 8 characters).');
       return;
     }
 
@@ -52,12 +53,14 @@ export default function SignUpPage() {
       if (typeof window !== 'undefined') {
         const existingUsersRaw = window.localStorage.getItem('billcraft_registered_users');
         const existingUsers = existingUsersRaw ? JSON.parse(existingUsersRaw) : [];
+        if (existingUsers.some((u: any) => u.email === newUser.email)) {
+          setErrorMsg('An account with this email already exists. Please sign in instead.');
+          setLoading(false);
+          return;
+        }
         window.localStorage.setItem(
           'billcraft_registered_users',
-          JSON.stringify([
-            ...existingUsers.filter((u: any) => u.email !== newUser.email),
-            { ...newUser, password },
-          ])
+          JSON.stringify([...existingUsers, { ...newUser, password: await hashPassword(password) }])
         );
         window.localStorage.setItem('billcraft_current_user', JSON.stringify(newUser));
         window.localStorage.setItem('billcraft_current_user_id', userId);
@@ -103,7 +106,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center items-center p-6 font-sans relative transition-colors">
+    <div className="min-h-screen flex flex-col justify-center items-center p-6 font-sans relative">
       <div className="absolute top-4 right-4">
         <button
           type="button"
@@ -118,12 +121,12 @@ export default function SignUpPage() {
 
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2 font-black text-2xl text-primary tracking-tight">
-            <Sparkles className="h-6 w-6 text-primary" />
+          <Link href="/" className="inline-flex items-center gap-2 font-semibold text-2xl text-primary tracking-tight">
+            <FileText className="h-6 w-6 text-primary" />
             <span>{APP_CONFIG.brandName}</span>
           </Link>
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Create your Business Workspace</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Set up isolated multi-tenant GST & financial billing for your company
           </p>
         </div>
@@ -131,13 +134,13 @@ export default function SignUpPage() {
         <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold text-slate-900 dark:text-slate-100">Workspace Registration</CardTitle>
-            <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
+            <CardDescription className="text-sm text-slate-500 dark:text-slate-400">
               Fill in your details to create your dedicated, private workspace
             </CardDescription>
           </CardHeader>
           <CardContent>
             {errorMsg && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-sm flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -145,7 +148,7 @@ export default function SignUpPage() {
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
               <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Company / Business Name
                 </label>
                 <div className="relative">
@@ -154,14 +157,14 @@ export default function SignUpPage() {
                     required
                     value={workspaceName}
                     onChange={(e) => setWorkspaceName(e.target.value)}
-                    className="pl-9 text-xs bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="pl-9 text-sm bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     placeholder="e.g. Sharma Enterprises Pvt Ltd"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Your Full Name
                 </label>
                 <div className="relative">
@@ -170,14 +173,14 @@ export default function SignUpPage() {
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="pl-9 text-xs bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="pl-9 text-sm bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     placeholder="e.g. Rahul Sharma"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Work Email
                 </label>
                 <div className="relative">
@@ -187,14 +190,14 @@ export default function SignUpPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 text-xs bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="pl-9 text-sm bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     placeholder="rahul@company.in"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Password (min. 6 characters)
                 </label>
                 <div className="relative">
@@ -205,7 +208,7 @@ export default function SignUpPage() {
                     minLength={6}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9 text-xs bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="pl-9 text-sm bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     placeholder="••••••••"
                   />
                 </div>
@@ -214,7 +217,7 @@ export default function SignUpPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary hover:bg-primary-hover text-white font-semibold text-xs h-10 shadow-sm mt-2 flex items-center justify-center gap-1.5"
+                className="w-full bg-primary hover:bg-primary-hover text-white font-semibold text-sm h-10 shadow-sm mt-2 flex items-center justify-center gap-1.5"
               >
                 {loading ? (
                   'Creating Workspace...'
@@ -229,7 +232,7 @@ export default function SignUpPage() {
           </CardContent>
         </Card>
 
-        <div className="text-center text-xs text-slate-500 dark:text-slate-400">
+        <div className="text-center text-sm text-slate-500 dark:text-slate-400">
           Already have an account?{' '}
           <Link href="/login" className="font-semibold text-primary hover:underline">
             Sign in

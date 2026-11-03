@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
 import {
   TenantApi,
@@ -216,16 +215,16 @@ export default function ProductsAndInventoryPage() {
   };
 
   return (
-    <TenantLayout>
+    <>
       <div className="p-6 lg:p-10 space-y-6 max-w-7xl mx-auto w-full">
         {/* Module Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
                 Products & Inventory
               </h1>
-              <Badge variant="outline" className="text-xs font-mono font-bold border-primary text-primary">
+              <Badge variant="outline" className="text-xs tabular-nums font-bold border-primary text-primary">
                 {products.length} Items
               </Badge>
             </div>
@@ -250,10 +249,10 @@ export default function ProductsAndInventoryPage() {
           <Card className="p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                   Total Catalog Items
                 </span>
-                <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
+                <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">
                   {products.length}
                 </div>
               </div>
@@ -266,10 +265,10 @@ export default function ProductsAndInventoryPage() {
           <Card className="p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                   Total Inventory Valuation
                 </span>
-                <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
+                <div className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
                   {formatCurrency(totalInventoryValue, tenantCurrency)}
                 </div>
               </div>
@@ -289,10 +288,10 @@ export default function ProductsAndInventoryPage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                   Low Stock Threshold Alerts
                 </span>
-                <div className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
+                <div className="text-2xl font-semibold text-amber-600 dark:text-amber-400 mt-1">
                   {lowStockCount} {lowStockCount === 1 ? 'Item' : 'Items'}
                 </div>
               </div>
@@ -347,10 +346,10 @@ export default function ProductsAndInventoryPage() {
         </div>
 
         {/* Product Catalog & Inventory Table */}
-        <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-xs">
+        <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-xs">
           <table className="w-full min-w-[950px] text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 uppercase tracking-wider text-[10px] font-bold text-slate-500 dark:text-slate-400">
+              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 text-xs font-bold text-slate-500 dark:text-slate-400">
                 <th className="py-3 px-4 min-w-[220px]">Product / Service</th>
                 <th className="py-3 px-3 w-32">SKU & Barcode</th>
                 <th className="py-3 px-3 w-24">HSN / SAC</th>
@@ -392,12 +391,12 @@ export default function ProductsAndInventoryPage() {
                         </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {prod.category && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                               <Tag className="w-2.5 h-2.5" /> {prod.category}
                             </span>
                           )}
                           {prod.description && (
-                            <span className="text-[11px] text-slate-400 truncate max-w-xs">
+                            <span className="text-xs text-slate-400 truncate max-w-xs">
                               {prod.description}
                             </span>
                           )}
@@ -405,44 +404,44 @@ export default function ProductsAndInventoryPage() {
                       </td>
 
                       {/* SKU & Barcode */}
-                      <td className="py-3 px-3 font-mono">
+                      <td className="py-3 px-3 tabular-nums">
                         <div className="font-bold text-slate-800 dark:text-slate-200">
                           {prod.sku}
                         </div>
                         {prod.barcode ? (
-                          <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                          <div className="text-xs text-slate-500 flex items-center gap-1">
                             <Barcode className="w-3 h-3" />
                             <span>{prod.barcode}</span>
                           </div>
                         ) : (
-                          <span className="text-[10px] text-slate-400 italic">No barcode</span>
+                          <span className="text-xs text-slate-400 italic">No barcode</span>
                         )}
                       </td>
 
                       {/* HSN/SAC */}
-                      <td className="py-3 px-3 font-mono text-slate-700 dark:text-slate-300">
+                      <td className="py-3 px-3 tabular-nums text-slate-700 dark:text-slate-300">
                         {prod.hsnCode || '—'}
                       </td>
 
                       {/* Unit Price */}
-                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <td className="py-3 px-3 text-right tabular-nums font-bold text-slate-900 dark:text-slate-100">
                         {formatCurrency(prod.unitPrice, tenantCurrency)}
-                        <span className="text-[10px] text-slate-400 font-normal ml-0.5">
+                        <span className="text-xs text-slate-400 font-normal ml-0.5">
                           / {prod.unit}
                         </span>
                       </td>
 
                       {/* Tax Rate */}
-                      <td className="py-3 px-3 text-right font-mono text-slate-700 dark:text-slate-300">
+                      <td className="py-3 px-3 text-right tabular-nums text-slate-700 dark:text-slate-300">
                         {prod.taxRate}%
                         {prod.taxInclusive && (
-                          <span className="text-[9px] block text-slate-400">Incl.</span>
+                          <span className="text-xs block text-slate-400">Incl.</span>
                         )}
                       </td>
 
                       {/* Stock Level with Alert Badge */}
                       <td className="py-3 px-4 text-center">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-2xs font-mono">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-2xs tabular-nums">
                           {isLow ? (
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                           ) : (
@@ -459,7 +458,7 @@ export default function ProductsAndInventoryPage() {
                           </span>
                         </div>
                         {isLow && (
-                          <span className="text-[10px] text-amber-600 dark:text-amber-400 block mt-0.5 font-semibold">
+                          <span className="text-xs text-amber-600 dark:text-amber-400 block mt-0.5 font-semibold">
                             Below min ({threshold})
                           </span>
                         )}
@@ -513,9 +512,9 @@ export default function ProductsAndInventoryPage() {
         {/* MODAL 1: ADD OR EDIT PRODUCT */}
         {createModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
-            <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
-                <h3 className="font-black text-base text-slate-900 dark:text-slate-100">
+                <h3 className="font-semibold text-base text-slate-900 dark:text-slate-100">
                   {editingId ? 'Edit Product / Service' : 'Add New Product or Inventory'}
                 </h3>
                 <button
@@ -570,7 +569,7 @@ export default function ProductsAndInventoryPage() {
                       <button
                         type="button"
                         onClick={generateBarcodeValue}
-                        className="text-primary hover:underline text-[10px] font-bold cursor-pointer"
+                        className="text-primary hover:underline text-xs font-bold cursor-pointer"
                       >
                         Generate Barcode
                       </button>
@@ -581,7 +580,7 @@ export default function ProductsAndInventoryPage() {
                         value={barcode}
                         onChange={(e) => setBarcode(e.target.value)}
                         placeholder="890123456789"
-                        className="pl-8 font-mono"
+                        className="pl-8 tabular-nums"
                       />
                     </div>
                   </div>
@@ -691,13 +690,13 @@ export default function ProductsAndInventoryPage() {
         {/* MODAL 2: ADJUST STOCK */}
         {stockModalOpen && selectedProduct && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
-            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
               <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
                 <div>
-                  <h3 className="font-black text-sm text-slate-900 dark:text-slate-100">
+                  <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                     Adjust Stock: {selectedProduct.name}
                   </h3>
-                  <p className="text-[11px] text-slate-500 font-mono">
+                  <p className="text-xs text-slate-500 tabular-nums">
                     Current Stock: {selectedProduct.stockQuantity} {selectedProduct.unit}s
                   </p>
                 </div>
@@ -810,14 +809,14 @@ export default function ProductsAndInventoryPage() {
         {/* MODAL 3: STOCK MOVEMENT HISTORY */}
         {historyModalOpen && selectedProduct && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
-            <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 max-h-[85vh] overflow-y-auto">
               <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
                 <div>
-                  <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                     <History className="w-4 h-4 text-primary" />
                     Stock Movement History
                   </h3>
-                  <p className="text-[11px] text-slate-500 font-mono">
+                  <p className="text-xs text-slate-500 tabular-nums">
                     {selectedProduct.name} (SKU: {selectedProduct.sku})
                   </p>
                 </div>
@@ -861,16 +860,16 @@ export default function ProductsAndInventoryPage() {
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-xs text-slate-500">
                           {move.reference || 'Manual adjustment'} • {move.reason || 'Inventory update'}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-mono">
+                        <div className="text-xs text-slate-400 tabular-nums">
                           {new Date(move.timestamp).toLocaleString()}
                         </div>
                       </div>
 
-                      <div className="text-right font-mono shrink-0">
-                        <span className="text-slate-400 text-[10px]">Stock:</span>{' '}
+                      <div className="text-right tabular-nums shrink-0">
+                        <span className="text-slate-400 text-xs">Stock:</span>{' '}
                         <span className="text-slate-500">{move.previousStock}</span> →{' '}
                         <span className="font-bold text-slate-900 dark:text-slate-100">
                           {move.newStock}
@@ -894,6 +893,6 @@ export default function ProductsAndInventoryPage() {
           </div>
         )}
       </div>
-    </TenantLayout>
+    </>
   );
 }

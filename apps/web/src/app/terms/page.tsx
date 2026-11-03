@@ -4,18 +4,19 @@ import React from 'react';
 import Link from 'next/link';
 import { APP_CONFIG } from '@invoice/core';
 import { PublicHeader } from '@/components/layout/public-header';
+import { PublicFooter } from '@/components/layout/public-footer';
 import { Button } from '@/components/ui/button';
 import { Sparkles, FilePlus, ArrowRight } from 'lucide-react';
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+    <div className="min-h-screen text-foreground flex flex-col font-sans">
       <PublicHeader />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-8 py-16 space-y-8 text-xs sm:text-sm text-foreground/90 leading-relaxed">
+      <main className="w-full min-w-0 max-w-3xl mx-auto px-4 sm:px-8 py-16 space-y-8 text-sm text-foreground/90 leading-relaxed">
         <div className="space-y-2 border-b border-border pb-6">
-          <h1 className="text-3xl font-black text-foreground">Terms of Service</h1>
-          <p className="text-xs text-muted-foreground">Effective Date: April 1, 2026 • Last Updated: April 1, 2026</p>
+          <h1 className="text-3xl font-semibold text-foreground">Terms of Service</h1>
+          <p className="text-sm text-muted-foreground">Effective Date: April 1, 2026 • Last Updated: April 1, 2026</p>
         </div>
 
         <section className="space-y-3">
@@ -35,7 +36,7 @@ export default function TermsPage() {
         <section className="space-y-3">
           <h2 className="text-base font-bold text-foreground">3. Subscriptions, Invoicing Limits & White-Label Provisions</h2>
           <p>
-            Free trial accounts are subject to a maximum allowance of {APP_CONFIG.trialInvoiceLimit} generated invoices. Pro and Enterprise subscribers enjoy unlimited document creation, full inventory management, and white-label multi-tenant workspace isolation.
+            Free trial accounts are subject to a maximum allowance of {APP_CONFIG.trialInvoiceLimit} generated invoices. Pro and Enterprise plans include unlimited documents and the features listed on our pricing page.
           </p>
         </section>
 
@@ -47,21 +48,21 @@ export default function TermsPage() {
         </section>
 
         {/* Clear Next-Step Action Banner */}
-        <div className="p-8 rounded-2xl bg-muted/40 border border-border text-center space-y-3">
-          <p className="text-xs text-muted-foreground">Ready to start invoicing with precision and style?</p>
+        <div className="p-8 rounded-xl bg-muted/40 border border-border text-center space-y-3">
+          <p className="text-sm text-muted-foreground">Ready to create an invoice?</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/create">
-              <Button size="sm" className="font-bold text-xs bg-primary text-primary-foreground">
+              <Button size="sm" className="font-bold text-sm bg-primary text-primary-foreground">
                 <FilePlus className="w-3.5 h-3.5 mr-1.5" /> Start Free Invoicing
               </Button>
             </Link>
             <Link href="/features">
-              <Button variant="outline" size="sm" className="font-bold text-xs">
+              <Button variant="outline" size="sm" className="font-bold text-sm">
                 Explore Features
               </Button>
             </Link>
             <Link href="/pricing">
-              <Button variant="ghost" size="sm" className="font-bold text-xs">
+              <Button variant="ghost" size="sm" className="font-bold text-sm">
                 View Pricing & Plans
               </Button>
             </Link>
@@ -69,9 +70,7 @@ export default function TermsPage() {
         </div>
       </main>
 
-      <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 {APP_CONFIG.brandName} Cloud Technologies. All rights reserved.
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

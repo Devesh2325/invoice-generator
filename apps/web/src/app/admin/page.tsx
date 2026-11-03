@@ -3,23 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AdminApi } from '@invoice/api';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Users,
-  CreditCard,
-  TrendingUp,
-  FileText,
-  Activity,
-  ShieldCheck,
-  CheckCircle2,
-  Clock,
-  ArrowRight,
-} from 'lucide-react';
+import { Users, CreditCard, TrendingUp, FileText, ArrowRight, Info } from 'lucide-react';
+
+interface Metrics {
+  totalUsers: number;
+  activeSubscribers: number;
+  monthlyRecurringRevenue: number;
+  documentsCount: number;
+  userGrowth: { month: string; count: number }[];
+}
 
 export default function AdminDashboardPage() {
-  const [metrics, setMetrics] = useState<any>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
@@ -28,159 +24,122 @@ export default function AdminDashboardPage() {
   }, []);
 
   if (!metrics) {
-    return <div className="p-8 text-xs text-slate-400">Loading metrics...</div>;
+    return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   }
 
+  const kpis = [
+    { label: 'Registered users', value: metrics.totalUsers.toLocaleString('en-IN'), hint: 'All accounts', icon: Users },
+    { label: 'Paid subscriptions', value: metrics.activeSubscribers.toLocaleString('en-IN'), hint: 'Pro and Enterprise', icon: CreditCard },
+    {
+      label: 'Monthly recurring revenue',
+      value: `₹${metrics.monthlyRecurringRevenue.toLocaleString('en-IN')}`,
+      hint: 'From current paid plans',
+      icon: TrendingUp,
+    },
+    { label: 'Documents created', value: metrics.documentsCount.toLocaleString('en-IN'), hint: 'All workspaces', icon: FileText },
+  ];
+
+  const maxSignups = Math.max(...metrics.userGrowth.map((g) => g.count));
+
   return (
-    <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto w-full">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Super Admin Dashboard</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Platform metrics, subscription MRR, user analytics, and system operations
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-800 text-xs px-2.5 py-1">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
-            System Healthy
-          </Badge>
-        </div>
+    <div className="p-4 sm:p-6 lg:p-10 space-y-6 max-w-6xl mx-auto w-full">
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">Users, subscriptions and revenue at a glance.</p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-slate-800 bg-slate-900/60 p-5 rounded-2xl space-y-2">
-          <div className="flex justify-between items-center text-slate-400 text-xs font-semibold">
-            <span>Total Registered Users</span>
-            <Users className="h-4 w-4 text-primary" />
-          </div>
-          <div className="text-2xl font-black text-white">{metrics.totalUsers}</div>
-          <div className="text-[11px] text-emerald-400 flex items-center gap-1">
-            <TrendingUp className="h-3 w-3" /> +18.4% this month
-          </div>
-        </Card>
-
-        <Card className="border-slate-800 bg-slate-900/60 p-5 rounded-2xl space-y-2">
-          <div className="flex justify-between items-center text-slate-400 text-xs font-semibold">
-            <span>Active Subscriptions</span>
-            <CreditCard className="h-4 w-4 text-indigo-400" />
-          </div>
-          <div className="text-2xl font-black text-white">{metrics.activeSubscribers}</div>
-          <div className="text-[11px] text-slate-400">Pro & Enterprise tiers</div>
-        </Card>
-
-        <Card className="border-slate-800 bg-slate-900/60 p-5 rounded-2xl space-y-2">
-          <div className="flex justify-between items-center text-slate-400 text-xs font-semibold">
-            <span>Monthly Recurring Revenue</span>
-            <TrendingUp className="h-4 w-4 text-emerald-400" />
-          </div>
-          <div className="text-2xl font-black text-white font-mono">
-            ₹{metrics.monthlyRecurringRevenue.toLocaleString('en-IN')}
-          </div>
-          <div className="text-[11px] text-emerald-400">+₹4,200 vs last month</div>
-        </Card>
-
-        <Card className="border-slate-800 bg-slate-900/60 p-5 rounded-2xl space-y-2">
-          <div className="flex justify-between items-center text-slate-400 text-xs font-semibold">
-            <span>Invoices Generated</span>
-            <FileText className="h-4 w-4 text-amber-400" />
-          </div>
-          <div className="text-2xl font-black text-white">{metrics.invoicesThisMonth}</div>
-          <div className="text-[11px] text-slate-400">Past 30 days volume</div>
-        </Card>
+      <div className="flex items-start gap-2.5 rounded-lg border border-border bg-card p-3 text-sm text-foreground">
+        <Info className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+        <p>These figures come from data saved in this browser, not a shared database, so they won&apos;t include activity on other devices.</p>
       </div>
 
-      {/* User Growth Bar Visual */}
-      <Card className="border-slate-800 bg-slate-900/60 rounded-2xl p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h3 className="text-sm font-bold text-white">Platform User Growth Trajectory</h3>
-            <p className="text-xs text-slate-400">New registered workspace accounts per month</p>
-          </div>
-          <span className="text-xs font-mono text-emerald-400 font-bold">+266% YoY</span>
-        </div>
-
-        <div className="grid grid-cols-6 gap-3 items-end h-32 pt-4">
-          {metrics.userGrowth.map((g: any, i: number) => {
-            const max = Math.max(...metrics.userGrowth.map((x: any) => x.count));
-            const pct = (g.count / max) * 100;
-            return (
-              <div key={i} className="flex flex-col items-center gap-2 h-full justify-end">
-                <div className="text-[10px] font-mono text-slate-400">{g.count}</div>
-                <div
-                  className="w-full bg-primary/70 hover:bg-primary rounded-t-lg transition-all"
-                  style={{ height: `${pct}%` }}
-                />
-                <div className="text-[10px] text-slate-500 font-bold uppercase">{g.month}</div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-
-      {/* Recent Users Table */}
-      <Card className="border-slate-800 bg-slate-900/60 rounded-2xl overflow-hidden">
-        <CardHeader className="pb-3 border-b border-slate-800 flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-sm font-bold text-white">Recent Users & Accounts</CardTitle>
-            <CardDescription className="text-xs text-slate-400">
-              Latest registrations and plan assignments
-            </CardDescription>
-          </div>
-          <Link href="/admin/users">
-            <Button variant="ghost" size="sm" className="text-xs text-primary hover:text-primary">
-              View All Users <ArrowRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent className="p-0">
-          {users.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-400">
-              <Users className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-              <div className="font-semibold text-slate-300">No registered users yet</div>
-              <p className="text-[11px] text-slate-500 mt-0.5">Real workspace users will appear here as they sign up.</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {kpis.map(({ label, value, hint, icon: Icon }) => (
+          <div key={label} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-2 text-sm text-muted-foreground">
+              <span>{label}</span>
+              <Icon className="h-4 w-4 shrink-0" />
             </div>
-          ) : (
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 bg-slate-800/40 text-slate-400 uppercase text-[10px] font-semibold">
-                  <th className="py-2.5 px-4">User</th>
-                  <th className="py-2.5 px-4">Plan Tier</th>
-                  <th className="py-2.5 px-4">Status</th>
-                  <th className="py-2.5 px-4">Invoices</th>
-                  <th className="py-2.5 px-4">Signed Up</th>
+            <div className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{value}</div>
+            <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+          </div>
+        ))}
+      </div>
+
+      <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+        <h2 className="text-base font-semibold text-foreground">New signups</h2>
+        <p className="text-sm text-muted-foreground">Last 6 months</p>
+
+        {maxSignups === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">No signups in the last 6 months.</p>
+        ) : (
+          <div className="mt-4 grid h-40 grid-cols-6 items-end gap-2 sm:gap-4">
+            {metrics.userGrowth.map((g) => (
+              <div key={g.month} className="flex h-full flex-col items-center justify-end gap-1.5">
+                <div className="text-xs tabular-nums text-foreground">{g.count}</div>
+                <div
+                  className="w-full max-w-14 rounded-t bg-primary"
+                  style={{ height: `${Math.max((g.count / maxSignups) * 100, g.count ? 4 : 1)}%` }}
+                />
+                <div className="text-xs text-muted-foreground">{g.month}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex items-center justify-between gap-3 border-b border-border p-4 sm:px-6">
+          <h2 className="text-base font-semibold text-foreground">Recent users</h2>
+          <Link href="/admin/users" className="flex items-center gap-1 text-sm font-medium text-foreground hover:text-foreground">
+            View all <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {users.length === 0 ? (
+          <div className="p-10 text-center">
+            <Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+            <p className="text-sm font-medium text-foreground">No users yet</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">New accounts will appear here when people sign up.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="px-4 py-2.5 font-medium sm:px-6">User</th>
+                  <th className="px-4 py-2.5 font-medium">Plan</th>
+                  <th className="px-4 py-2.5 font-medium">Status</th>
+                  <th className="px-4 py-2.5 font-medium">Signed up</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-border text-foreground">
                 {users.slice(0, 5).map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-800/30">
-                    <td className="py-3 px-4 font-semibold text-white">
-                      <div>{u.name}</div>
-                      <div className="text-[11px] text-slate-500 font-mono">{u.email}</div>
+                  <tr key={u.id}>
+                    <td className="px-4 py-3 sm:px-6">
+                      <div className="font-medium text-foreground">{u.name}</div>
+                      <div className="text-xs text-muted-foreground">{u.email}</div>
                     </td>
-                    <td className="py-3 px-4 uppercase font-bold text-primary">{u.plan}</td>
-                    <td className="py-3 px-4">
+                    <td className="px-4 py-3 capitalize">{u.plan}</td>
+                    <td className="px-4 py-3">
                       <Badge
                         className={
                           u.status === 'active'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-800 text-[10px]'
-                            : 'bg-rose-500/10 text-rose-400 border-rose-800 text-[10px]'
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-xs capitalize text-emerald-700 dark:text-emerald-400'
+                            : 'border-rose-500/30 bg-rose-500/10 text-xs capitalize text-rose-700 dark:text-rose-400'
                         }
                       >
                         {u.status}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 font-mono">{u.invoicesCount}</td>
-                    <td className="py-3 px-4 text-slate-400">{u.createdAt}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{u.createdAt}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

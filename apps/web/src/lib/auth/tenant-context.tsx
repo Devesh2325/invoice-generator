@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { Tenant, TenantApi, TenantBrandSettings } from '@invoice/api';
 
@@ -48,8 +48,9 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
+  const loadedUserId = useRef<string | null>(null);
+
   const loadUserAndTenants = useCallback(async () => {
-    setIsLoading(true);
     try {
       let currentUser: AuthUser | null = null;
       if (typeof window !== 'undefined') {
@@ -62,6 +63,9 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         }
       }
+      // Refreshing the same user keeps the page on screen. Only a different user needs the full loading screen.
+      if ((currentUser?.id || null) !== loadedUserId.current) setIsLoading(true);
+      loadedUserId.current = currentUser?.id || null;
       setUser(currentUser);
 
       if (!currentUser) {

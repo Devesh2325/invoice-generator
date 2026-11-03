@@ -6,106 +6,93 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Sparkles, Check, X, ArrowRight, HelpCircle, FilePlus, ShieldCheck } from 'lucide-react';
-import { APP_CONFIG } from '@invoice/core';
+import { APP_CONFIG, PLANS } from '@invoice/core';
 import { PublicHeader } from '@/components/layout/public-header';
+import { PublicFooter } from '@/components/layout/public-footer';
 
 export default function PricingPage() {
   const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   const plans = [
     {
-      name: 'Starter / Free Trial',
-      description: 'Ideal for solo freelancers and contractors evaluating the platform.',
-      price: period === 'monthly' ? '₹0' : '₹0',
-      periodText: 'up to 7 invoices',
-      cta: 'Start Free Trial',
-      ctaHref: '/create',
+      name: 'Free',
+      description: `For trying ${APP_CONFIG.brandName} and occasional invoicing.`,
+      price: '₹0',
+      periodText: `up to ${APP_CONFIG.trialInvoiceLimit} documents`,
+      cta: 'Start free',
+      ctaHref: '/signup',
       ctaVariant: 'outline' as const,
       popular: false,
       highlights: [
-        `${APP_CONFIG.trialInvoiceLimit} Invoices trial allowance`,
-        'India GST auto-split (CGST/SGST/IGST)',
-        'Verified scannable UPI QR codes',
-        '3 Core clean templates',
-        'PDF export & direct print',
-        'Multi-channel sharing (Email, WhatsApp, SMS)',
+        `${APP_CONFIG.trialInvoiceLimit} documents`,
+        'Automatic GST',
+        'UPI QR codes',
+        'Starter templates',
+        'PDF download and print',
       ],
     },
     {
-      name: 'Professional',
-      description: 'For growing studios, consulting firms, and agencies requiring full power.',
-      price: period === 'monthly' ? '₹799' : '₹639',
-      periodText: period === 'monthly' ? 'per month, billed monthly' : 'per month, billed annually',
-      cta: 'Upgrade to Pro',
+      name: 'Pro',
+      description: 'For growing businesses that invoice regularly.',
+      price: `₹${(period === 'monthly' ? PLANS.pro.priceMonthly : PLANS.pro.priceYearly).toLocaleString('en-IN')}`,
+      periodText: period === 'monthly' ? 'per month, billed monthly' : 'per month, billed yearly',
+      cta: 'Choose Pro',
       ctaHref: '/signup',
       ctaVariant: 'default' as const,
       popular: true,
       highlights: [
-        'Unlimited Invoices & Estimates',
-        'All 8+ premium designer templates',
-        'Products & Inventory Module (Stock, SKU, Barcodes)',
-        'Customer Profile & Financial Ledger views',
-        'Cloud synchronization & auto-backup',
-        'Remove watermark from PDFs',
-        'Up to 5 team members (Roles & Permissions)',
+        'Unlimited documents',
+        'All templates',
+        'Products and stock tracking',
+      'Integration Docs',
+        `Up to ${PLANS.pro.maxMembers} users`,
       ],
     },
     {
-      name: 'Enterprise / White-Label',
-      description: 'For multi-entity businesses and agencies wanting complete white-label software.',
-      price: period === 'monthly' ? '₹2,499' : '₹1,999',
-      periodText: period === 'monthly' ? 'per month, billed monthly' : 'per month, billed annually',
-      cta: 'Launch White-Label Workspace',
+      name: 'Enterprise',
+      description: 'For businesses that want invoicing under their own brand.',
+      price: `₹${(period === 'monthly' ? PLANS.enterprise.priceMonthly : PLANS.enterprise.priceYearly).toLocaleString('en-IN')}`,
+      periodText: period === 'monthly' ? 'per month, billed monthly' : 'per month, billed yearly',
+      cta: 'Contact us',
       ctaHref: '/contact',
       ctaVariant: 'outline' as const,
       popular: false,
-      highlights: [
-        'Everything in Professional',
-        'Complete White-Label multi-tenant isolation',
-        'Custom domain (e.g. billing.yourdomain.com)',
-        'Custom branding, logo & client portal',
-        'Unlimited team members & workspaces',
-        'Priority 24/7 dedicated support & SLA',
-      ],
+      highlights: ['Everything in Pro', 'White-label branding', 'Unlimited users'],
     },
   ];
 
   const comparisonRows = [
-    { feature: 'Trial Allowance', starter: '7 Invoices', pro: 'Unlimited', enterprise: 'Unlimited' },
-    { feature: 'Cloud Workspaces & Sync', starter: false, pro: true, enterprise: true },
-    { feature: 'India GST & State Code Engine', starter: true, pro: true, enterprise: true },
-    { feature: 'Verified UPI QR Codes', starter: true, pro: true, enterprise: true },
-    { feature: 'Included Designer Templates', starter: '3 Templates', pro: 'All 8+ Templates', enterprise: 'All + Custom' },
-    { feature: 'Products & Inventory Module', starter: false, pro: true, enterprise: true },
-    { feature: 'Customer Detail & Activity Ledgers', starter: false, pro: true, enterprise: true },
-    { feature: 'White-Label Multi-Tenant Isolation', starter: false, pro: false, enterprise: true },
-    { feature: 'Custom Domain (CNAME)', starter: false, pro: false, enterprise: true },
-    { feature: 'Remove Watermark', starter: false, pro: true, enterprise: true },
-    { feature: 'Support Level', starter: 'Community', pro: 'Priority Email', enterprise: 'Dedicated 24/7' },
+    { feature: 'Documents', starter: String(APP_CONFIG.trialInvoiceLimit), pro: 'Unlimited', enterprise: 'Unlimited' },
+    { feature: 'Automatic GST', starter: true, pro: true, enterprise: true },
+    { feature: 'UPI QR codes', starter: true, pro: true, enterprise: true },
+    { feature: 'Templates', starter: 'Starter set', pro: 'All', enterprise: 'All' },
+    { feature: 'Products and stock', starter: false, pro: true, enterprise: true },
+    { feature: 'Users', starter: String(PLANS.starter.maxMembers), pro: `Up to ${PLANS.pro.maxMembers}`, enterprise: 'Unlimited' },
+    { feature: 'White-label branding', starter: false, pro: false, enterprise: true },
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+    <div className="min-h-screen text-foreground flex flex-col font-sans">
       <PublicHeader />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-8 py-16 space-y-16">
+      <main className="w-full min-w-0 max-w-6xl mx-auto px-4 sm:px-8 py-16 space-y-16">
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <Badge variant="outline" className="text-xs">Pricing & Plans</Badge>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground">
-            Predictable Pricing for High-Performance Invoicing
+          <Badge variant="outline" className="text-sm">Pricing</Badge>
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-foreground">
+            Simple pricing
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Choose the plan that fits your business scale. No surprise fees. Upgrade or cancel anytime.
+            Start free and upgrade when you need more.
           </p>
 
-          <div className="inline-flex items-center gap-2 p-1 rounded-xl bg-muted/50 border border-border text-xs font-semibold mt-4">
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 p-1 rounded-xl bg-muted/50 border border-border text-sm font-semibold mt-4">
             <button
               onClick={() => setPeriod('monthly')}
               className={`px-3.5 py-1.5 rounded-lg transition-all ${
                 period === 'monthly' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground'
               }`}
             >
-              Monthly Billing
+              Monthly
             </button>
             <button
               onClick={() => setPeriod('yearly')}
@@ -113,8 +100,8 @@ export default function PricingPage() {
                 period === 'yearly' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground'
               }`}
             >
-              <span>Annual Billing</span>
-              <span className="rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.2 text-[10px] font-bold">
+              <span>Yearly</span>
+              <span className="rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.2 text-sm font-bold">
                 Save 20%
               </span>
             </button>
@@ -126,29 +113,29 @@ export default function PricingPage() {
           {plans.map((p, idx) => (
             <Card
               key={idx}
-              className={`border p-6 rounded-2xl flex flex-col justify-between space-y-6 bg-card relative ${
+              className={`border p-6 rounded-xl flex flex-col justify-between space-y-6 bg-card relative ${
                 p.popular ? 'border-primary ring-2 ring-primary shadow-xl' : 'border-border'
               }`}
             >
               {p.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
+                  <span className="bg-primary text-primary-foreground text-sm font-bold px-3 py-1 rounded-full shadow-sm">
                     Most Popular
                   </span>
                 </div>
               )}
-              <div className="space-y-4">
+              <div className="space-y-4 !mt-0">
                 <div>
                   <h3 className="font-bold text-lg text-foreground">{p.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-1 leading-normal">{p.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1 leading-normal">{p.description}</p>
                 </div>
 
                 <div>
-                  <div className="text-3xl font-black text-foreground">{p.price}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">{p.periodText}</div>
+                  <div className="text-3xl font-semibold text-foreground">{p.price}</div>
+                  <div className="text-sm text-muted-foreground mt-0.5">{p.periodText}</div>
                 </div>
 
-                <div className="space-y-2 pt-2 border-t border-border text-xs">
+                <div className="space-y-2 pt-2 border-t border-border text-sm">
                   {p.highlights.map((h, i) => (
                     <div key={i} className="flex items-center gap-2 text-muted-foreground">
                       <Check className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -161,7 +148,7 @@ export default function PricingPage() {
               <Link href={p.ctaHref}>
                 <Button
                   variant={p.ctaVariant}
-                  className={`w-full text-xs font-bold ${
+                  className={`w-full text-sm font-bold ${
                     p.popular ? 'bg-primary text-primary-foreground shadow-sm' : ''
                   }`}
                 >
@@ -175,17 +162,17 @@ export default function PricingPage() {
         {/* Feature Comparison Matrix */}
         <div className="space-y-6 pt-8">
           <div className="text-center space-y-1">
-            <h2 className="text-2xl font-bold text-foreground">Detailed Feature Comparison</h2>
-            <p className="text-xs text-muted-foreground">Compare all capabilities across plans</p>
+            <h2 className="text-2xl font-bold text-foreground">Compare plans</h2>
+            <p className="text-sm text-muted-foreground">See what each plan includes.</p>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="rounded-xl border border-border bg-card overflow-x-auto shadow-xs">
+            <table className="w-full min-w-[560px] text-left text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border bg-muted/40 font-bold text-foreground">
                   <th className="py-3 px-4">Feature</th>
-                  <th className="py-3 px-4 text-center w-36">Starter</th>
-                  <th className="py-3 px-4 text-center w-36 text-primary">Professional</th>
+                  <th className="py-3 px-4 text-center w-36">Free</th>
+                  <th className="py-3 px-4 text-center w-36 text-primary">Pro</th>
                   <th className="py-3 px-4 text-center w-36">Enterprise</th>
                 </tr>
               </thead>
@@ -234,19 +221,19 @@ export default function PricingPage() {
         </div>
 
         {/* Clear Next-Step Action Banner */}
-        <div className="p-8 sm:p-10 rounded-3xl bg-muted/30 border border-border text-center space-y-4">
-          <h2 className="text-2xl font-black text-foreground">Start with 7 free invoices today</h2>
-          <p className="text-xs text-muted-foreground max-w-md mx-auto">
-            No credit card required. Generate tax invoices, track inventory, or manage clients with zero hidden fees.
+        <div className="p-8 sm:p-10 rounded-xl bg-muted/30 border border-border text-center space-y-4">
+          <h2 className="text-2xl font-semibold text-foreground">Start with the free plan</h2>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            Create your first invoice in a few minutes.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/create">
-              <Button size="sm" className="font-bold text-xs bg-primary text-primary-foreground">
+              <Button size="sm" className="font-bold text-sm bg-primary text-primary-foreground">
                 <FilePlus className="w-3.5 h-3.5 mr-1.5" /> Start Free Invoicing
               </Button>
             </Link>
             <Link href="/templates">
-              <Button variant="outline" size="sm" className="font-bold text-xs">
+              <Button variant="outline" size="sm" className="font-bold text-sm">
                 Browse Templates
               </Button>
             </Link>
@@ -254,9 +241,7 @@ export default function PricingPage() {
         </div>
       </main>
 
-      <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 {APP_CONFIG.brandName} Cloud Technologies. Simple transparent billing with zero hidden charges.
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

@@ -88,10 +88,10 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6 font-sans">
+    <div className="min-h-screen flex flex-col justify-center items-center p-6 font-sans">
       <div className="w-full max-w-lg space-y-6">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 font-black text-2xl text-primary tracking-tight">
+          <div className="inline-flex items-center gap-2 font-semibold text-2xl text-primary tracking-tight">
             <Sparkles className="h-6 w-6 text-primary" />
             <span>{APP_CONFIG.brandName} Onboarding</span>
           </div>
@@ -124,7 +124,7 @@ export default function OnboardingPage() {
                 {step === 3 && 'Step 3: Invoice Numbering & Payment Terms'}
               </span>
             </CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-sm">
               {step === 1 && 'Define your legal trading name and primary billing currency'}
               {step === 2 && 'Configure your GST State Code for automatic CGST+SGST / IGST calculation'}
               {step === 3 && 'Set sequential invoice prefixes and standard payment terms'}
@@ -134,7 +134,7 @@ export default function OnboardingPage() {
             {step === 1 && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-sm font-semibold text-slate-700 block mb-1">
                     Legal Business Name
                   </label>
                   <Input
@@ -143,13 +143,13 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-sm font-semibold text-slate-700 block mb-1">
                     Default Currency
                   </label>
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full text-xs border border-slate-300 rounded-md p-2 bg-white"
+                    className="w-full text-sm border border-slate-300 rounded-md p-2 bg-white"
                   >
                     {Object.values(CURRENCIES).map((c) => (
                       <option key={c.code} value={c.code}>
@@ -159,7 +159,7 @@ export default function OnboardingPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-sm font-semibold text-slate-700 block mb-1">
                     Country of Operation
                   </label>
                   <Input
@@ -173,7 +173,7 @@ export default function OnboardingPage() {
             {step === 2 && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-sm font-semibold text-slate-700 block mb-1">
                     GSTIN (Goods & Services Tax Identification Number)
                   </label>
                   <Input
@@ -183,13 +183,13 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-sm font-semibold text-slate-700 block mb-1">
                     State / Union Territory (GST State Code)
                   </label>
                   <select
                     value={gstState}
                     onChange={(e) => setGstState(e.target.value)}
-                    className="w-full text-xs border border-slate-300 rounded-md p-2 bg-white"
+                    className="w-full text-sm border border-slate-300 rounded-md p-2 bg-white"
                   >
                     {INDIAN_STATES.map((st) => (
                       <option key={st.code} value={st.label}>
@@ -199,7 +199,7 @@ export default function OnboardingPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-sm font-semibold text-slate-700 block mb-1">
                     Registered Street Address
                   </label>
                   <Input
@@ -208,7 +208,7 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-sm font-semibold text-slate-700 block mb-1">
                     City
                   </label>
                   <Input
@@ -222,7 +222,7 @@ export default function OnboardingPage() {
             {step === 3 && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-sm font-semibold text-slate-700 block mb-1">
                     Invoice Number Prefix
                   </label>
                   <Input
@@ -230,12 +230,12 @@ export default function OnboardingPage() {
                     onChange={(e) => setPrefix(e.target.value.toUpperCase())}
                     placeholder="INV"
                   />
-                  <span className="text-[11px] text-slate-400 mt-0.5 block">
+                  <span className="text-sm text-slate-400 mt-0.5 block">
                     Example: {prefix}-2026-00001
                   </span>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-sm font-semibold text-slate-700 block mb-1">
                     Default Payment Terms
                   </label>
                   <Input
@@ -253,7 +253,7 @@ export default function OnboardingPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleBack}
-                  className="text-xs"
+                  className="text-sm"
                 >
                   <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back
                 </Button>
@@ -264,7 +264,7 @@ export default function OnboardingPage() {
               <Button
                 size="sm"
                 onClick={handleNext}
-                className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold"
+                className="bg-primary hover:bg-primary-hover text-white text-sm font-semibold"
               >
                 {step === 3 ? (
                   <>

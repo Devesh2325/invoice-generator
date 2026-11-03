@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TenantApi } from '@invoice/api';
 import {
@@ -172,12 +171,12 @@ export default function TenantPaymentsPage() {
   };
 
   return (
-    <TenantLayout>
+    <>
       <div className="p-6 lg:p-10 space-y-6 max-w-7xl mx-auto w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
               Payments
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -200,13 +199,13 @@ export default function TenantPaymentsPage() {
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardContent className="p-5 space-y-1">
               <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                <span className="text-xs font-semibold uppercase tracking-wider">Total Collected</span>
+                <span className="text-xs font-semibold">Total Collected</span>
                 <ArrowDownLeft className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+              <div className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
                 {formatCurrency(summary.totalCollected, tenantCurrency)}
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-400 dark:text-slate-500">
                 Gross payments received
               </div>
             </CardContent>
@@ -215,13 +214,13 @@ export default function TenantPaymentsPage() {
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardContent className="p-5 space-y-1">
               <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                <span className="text-xs font-semibold uppercase tracking-wider">Total Refunds</span>
+                <span className="text-xs font-semibold">Total Refunds</span>
                 <RotateCcw className="h-4 w-4 text-rose-600 dark:text-rose-400" />
               </div>
-              <div className="text-2xl font-black text-rose-600 dark:text-rose-400 tabular-nums">
+              <div className="text-2xl font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
                 {formatCurrency(summary.totalRefunded, tenantCurrency)}
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-400 dark:text-slate-500">
                 Partial & full refunds issued
               </div>
             </CardContent>
@@ -230,13 +229,13 @@ export default function TenantPaymentsPage() {
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardContent className="p-5 space-y-1">
               <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                <span className="text-xs font-semibold uppercase tracking-wider">Net Collections</span>
+                <span className="text-xs font-semibold">Net Collections</span>
                 <Wallet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-slate-100 tabular-nums">
+              <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                 {formatCurrency(summary.netCollections, tenantCurrency)}
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-400 dark:text-slate-500">
                 Collected minus refunds
               </div>
             </CardContent>
@@ -245,13 +244,13 @@ export default function TenantPaymentsPage() {
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardContent className="p-5 space-y-1">
               <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                <span className="text-xs font-semibold uppercase tracking-wider">Pending Payments</span>
+                <span className="text-xs font-semibold">Pending Payments</span>
                 <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
-              <div className="text-2xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
+              <div className="text-2xl font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
                 {formatCurrency(summary.pendingBalance, tenantCurrency)}
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-400 dark:text-slate-500">
                 Remaining balance across open invoices
               </div>
             </CardContent>
@@ -321,7 +320,7 @@ export default function TenantPaymentsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-950/75 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-950/75 text-slate-500 dark:text-slate-400 font-semibold">
                       <th className="py-3 px-4">Date</th>
                       <th className="py-3 px-4">Type</th>
                       <th className="py-3 px-4">Invoice</th>
@@ -338,31 +337,31 @@ export default function TenantPaymentsPage() {
                         <td className="py-3 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">{entry.date}</td>
                         <td className="py-3 px-4">
                           {entry.entryType === 'payment' ? (
-                            <Badge variant="success" className="text-[10px]">
+                            <Badge variant="success" className="text-xs">
                               Payment
                             </Badge>
                           ) : (
-                            <Badge variant="destructive" className="text-[10px]">
+                            <Badge variant="destructive" className="text-xs">
                               Refund
                             </Badge>
                           )}
                         </td>
                         <td className="py-3 px-4">
                           <div className="font-bold text-slate-900 dark:text-slate-100">{entry.docNumber}</div>
-                          <div className="text-[10px] text-slate-400 dark:text-slate-500">{entry.invoiceName}</div>
+                          <div className="text-xs text-slate-400 dark:text-slate-500">{entry.invoiceName}</div>
                         </td>
                         <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">{entry.customerName}</td>
                         <td className="py-3 px-4 capitalize text-slate-600 dark:text-slate-300">
                           {entry.method.replace('_', ' ')}
                         </td>
-                        <td className="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                        <td className="py-3 px-4 tabular-nums text-xs text-slate-600 dark:text-slate-300">
                           {entry.reference || '—'}
                         </td>
                         <td className="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-xs truncate">
                           {entry.notes || '—'}
                         </td>
                         <td
-                          className={`py-3 px-4 text-right font-black tabular-nums text-sm whitespace-nowrap ${
+                          className={`py-3 px-4 text-right font-semibold tabular-nums text-sm whitespace-nowrap ${
                             entry.entryType === 'refund' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                           }`}
                         >
@@ -378,6 +377,6 @@ export default function TenantPaymentsPage() {
           </CardContent>
         </Card>
       </div>
-    </TenantLayout>
+    </>
   );
 }

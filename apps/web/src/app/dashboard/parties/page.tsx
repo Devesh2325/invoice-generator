@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TenantApi } from '@invoice/api';
 import {
@@ -705,12 +704,12 @@ export default function TenantPartiesPage() {
   };
 
   return (
-    <TenantLayout>
+    <>
       <div className="p-6 lg:p-10 space-y-6 max-w-7xl mx-auto w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
               Customers
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -788,7 +787,7 @@ export default function TenantPartiesPage() {
         {loading ? (
           <div className="p-12 text-center text-xs text-slate-400 dark:text-slate-500">Loading customers...</div>
         ) : filteredParties.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
             <Users className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto" />
             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
               No {activeTab}s added yet
@@ -831,11 +830,11 @@ export default function TenantPartiesPage() {
                           <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">
                             {p.name}
                           </h3>
-                          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                          <span className="text-xs text-slate-400 dark:text-slate-500">
                             {bal.count} {bal.count === 1 ? 'invoice' : 'invoices'} • View Profile →
                           </span>
                         </div>
-                        <Badge variant="outline" className="text-[10px] capitalize">
+                        <Badge variant="outline" className="text-xs capitalize">
                           {p.type}
                         </Badge>
                       </div>
@@ -879,7 +878,7 @@ export default function TenantPartiesPage() {
                       {/* Customer Financial Summary in Selected Workspace Currency */}
                       <div className="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2 bg-slate-50/70 dark:bg-slate-950/70 -mx-5 -mb-5 p-3.5 rounded-b-xl">
                         <div>
-                          <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500 block">
+                          <span className="text-xs font-semibold uppercase text-slate-400 dark:text-slate-500 block">
                             Total Invoiced
                           </span>
                           <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">
@@ -887,7 +886,7 @@ export default function TenantPartiesPage() {
                           </span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500 block">
+                          <span className="text-xs font-semibold uppercase text-slate-400 dark:text-slate-500 block">
                             Outstanding Balance
                           </span>
                           <span
@@ -1074,7 +1073,7 @@ export default function TenantPartiesPage() {
                     <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
                       1. Select CSV or Excel File (.csv, .xlsx, .xls)
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Need a starting file? Download our pre-formatted sample template with required headers.
                     </p>
                   </div>
@@ -1130,7 +1129,7 @@ export default function TenantPartiesPage() {
                 {uploadedHeaders.length > 0 && (
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">
                         2. Map Uploaded Columns to Customer Fields
                       </h4>
                       <div className="flex items-center gap-2">
@@ -1152,7 +1151,7 @@ export default function TenantPartiesPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                       {CUSTOMER_FIELDS.map((field) => (
                         <div key={field.key}>
-                          <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                             {field.label} {field.required && <span className="text-red-500">*</span>}
                           </label>
                           <select
@@ -1179,7 +1178,7 @@ export default function TenantPartiesPage() {
                 {evaluatedImportRows.length > 0 && (
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">
                         3. Preview & Validate Records ({evaluatedImportRows.length} total)
                       </h4>
                       <div className="flex items-center gap-1.5 text-xs">
@@ -1232,7 +1231,7 @@ export default function TenantPartiesPage() {
 
                     <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
                       <table className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 uppercase text-[10px] sticky top-0">
+                        <thead className="bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 uppercase text-xs sticky top-0">
                           <tr>
                             <th className="py-2 px-3">Row</th>
                             <th className="py-2 px-3">Name</th>
@@ -1245,31 +1244,31 @@ export default function TenantPartiesPage() {
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                           {filteredImportRows.slice(0, 100).map((row) => (
                             <tr key={row.rowNumber} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                              <td className="py-2 px-3 font-mono text-slate-400 dark:text-slate-500">#{row.rowNumber}</td>
+                              <td className="py-2 px-3 tabular-nums text-slate-400 dark:text-slate-500">#{row.rowNumber}</td>
                               <td className="py-2 px-3 font-semibold text-slate-900 dark:text-slate-100">
                                 {row.mapped.name || <span className="text-red-500 italic">Missing</span>}
                               </td>
                               <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
                                 <div>{row.mapped.email || '—'}</div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500">{row.mapped.phone}</div>
+                                <div className="text-xs text-slate-400 dark:text-slate-500">{row.mapped.phone}</div>
                               </td>
                               <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
-                                <div className="font-mono text-[11px]">{row.mapped.taxId || '—'}</div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500">{row.mapped.country}</div>
+                                <div className="tabular-nums text-xs">{row.mapped.taxId || '—'}</div>
+                                <div className="text-xs text-slate-400 dark:text-slate-500">{row.mapped.country}</div>
                               </td>
                               <td className="py-2 px-3">
                                 {row.errors.length > 0 ? (
-                                  <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-semibold text-[11px]">
+                                  <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-semibold text-xs">
                                     <XCircle className="h-3.5 w-3.5 shrink-0" />
                                     {row.errors.join(', ')}
                                   </span>
                                 ) : row.isDuplicate ? (
-                                  <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold text-[11px]">
+                                  <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold text-xs">
                                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                                     {row.duplicateReason}
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
                                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                                     Valid
                                   </span>
@@ -1277,7 +1276,7 @@ export default function TenantPartiesPage() {
                               </td>
                               <td className="py-2 px-3">
                                 {row.errors.length > 0 ? (
-                                  <Badge variant="destructive" className="text-[10px]">
+                                  <Badge variant="destructive" className="text-xs">
                                     Will Fail
                                   </Badge>
                                 ) : (
@@ -1289,7 +1288,7 @@ export default function TenantPartiesPage() {
                                         [row.rowNumber]: e.target.value as any,
                                       }))
                                     }
-                                    className="h-7 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-1.5 text-[11px]"
+                                    className="h-7 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-1.5 text-xs"
                                   >
                                     <option value="default">
                                        Default ({row.isDuplicate ? duplicateStrategy : 'import'})
@@ -1346,34 +1345,34 @@ export default function TenantPartiesPage() {
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                        <span className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 block">
+                        <span className="text-xs font-bold uppercase text-emerald-600 dark:text-emerald-400 block">
                           Created
                         </span>
-                        <span className="text-lg font-black text-emerald-700 dark:text-emerald-400">
+                        <span className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
                           {importResult.created}
                         </span>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <span className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 block">
+                        <span className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 block">
                           Updated
                         </span>
-                        <span className="text-lg font-black text-blue-700 dark:text-blue-400">
+                        <span className="text-lg font-semibold text-blue-700 dark:text-blue-400">
                           {importResult.updated}
                         </span>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
-                        <span className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 block">
+                        <span className="text-xs font-bold uppercase text-amber-600 dark:text-amber-400 block">
                           Skipped
                         </span>
-                        <span className="text-lg font-black text-amber-700 dark:text-amber-400">
+                        <span className="text-lg font-semibold text-amber-700 dark:text-amber-400">
                           {importResult.skipped}
                         </span>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                        <span className="text-[10px] font-bold uppercase text-red-600 dark:text-red-400 block">
+                        <span className="text-xs font-bold uppercase text-red-600 dark:text-red-400 block">
                           Failed
                         </span>
-                        <span className="text-lg font-black text-red-700 dark:text-red-400">
+                        <span className="text-lg font-semibold text-red-700 dark:text-red-400">
                           {importResult.failed}
                         </span>
                       </div>
@@ -1413,6 +1412,6 @@ export default function TenantPartiesPage() {
           </div>
         )}
       </div>
-    </TenantLayout>
+    </>
   );
 }

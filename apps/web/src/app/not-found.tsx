@@ -4,27 +4,28 @@ import React from 'react';
 import Link from 'next/link';
 import { APP_CONFIG } from '@invoice/core';
 import { PublicHeader } from '@/components/layout/public-header';
+import { PublicFooter } from '@/components/layout/public-footer';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ArrowLeft, Home, FilePlus, Search, HelpCircle, Shield } from 'lucide-react';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-background flex flex-col font-sans">
+    <div className="min-h-screen flex flex-col font-sans">
       <PublicHeader />
 
       <main className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none max-w-2xl mx-auto my-12">
         <div className="relative mb-6">
-          <div className="text-8xl sm:text-9xl font-black text-primary/10 tracking-widest font-mono">
+          <div className="text-8xl sm:text-9xl font-semibold text-primary/10 tracking-widest font-mono">
             404
           </div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-lg backdrop-blur-xs">
+            <div className="h-16 w-16 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-lg backdrop-blur-xs">
               <Sparkles className="h-8 w-8 text-primary animate-pulse" />
             </div>
           </div>
         </div>
 
-        <h1 className="text-3xl sm:text-4xl font-black text-foreground tracking-tight mb-3">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-foreground tracking-tight mb-3">
           Page Not Found
         </h1>
         <p className="text-sm text-muted-foreground max-w-md mb-8 leading-relaxed">
@@ -54,7 +55,7 @@ export default function NotFound() {
           </Link>
         </div>
 
-        <div className="w-full max-w-md bg-muted/30 border border-border rounded-xl p-4 text-xs text-muted-foreground flex items-center justify-between">
+        <div className="w-full max-w-md bg-muted/30 border border-border rounded-xl p-4 text-sm text-muted-foreground flex items-center justify-between">
           <span>Need help finding what you need?</span>
           <Link href="/contact" className="font-bold text-primary hover:underline flex items-center gap-1">
             <HelpCircle className="h-3.5 w-3.5" /> Contact Support
@@ -62,9 +63,7 @@ export default function NotFound() {
         </div>
       </main>
 
-      <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground font-mono">
-        {APP_CONFIG.brandName} Cloud Engine &bull; HTTP 404 Resource Relocated
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

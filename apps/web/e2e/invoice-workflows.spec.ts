@@ -76,7 +76,7 @@ test.describe('BillCraft Invoice Generator E2E Workflows', () => {
 
   test('12. Tenant customizes a document template in Brand Studio', async ({ page }) => {
     await page.goto('/dashboard/brand');
-    await expect(page.getByRole('heading', { name: /Brand Studio & White-Label/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Brand Studio/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Save Brand Settings/i })).toBeVisible();
   });
 

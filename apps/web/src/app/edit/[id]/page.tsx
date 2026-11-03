@@ -71,7 +71,7 @@ export default function EditInvoicePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 space-y-4">
+      <div className="min-h-screen p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-border pb-4">
           <Skeleton className="h-8 w-48" />
           <div className="flex gap-2">
@@ -89,8 +89,8 @@ export default function EditInvoicePage() {
 
   if (notFound || !document) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <div className="h-16 w-16 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mb-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+        <div className="h-16 w-16 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-4">
           <FileText className="h-8 w-8" />
         </div>
         <h1 className="text-xl font-bold text-foreground mb-2">Invoice Not Found</h1>

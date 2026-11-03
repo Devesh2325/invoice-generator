@@ -1,117 +1,42 @@
-import { PLANS, } from "@invoice/core";
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "dmchaturvedi@gmail.com";
-const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || "Devesh@23251995";
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 mins
+import { PLANS, APP_CONFIG, } from "@invoice/core";
 export class AdminApi {
-    static getSessionKey() {
-        return "billcraft_admin_session";
-    }
-    static getRateLimitKey() {
-        return "billcraft_admin_ratelimit";
-    }
-    // Rate-Limited Login
-    static login(email, pass) {
-        if (typeof window === "undefined") {
-            return { success: false, error: "Cannot authenticate on server" };
-        }
-        // Check Lockout
-        try {
-            const rlRaw = localStorage.getItem(this.getRateLimitKey());
-            if (rlRaw) {
-                const rl = JSON.parse(rlRaw);
-                if (rl.lockedUntil && Date.now() < rl.lockedUntil) {
-                    const remMin = Math.ceil((rl.lockedUntil - Date.now()) / 60000);
-                    return {
-                        success: false,
-                        error: `Too many failed login attempts. Account temporarily locked. Please try again in ${remMin} minute(s).`,
-                    };
-                }
-            }
-        }
-        catch { }
-        const normalizedEmail = email.trim().toLowerCase();
-        const isMatch = normalizedEmail === SUPER_ADMIN_EMAIL.toLowerCase() &&
-            pass === SUPER_ADMIN_PASSWORD;
-        if (!isMatch) {
-            // Record failed attempt
-            try {
-                const rlRaw = localStorage.getItem(this.getRateLimitKey());
-                const rl = rlRaw ? JSON.parse(rlRaw) : { attempts: 0 };
-                rl.attempts = (rl.attempts || 0) + 1;
-                if (rl.attempts >= MAX_FAILED_ATTEMPTS) {
-                    rl.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
-                    localStorage.setItem(this.getRateLimitKey(), JSON.stringify(rl));
-                    return {
-                        success: false,
-                        error: `Too many failed attempts. Account locked for 15 minutes.`,
-                    };
-                }
-                localStorage.setItem(this.getRateLimitKey(), JSON.stringify(rl));
-                return {
-                    success: false,
-                    error: `Invalid Super Admin credentials. ${MAX_FAILED_ATTEMPTS - rl.attempts} attempt(s) remaining.`,
-                };
-            }
-            catch { }
-            return { success: false, error: "Invalid credentials." };
-        }
-        // Successful Login: Reset lockout and create session
-        try {
-            localStorage.removeItem(this.getRateLimitKey());
-            localStorage.setItem(this.getSessionKey(), JSON.stringify({
-                email: SUPER_ADMIN_EMAIL,
-                role: "super_admin",
-                authenticatedAt: new Date().toISOString(),
-            }));
-            this.recordAuditLog("SUPER_ADMIN_LOGIN", "Portal Access", SUPER_ADMIN_EMAIL);
-        }
-        catch { }
-        return { success: true };
-    }
-    static isAuthenticated() {
-        if (typeof window === "undefined")
-            return false;
-        try {
-            const raw = localStorage.getItem(this.getSessionKey());
-            if (!raw)
-                return false;
-            const parsed = JSON.parse(raw);
-            return parsed && parsed.role === "super_admin";
-        }
-        catch {
-            return false;
-        }
-    }
-    static logout() {
-        if (typeof window !== "undefined") {
-            localStorage.removeItem(this.getSessionKey());
-        }
-    }
     // Dashboard KPIs
     static getDashboardMetrics() {
         const users = this.getUsers();
         const activeSubscribers = users.filter((u) => u.plan !== "starter");
         const mrr = activeSubscribers.reduce((acc, u) => {
-            return acc + (u.plan === "pro" ? 799 : 2499);
+            return (acc +
+                (u.plan === "pro"
+                    ? APP_CONFIG.plans.pro.price
+                    : APP_CONFIG.plans.enterprise.price));
         }, 0);
-        let invoicesCount = 0;
+        let documentsCount = 0;
         if (typeof window !== "undefined") {
             try {
-                const docsRaw = localStorage.getItem("billcraft_documents");
+                const docsRaw = localStorage.getItem("billcraft_tenant_documents");
                 if (docsRaw) {
-                    const parsed = JSON.parse(docsRaw);
-                    invoicesCount = Array.isArray(parsed) ? parsed.length : 0;
+                    const byTenant = JSON.parse(docsRaw);
+                    documentsCount = Object.values(byTenant).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
                 }
             }
             catch { }
         }
+        // Signups per month for the last six months, from each user's real signup date.
+        const now = new Date();
+        const userGrowth = Array.from({ length: 6 }, (_, i) => {
+            const date = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+            return {
+                month: date.toLocaleDateString("en-IN", { month: "short" }),
+                count: users.filter((u) => (u.createdAt || "").startsWith(key)).length,
+            };
+        });
         return {
             totalUsers: users.length,
             activeSubscribers: activeSubscribers.length,
             monthlyRecurringRevenue: mrr,
-            invoicesThisMonth: invoicesCount,
-            userGrowth: users.length > 0 ? [{ month: "Current", count: users.length }] : [],
+            documentsCount,
+            userGrowth,
         };
     }
     // Users Management - Starts empty and fills strictly with real signups
@@ -268,7 +193,7 @@ export class AdminApi {
         const seeds = [
             {
                 id: "cleartax_gst",
-                name: "ClearTax Pro GST",
+                name: "GST Standard",
                 category: "GST & Tax Compliant (India)",
                 isPro: false,
                 enabled: true,
@@ -278,7 +203,7 @@ export class AdminApi {
             },
             {
                 id: "tally_prime",
-                name: "Tally Prime Tax Grid",
+                name: "GST Ledger Grid",
                 category: "GST & Tax Compliant (India)",
                 isPro: false,
                 enabled: true,
@@ -288,7 +213,7 @@ export class AdminApi {
             },
             {
                 id: "vyapar_classic",
-                name: "Vyapar Business GST",
+                name: "GST Business",
                 category: "GST & Tax Compliant (India)",
                 isPro: false,
                 enabled: true,
@@ -308,7 +233,7 @@ export class AdminApi {
             },
             {
                 id: "stripe_clean",
-                name: "Stripe Clean SaaS",
+                name: "SaaS Billing",
                 category: "SaaS & Modern Fintech",
                 isPro: true,
                 enabled: true,
@@ -318,7 +243,7 @@ export class AdminApi {
             },
             {
                 id: "zoho_standard",
-                name: "Zoho Books Corporate",
+                name: "Books Standard",
                 category: "Corporate & Enterprise",
                 isPro: false,
                 enabled: true,
@@ -328,7 +253,7 @@ export class AdminApi {
             },
             {
                 id: "freshbooks_cloud",
-                name: "FreshBooks Cloud Retainer",
+                name: "Cloud Retainer",
                 category: "Corporate & Enterprise",
                 isPro: true,
                 enabled: true,
@@ -681,7 +606,7 @@ export class AdminApi {
                     workspaceName: params.name,
                     tenantId: newTeam.id,
                     password: params.ownerPassword ||
-                        (existingIdx >= 0 ? regUsers[existingIdx].password : "password123"),
+                        (existingIdx >= 0 ? regUsers[existingIdx].password : ""),
                 };
                 if (existingIdx >= 0) {
                     regUsers[existingIdx] = { ...regUsers[existingIdx], ...userObj };
