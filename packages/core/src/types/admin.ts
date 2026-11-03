@@ -50,5 +50,35 @@ export interface AdminTeam {
   isWhiteLabel?: boolean;
   companyDisplayName?: string;
   logoUrl?: string;
+  primaryColor?: string;
+  supportEmail?: string;
+  websiteUrl?: string;
+  footerText?: string;
+  customDomain?: string;
   ownerPassword?: string;
+}
+
+/** A workspace's own brand, used instead of ours when white-label is on. */
+export interface WorkspaceBranding {
+  displayName?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  supportEmail?: string;
+  websiteUrl?: string;
+  footerText?: string;
+  /** The customer's own domain, such as billing.acme.com. It also has to be added in Vercel and DNS. */
+  customDomain?: string;
+}
+
+/** What the server shares about a workspace. It never includes the password. */
+export interface WorkspaceConfig {
+  id: string;
+  name: string;
+  ownerEmail: string;
+  plan: PlanId;
+  status: 'active' | 'suspended';
+  isWhiteLabel: boolean;
+  branding: WorkspaceBranding;
+  createdAt: string;
+  updatedAt: string;
 }

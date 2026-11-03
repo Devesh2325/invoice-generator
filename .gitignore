@@ -48,3 +48,6 @@ Thumbs.db
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
 
+
+# Local copy of platform data used in development
+.data/

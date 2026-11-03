@@ -19,26 +19,40 @@ export default function ContactPage() {
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [website, setWebsite] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !message) return;
 
     setSubmitting(true);
-
-    const body = `${message}\n\nFrom: ${name} <${email}>`;
-    window.location.href = `mailto:${APP_CONFIG.supportEmail}?subject=${encodeURIComponent(
-      subject || 'General inquiry'
-    )}&body=${encodeURIComponent(body)}`;
-
-    setTimeout(() => {
-      setSubmitting(false);
+    setError(null);
+    try {
+      const res = await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, subject, message, website }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(
+          res.status === 503 || res.status === 502
+            ? `We couldn't send your message right now. Please email us at ${APP_CONFIG.supportEmail}.`
+            : body.error || 'Please try again.'
+        );
+        return;
+      }
       setSubmitted(true);
       setName('');
       setEmail('');
       setSubject('');
       setMessage('');
-    }, 400);
+    } catch {
+      setError(`We couldn't send your message right now. Please email us at ${APP_CONFIG.supportEmail}.`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -77,9 +91,9 @@ export default function ContactPage() {
             {submitted ? (
               <div className="p-8 text-center space-y-4">
                 <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto" />
-                <h3 className="text-lg font-bold text-foreground">Your email is ready to send</h3>
+                <h3 className="text-lg font-bold text-foreground">Thanks, we've got your message</h3>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                  We opened your email app with your message filled in. Press send there to reach us.
+                  We'll reply to the email address you gave us.
                 </p>
                 <Button size="sm" variant="outline" onClick={() => setSubmitted(false)}>
                   Write another message
@@ -87,6 +101,17 @@ export default function ContactPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+                {/* Hidden from people. Bots that fill it in are rejected. */}
+                <input
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  className="hidden"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="font-semibold text-foreground block mb-1">Your Name *</label>
@@ -102,7 +127,7 @@ export default function ContactPage() {
                     <Input
                       type="email"
                       required
-                      placeholder="rohan@company.com"
+                      placeholder="you@company.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
@@ -129,6 +154,11 @@ export default function ContactPage() {
                   />
                 </div>
 
+                {error && (
+                  <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {error}
+                  </p>
+                )}
                 <Button type="submit" disabled={submitting} className="w-full sm:w-auto font-bold text-sm px-6">
                   {submitting ? 'Submitting...' : 'Send Inquiry'}
                 </Button>

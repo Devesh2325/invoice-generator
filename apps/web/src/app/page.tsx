@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
 import { useTenant } from '@/lib/auth/tenant-context';
+import { usePlatformPlans } from '@/lib/platform/platform-provider';
 import {
   ArrowRight,
   Calculator,
@@ -113,6 +114,7 @@ function formatPrice(price: number) {
 
 export default function LandingPage() {
   const { user } = useTenant();
+  usePlatformPlans();
   const [sample, setSample] = useState(SAMPLE_COUNTRIES[0]);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
@@ -167,7 +169,7 @@ export default function LandingPage() {
       name: 'Pro',
       price: formatPrice(APP_CONFIG.plans.pro.price),
       note: 'For growing businesses',
-      features: ['Unlimited documents', 'All templates', 'Inventory tracking', 'Integration Docs', `Up to ${PLANS.pro.maxMembers} users`],
+      features: ['Unlimited documents', 'All templates', 'Inventory tracking', 'Integrations for any code stack', `Up to ${PLANS.pro.maxMembers} users`],
       cta: 'Choose Pro',
       href: '/signup',
       featured: true,

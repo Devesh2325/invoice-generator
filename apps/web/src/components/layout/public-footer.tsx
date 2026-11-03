@@ -1,6 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import { FileText } from 'lucide-react';
 import { APP_CONFIG } from '@invoice/core';
+import { useTenant } from '@/lib/auth/tenant-context';
+import { useHostBrand } from '@/lib/platform/platform-provider';
 
 const GROUPS = [
   {
@@ -9,6 +13,8 @@ const GROUPS = [
       { label: 'Invoice generator', href: '/create' },
       { label: 'Templates', href: '/templates' },
       { label: 'Features', href: '/features' },
+      { label: 'Integrations', href: '/integrations' },
+      { label: 'White-label', href: '/white-label' },
       { label: 'Pricing', href: '/pricing' },
     ],
   },
@@ -31,13 +37,16 @@ const GROUPS = [
 ];
 
 export function PublicFooter() {
+  const { brandSettings } = useTenant();
+  const hostBrand = useHostBrand();
+  const brandName = (brandSettings?.whiteLabelEnabled && brandSettings.businessName) || hostBrand?.name || APP_CONFIG.brandName;
   return (
     <footer className="mt-auto border-t border-border py-10 text-sm text-muted-foreground">
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-4 sm:px-6 md:grid-cols-4">
         <div className="col-span-2 md:col-span-1">
           <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
             <FileText className="h-4 w-4 text-primary" aria-hidden="true" />
-            {APP_CONFIG.brandName}
+            {brandName}
           </Link>
           <p className="mt-2">Invoices for businesses in any country.</p>
         </div>
@@ -57,7 +66,7 @@ export function PublicFooter() {
         ))}
       </div>
       <div className="mx-auto mt-8 max-w-6xl border-t border-border px-4 pt-6 sm:px-6">
-        © {new Date().getFullYear()} {APP_CONFIG.brandName}. All rights reserved.
+        © {new Date().getFullYear()} {brandName}. All rights reserved.
       </div>
     </footer>
   );

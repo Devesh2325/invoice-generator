@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   DocumentModel,
   formatCurrency,
@@ -9,6 +9,7 @@ import {
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { syncWorkspaceData } from '@/lib/platform/data-sync';
 import {
   Share2,
   Mail,
@@ -86,9 +87,31 @@ export const ShareInvoiceModal: React.FC<ShareInvoiceModalProps> = ({
   const currency = document.currency || 'INR';
   const dueDate = document.dueDate || 'On Receipt';
 
+  // A signed link works on the customer's own device. Without a server copy, the older link is all there is.
+  const [signedToken, setSignedToken] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open || !document.tenantId) return;
+    let cancelled = false;
+    setSignedToken(null);
+    (async () => {
+      try {
+        await syncWorkspaceData(document.tenantId as string);
+        const res = await fetch(`/api/workspaces/${encodeURIComponent(document.tenantId as string)}/share`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documentId: docId }),
+        });
+        if (res.ok && !cancelled) setSignedToken((await res.json()).token);
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, document.tenantId, docId]);
+
   const shareToken = useMemo(() => {
-    return generatePublicShareToken(tenantId, docId);
-  }, [tenantId, docId]);
+    return signedToken || generatePublicShareToken(tenantId, docId);
+  }, [signedToken, tenantId, docId]);
 
   const publicShareUrl = useMemo(() => {
     if (typeof window !== 'undefined') {

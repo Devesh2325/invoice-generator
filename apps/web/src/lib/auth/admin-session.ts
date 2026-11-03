@@ -28,6 +28,40 @@ async function hmacKey(secret: string): Promise<CryptoKey> {
   ]);
 }
 
+/** Signs any small payload. The `role` inside keeps a token for one purpose from working for another. */
+export async function createSignedToken(data: Record<string, unknown>, secret: string): Promise<string> {
+  const payload = toBase64Url(encoder.encode(JSON.stringify(data)));
+  const signature = await crypto.subtle.sign('HMAC', await hmacKey(secret), encoder.encode(payload));
+  return `${payload}.${toBase64Url(new Uint8Array(signature))}`;
+}
+
+export async function readSignedToken<T>(token: string | undefined, secret: string | null, now = Date.now()): Promise<T | null> {
+  if (!token || !secret) return null;
+  const [payload, signature, extra] = token.split('.');
+  if (!payload || !signature || extra !== undefined) return null;
+  try {
+    const valid = await crypto.subtle.verify('HMAC', await hmacKey(secret), fromBase64Url(signature) as BufferSource, encoder.encode(payload));
+    if (!valid) return null;
+    const data = JSON.parse(new TextDecoder().decode(fromBase64Url(payload)));
+    if (typeof data.exp === 'number' && data.exp <= now) return null;
+    return data as T;
+  } catch {
+    return null;
+  }
+}
+
+export const WORKSPACE_COOKIE = 'invoxa_workspace_session';
+export const WORKSPACE_SESSION_SECONDS = 30 * 24 * 60 * 60;
+
+export function createWorkspaceSession(workspaceId: string, secret: string, now = Date.now()): Promise<string> {
+  return createSignedToken({ role: 'workspace_owner', wid: workspaceId, exp: now + WORKSPACE_SESSION_SECONDS * 1000 }, secret);
+}
+
+export async function readWorkspaceSession(token: string | undefined, secret: string | null): Promise<string | null> {
+  const data = await readSignedToken<{ role?: string; wid?: string }>(token, secret);
+  return data?.role === 'workspace_owner' && data.wid ? data.wid : null;
+}
+
 export function getSessionSecret(): string | null {
   const secret = process.env.ADMIN_SESSION_SECRET || '';
   return secret.length >= 32 ? secret : null;

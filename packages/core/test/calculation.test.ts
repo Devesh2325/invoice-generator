@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect } from 'vitest';
+import { APP_CONFIG, DEFAULT_PLANS, applyPlanOverrides, isTemplateAllowedForPlan } from '../src/config/app-config';
+import { PLANS, canUseIntegrationDocs } from '../src/types/team';
 import { calculateDocument } from '../src/calculations/financial-engine';
 import { detectCurrency, formatCurrency } from '../src/types/currency';
 import { isValidStatusTransition } from '../src/types/document';
@@ -394,5 +396,33 @@ describe('detectCurrency', () => {
     expect(detectCurrency('America/Toronto', 'en-CA')).toBe('CAD');
     expect(detectCurrency(undefined, 'pt-BR')).toBe('USD');
     expect(detectCurrency()).toBe('USD');
+  });
+});
+
+describe('applyPlanOverrides', () => {
+  afterEach(() => applyPlanOverrides({}));
+
+  it('updates both plan lists, including the limit that saving a document checks', () => {
+    applyPlanOverrides({ pro: { priceMonthly: 999, maxInvoicesPerMonth: 100 }, starter: { maxInvoicesPerMonth: 3 } });
+    expect(PLANS.pro.priceMonthly).toBe(999);
+    expect(APP_CONFIG.plans.pro.price).toBe(999);
+    expect(APP_CONFIG.plans.pro.invoiceLimit).toBe(100);
+    expect(APP_CONFIG.plans.starter.invoiceLimit).toBe(3);
+    expect(APP_CONFIG.trialInvoiceLimit).toBe(3);
+  });
+
+  it('treats the top value as unlimited and goes back to the defaults when an override is removed', () => {
+    applyPlanOverrides({ pro: { priceMonthly: 999, maxInvoicesPerMonth: 100 } });
+    applyPlanOverrides({});
+    expect(PLANS.pro.priceMonthly).toBe(DEFAULT_PLANS.pro.priceMonthly);
+    expect(APP_CONFIG.plans.pro.invoiceLimit).toBe(Infinity);
+    expect(APP_CONFIG.plans.starter.invoiceLimit).toBe(7);
+  });
+
+  it('can switch premium features on and off per plan', () => {
+    applyPlanOverrides({ starter: { hasIntegrationDocs: true, hasAllTemplates: true }, pro: { hasIntegrationDocs: false } });
+    expect(canUseIntegrationDocs('starter')).toBe(true);
+    expect(canUseIntegrationDocs('pro')).toBe(false);
+    expect(isTemplateAllowedForPlan('starter', 'dark-tech')).toBe(true);
   });
 });

@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { APP_CONFIG } from '@invoice/core';
 import { TenantProvider } from '@/lib/auth/tenant-context';
+import { PlatformProvider } from '@/lib/platform/platform-provider';
 import { ThemeProvider } from '@/lib/theme/theme-provider';
 import { I18nProvider } from '@/lib/i18n/i18n-context';
 import { Toaster } from '@/components/ui/toaster';
@@ -70,9 +71,11 @@ export default function RootLayout({
         <ThemeProvider>
           <I18nProvider>
             <TenantProvider>
-              {children}
-              <CommandPalette />
-              <Toaster />
+              <PlatformProvider>
+                {children}
+                <CommandPalette />
+                <Toaster />
+              </PlatformProvider>
             </TenantProvider>
           </I18nProvider>
         </ThemeProvider>

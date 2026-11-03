@@ -8,8 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileText, Lock, Mail, AlertCircle } from 'lucide-react';
+import { usePlatformPlans } from '@/lib/platform/platform-provider';
 import { APP_CONFIG } from '@invoice/core';
 import { hashPassword, isHashedPassword, verifyPassword } from '@/lib/auth/password';
+import { adoptWorkspace } from '@/lib/platform/workspace-sync';
+import { syncWorkspaceData } from '@/lib/platform/data-sync';
 
 /** The redirect comes from the URL, so only same-site paths are followed. */
 function safeRedirectPath(value: string | null): string {
@@ -23,12 +26,40 @@ function safeRedirectPath(value: string | null): string {
 }
 
 export default function LoginPage() {
+  usePlatformPlans();
   const router = useRouter();
   const { refreshTenants } = useTenant();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  /** Signs in with the account on the server. Returns false if that didn't work, with the reason shown. */
+  const signInOnServer = async (normalizedEmail: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/workspaces/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail, password }),
+      });
+      if (!res.ok) {
+        if (res.status === 403 || res.status === 429) {
+          setErrorMsg((await res.json().catch(() => ({}))).error || 'Please try again later.');
+        }
+        return false;
+      }
+      const { workspace } = await res.json();
+      adoptWorkspace(workspace, await hashPassword(password));
+      // Brings this workspace's invoices and customers to this device before the dashboard opens.
+      await syncWorkspaceData(workspace.id);
+      await refreshTenants();
+      window.dispatchEvent(new Event('billcraft-auth-updated'));
+      router.push(safeRedirectPath(new URLSearchParams(window.location.search).get('redirect')));
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +68,9 @@ export default function LoginPage() {
 
     try {
       const normalizedEmail = email.trim().toLowerCase();
+
+      // The server knows about accounts from other browsers and any password the admin has reset.
+      if (await signInOnServer(normalizedEmail)) return;
 
       if (typeof window !== 'undefined') {
         const usersRaw = window.localStorage.getItem('billcraft_registered_users');
@@ -65,7 +99,7 @@ export default function LoginPage() {
 
         if (matched) {
           if (!(await verifyPassword(matched.password || '', password))) {
-            setErrorMsg('Incorrect email or password.');
+            setErrorMsg((current) => current || 'Incorrect email or password.');
             setLoading(false);
             return;
           }
@@ -75,6 +109,20 @@ export default function LoginPage() {
             matched.password = await hashPassword(password);
             const updatedUsers = users.map((u: any) => (u.email === normalizedEmail ? matched : u));
             window.localStorage.setItem('billcraft_registered_users', JSON.stringify(updatedUsers));
+          }
+
+          // Older accounts only exist in this browser. Registering now backs them up and allows signing in elsewhere.
+          if (matched.tenantId && isHashedPassword(matched.password)) {
+            await fetch('/api/workspaces/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: matched.tenantId,
+                name: matched.workspaceName || matched.name || 'Workspace',
+                ownerEmail: normalizedEmail,
+                ownerPasswordHash: matched.password,
+              }),
+            }).catch(() => null);
           }
 
           // The signed-in user record never holds the password
@@ -91,7 +139,7 @@ export default function LoginPage() {
         }
       }
 
-      setErrorMsg('Incorrect email or password.');
+      setErrorMsg((current) => current || 'Incorrect email or password.');
       setLoading(false);
     } catch (err: any) {
       setErrorMsg('Authentication error. Please try again.');

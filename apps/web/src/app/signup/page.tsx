@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileText, Building, Mail, Lock, User, CheckCircle2, AlertCircle, Sun, Moon } from 'lucide-react';
+import { usePlatformPlans } from '@/lib/platform/platform-provider';
 import { APP_CONFIG, detectCurrency, getCurrencyTaxProfile } from '@invoice/core';
 import { hashPassword } from '@/lib/auth/password';
 
 export default function SignUpPage() {
+  usePlatformPlans();
   const router = useRouter();
   const { refreshTenants } = useTenant();
   const { theme, toggleTheme } = useTheme();
@@ -52,6 +54,21 @@ export default function SignUpPage() {
         tenantId,
       };
 
+      const passwordHash = await hashPassword(password);
+
+      // Registers the account for the super admin, and so the owner can sign in from other browsers.
+      // If storage is down, signup still works in this browser as it did before.
+      const registered = await fetch('/api/workspaces/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: tenantId, name: workspaceName.trim(), ownerEmail: newUser.email, ownerPasswordHash: passwordHash }),
+      }).catch(() => null);
+      if (registered?.status === 409) {
+        setErrorMsg('An account with this email already exists. Please sign in instead.');
+        setLoading(false);
+        return;
+      }
+
       if (typeof window !== 'undefined') {
         const existingUsersRaw = window.localStorage.getItem('billcraft_registered_users');
         const existingUsers = existingUsersRaw ? JSON.parse(existingUsersRaw) : [];
@@ -62,7 +79,7 @@ export default function SignUpPage() {
         }
         window.localStorage.setItem(
           'billcraft_registered_users',
-          JSON.stringify([...existingUsers, { ...newUser, password: await hashPassword(password) }])
+          JSON.stringify([...existingUsers, { ...newUser, password: passwordHash }])
         );
         window.localStorage.setItem('billcraft_current_user', JSON.stringify(newUser));
         window.localStorage.setItem('billcraft_current_user_id', userId);

@@ -3,7 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminApi, TeamApi, TenantApi } from '@invoice/api';
-import { AdminTeam, PlanId, APP_CONFIG } from '@invoice/core';
+import { AdminTeam, PlanId, APP_CONFIG, PLANS } from '@invoice/core';
+import { BrandingFields, EMPTY_BRAND, type BrandForm } from '@/components/admin/branding-fields';
+import { adminRequest, brandingOf, syncWorkspaces, updateWorkspace } from '@/lib/platform/admin-client';
+import { usePlatformPlans } from '@/lib/platform/platform-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +23,24 @@ import {
   Briefcase,
   Plus,
   Sparkles,
-  Layers,
   Edit3,
   UserCog,
 } from 'lucide-react';
 
+/** Lists the plans with their current prices, so these never drift from the Plans page. */
+function PlanOptions() {
+  const price = (id: PlanId) => (PLANS[id].priceMonthly ? ` — ₹${PLANS[id].priceMonthly.toLocaleString('en-IN')}/month` : ' — Free');
+  return (
+    <>
+      <option value="starter">Starter{price('starter')}</option>
+      <option value="pro">Pro{price('pro')}</option>
+      <option value="enterprise">Enterprise{price('enterprise')}</option>
+    </>
+  );
+}
+
 export default function AdminTeamsPage() {
+  usePlatformPlans();
   const router = useRouter();
   const { toast } = useToast();
   const [teams, setTeams] = useState<AdminTeam[]>([]);
@@ -38,8 +53,8 @@ export default function AdminTeamsPage() {
   const [newOwnerPassword, setNewOwnerPassword] = useState('');
   const [newPlan, setNewPlan] = useState<PlanId>('starter');
   const [isWhiteLabel, setIsWhiteLabel] = useState(false);
-  const [newCompanyDisplayName, setNewCompanyDisplayName] = useState('');
-  const [newLogoUrl, setNewLogoUrl] = useState('');
+  const [newBrand, setNewBrand] = useState<BrandForm>(EMPTY_BRAND);
+  const [connected, setConnected] = useState(true);
 
   // Edit Workspace form state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -48,13 +63,18 @@ export default function AdminTeamsPage() {
   const [editOwnerEmail, setEditOwnerEmail] = useState('');
   const [editPlan, setEditPlan] = useState<PlanId>('starter');
   const [editIsWhiteLabel, setEditIsWhiteLabel] = useState(false);
-  const [editCompanyDisplayName, setEditCompanyDisplayName] = useState('');
-  const [editLogoUrl, setEditLogoUrl] = useState('');
+  const [editBrand, setEditBrand] = useState<BrandForm>(EMPTY_BRAND);
   const [editOwnerPassword, setEditOwnerPassword] = useState('');
 
-  const loadTeams = () => {
-    setTeams(AdminApi.getTeams());
+  const loadTeams = async () => {
+    const result = await syncWorkspaces();
+    setTeams(result.teams);
+    setConnected(result.connected);
   };
+
+  /** The server decides what visitors see, so a failed save has to be visible. */
+  const reportFailure = (error: string) =>
+    toast({ title: 'Not saved to the website', description: error, variant: 'destructive' });
 
   useEffect(() => {
     loadTeams();
@@ -71,25 +91,51 @@ export default function AdminTeamsPage() {
       return;
     }
 
-    AdminApi.createTeam({
+    if (teams.some((team) => team.ownerEmail === newOwnerEmail.trim().toLowerCase())) {
+      toast({ title: 'Email already used', description: 'This owner email already has a workspace.', variant: 'destructive' });
+      return;
+    }
+
+    const ownerPassword = await hashPassword(newOwnerPassword);
+    const created = AdminApi.createTeam({
       name: newTeamName.trim(),
       ownerEmail: newOwnerEmail.trim().toLowerCase(),
       plan: newPlan,
       isWhiteLabel,
-      ownerPassword: await hashPassword(newOwnerPassword),
-      ...(newCompanyDisplayName.trim() && { companyDisplayName: newCompanyDisplayName.trim() }),
-      ...(newLogoUrl.trim() && { logoUrl: newLogoUrl.trim() }),
+      ownerPassword,
+      ...(isWhiteLabel && {
+        companyDisplayName: newBrand.companyDisplayName.trim() || undefined,
+        logoUrl: newBrand.logoUrl.trim() || undefined,
+        primaryColor: newBrand.primaryColor || undefined,
+        supportEmail: newBrand.supportEmail.trim() || undefined,
+        websiteUrl: newBrand.websiteUrl.trim() || undefined,
+        footerText: newBrand.footerText.trim() || undefined,
+        customDomain: newBrand.customDomain.trim().toLowerCase() || undefined,
+      }),
     });
 
-    loadTeams();
+    const saved = await adminRequest('/api/admin/workspaces', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: created.id,
+        name: created.name,
+        ownerEmail: created.ownerEmail,
+        plan: created.plan,
+        isWhiteLabel,
+        ownerPasswordHash: ownerPassword,
+        branding: isWhiteLabel ? brandingOf(created) : {},
+      }),
+    });
+    if (!saved.ok) reportFailure(saved.error);
+
+    await loadTeams();
     setCreateModalOpen(false);
     setNewTeamName('');
     setNewOwnerEmail('');
     setNewOwnerPassword('');
     setNewPlan('starter');
     setIsWhiteLabel(false);
-    setNewCompanyDisplayName('');
-    setNewLogoUrl('');
+    setNewBrand(EMPTY_BRAND);
 
     toast({
       title: 'Workspace Created',
@@ -103,6 +149,8 @@ export default function AdminTeamsPage() {
     AdminApi.updateTeam(teamId, { plan: newPlanChoice });
     TeamApi.updateTenantPlan(teamId, newPlanChoice);
     await TenantApi.updateTenant(teamId, { plan: newPlanChoice });
+    const saved = await updateWorkspace(teamId, { plan: newPlanChoice });
+    if (!saved.ok) reportFailure(saved.error);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('billcraft-plan-updated'));
       window.dispatchEvent(new Event('billcraft-auth-updated'));
@@ -110,14 +158,16 @@ export default function AdminTeamsPage() {
     loadTeams();
     toast({
       title: 'Workspace Plan Changed',
-      description: `Team workspace subscription upgraded to ${newPlanChoice.toUpperCase()}.`,
+      description: `This workspace is now on ${PLANS[newPlanChoice].name}. The owner sees it the next time their page loads.`,
     });
   };
 
-  const handleToggleStatus = (teamId: string, currentStatus: 'active' | 'suspended') => {
+  const handleToggleStatus = async (teamId: string, currentStatus: 'active' | 'suspended') => {
     const nextStatus = currentStatus === 'active' ? 'suspended' : 'active';
     AdminApi.updateTeam(teamId, { status: nextStatus });
-    loadTeams();
+    const saved = await updateWorkspace(teamId, { status: nextStatus });
+    if (!saved.ok) reportFailure(saved.error);
+    await loadTeams();
     toast({
       title: 'Workspace Status Updated',
       description: `Workspace is now marked as ${nextStatus}.`,
@@ -131,8 +181,15 @@ export default function AdminTeamsPage() {
     setEditOwnerEmail(team.ownerEmail);
     setEditPlan(team.plan);
     setEditIsWhiteLabel(Boolean(team.isWhiteLabel));
-    setEditCompanyDisplayName(team.companyDisplayName || team.name);
-    setEditLogoUrl(team.logoUrl || '');
+    setEditBrand({
+      companyDisplayName: team.companyDisplayName || team.name,
+      logoUrl: team.logoUrl || '',
+      primaryColor: team.primaryColor || '',
+      supportEmail: team.supportEmail || '',
+      websiteUrl: team.websiteUrl || '',
+      footerText: team.footerText || '',
+      customDomain: team.customDomain || '',
+    });
     setEditOwnerPassword('');
     setEditModalOpen(true);
   };
@@ -148,24 +205,48 @@ export default function AdminTeamsPage() {
       return;
     }
 
+    const ownerPassword = editOwnerPassword ? await hashPassword(editOwnerPassword) : undefined;
+    const brand = {
+      companyDisplayName: editBrand.companyDisplayName.trim(),
+      logoUrl: editBrand.logoUrl.trim(),
+      primaryColor: editBrand.primaryColor,
+      supportEmail: editBrand.supportEmail.trim(),
+      websiteUrl: editBrand.websiteUrl.trim(),
+      footerText: editBrand.footerText.trim(),
+      customDomain: editBrand.customDomain.trim().toLowerCase(),
+    };
+
+    const saved = await updateWorkspace(editingTeamId, {
+      name: editTeamName.trim(),
+      ownerEmail: editOwnerEmail.trim().toLowerCase(),
+      plan: editPlan,
+      isWhiteLabel: editIsWhiteLabel,
+      branding: brandingOf(brand),
+      ...(ownerPassword && { ownerPasswordHash: ownerPassword }),
+    });
+    if (!saved.ok && !saved.offline) {
+      reportFailure(saved.error);
+      return;
+    }
+    if (!saved.ok) reportFailure(saved.error);
+
     AdminApi.updateTeam(editingTeamId, {
       name: editTeamName.trim(),
       ownerEmail: editOwnerEmail.trim().toLowerCase(),
       plan: editPlan,
       isWhiteLabel: editIsWhiteLabel,
-      companyDisplayName: editCompanyDisplayName.trim(),
-      logoUrl: editLogoUrl.trim(),
-      ...(editOwnerPassword && { ownerPassword: await hashPassword(editOwnerPassword) }),
+      ...brand,
+      ...(ownerPassword && { ownerPassword }),
     });
 
     TeamApi.updateTenantPlan(editingTeamId, editPlan);
-    TenantApi.updateTenant(editingTeamId, { plan: editPlan });
+    await TenantApi.updateTenant(editingTeamId, { plan: editPlan });
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('billcraft-plan-updated'));
       window.dispatchEvent(new Event('billcraft-auth-updated'));
     }
 
-    loadTeams();
+    await loadTeams();
     setEditModalOpen(false);
     toast({
       title: 'Workspace Updated',
@@ -275,6 +356,12 @@ export default function AdminTeamsPage() {
         </Button>
       </div>
 
+      {!connected && (
+        <p role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-300">
+          Shared storage is not connected. Workspaces shown here exist only in this browser, and changes won&apos;t reach their owners.
+        </p>
+      )}
+
       {/* Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-5 rounded-xl bg-card border border-border">
@@ -378,9 +465,7 @@ export default function AdminTeamsPage() {
                           onChange={(e) => handleChangePlan(team.id, e.target.value as PlanId)}
                           className="bg-background border border-border rounded px-2.5 py-1 text-xs text-foreground"
                         >
-                          <option value="starter">Starter (Free)</option>
-                          <option value="pro">Pro (₹799/mo)</option>
-                          <option value="enterprise">Enterprise (₹2499/mo)</option>
+                          <PlanOptions />
                         </select>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
@@ -462,7 +547,7 @@ export default function AdminTeamsPage() {
               <Input
                 value={newTeamName}
                 onChange={(e) => setNewTeamName(e.target.value)}
-                placeholder="e.g. Acme Studio Pvt Ltd"
+                placeholder="e.g. Acme Studio"
                 required
                 className="bg-background border-border text-foreground text-xs h-9"
               />
@@ -504,9 +589,7 @@ export default function AdminTeamsPage() {
                 onChange={(e) => setNewPlan(e.target.value as PlanId)}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground"
               >
-                <option value="starter">Starter — Free</option>
-                <option value="pro">Pro Plan — ₹799/month</option>
-                <option value="enterprise">Enterprise Plan — ₹2,499/month</option>
+                <PlanOptions />
               </select>
             </div>
 
@@ -525,54 +608,11 @@ export default function AdminTeamsPage() {
                 </span>
               </label>
               <p className="text-xs text-muted-foreground pl-6 leading-relaxed">
-                When enabled, all &ldquo;Powered by {APP_CONFIG.brandName}&rdquo; watermarks, logos, and public tags are removed, and custom workspace branding is used across invoices, PDFs, and client emails.
+                When enabled, the owner&apos;s dashboard and shared invoices show their brand instead of {APP_CONFIG.brandName}.
               </p>
             </div>
 
-            {/* White-Label Branding Fields — show when toggled on */}
-            {isWhiteLabel && (
-              <div className="space-y-3 p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10">
-                <div className="text-xs font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5" />
-                  White-Label Brand Settings
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Company Display Name</label>
-                  <Input
-                    value={newCompanyDisplayName}
-                    onChange={(e) => setNewCompanyDisplayName(e.target.value)}
-                    placeholder="e.g. Acme Invoicing"
-                    className="bg-background border-border text-foreground text-xs h-9"
-                  />
-                  <p className="text-xs text-muted-foreground">Replaces &ldquo;{APP_CONFIG.brandName}&rdquo; everywhere in the app for this workspace.</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Logo URL</label>
-                  <Input
-                    type="url"
-                    value={newLogoUrl}
-                    onChange={(e) => setNewLogoUrl(e.target.value)}
-                    placeholder="https://example.com/logo.png"
-                    className="bg-background border-border text-foreground text-xs h-9"
-                  />
-                  <p className="text-xs text-muted-foreground">Direct link to the company logo (PNG/SVG, max 512×512px recommended).</p>
-                </div>
-
-                {newLogoUrl.trim() && (
-                  <div className="flex items-center gap-3 p-2 rounded-lg bg-background border border-border">
-                    <img
-                      src={newLogoUrl}
-                      alt="Logo preview"
-                      className="h-10 w-10 object-contain rounded border border-border"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                    <span className="text-xs text-muted-foreground">Logo preview</span>
-                  </div>
-                )}
-              </div>
-            )}
+            {isWhiteLabel && <BrandingFields value={newBrand} onChange={setNewBrand} />}
 
             <DialogFooter className="pt-2">
               <Button
@@ -610,7 +650,7 @@ export default function AdminTeamsPage() {
               <Input
                 value={editTeamName}
                 onChange={(e) => setEditTeamName(e.target.value)}
-                placeholder="e.g. Acme Studio Pvt Ltd"
+                placeholder="e.g. Acme Studio"
                 required
                 className="bg-background border-border text-foreground text-xs h-9"
               />
@@ -652,9 +692,7 @@ export default function AdminTeamsPage() {
                 onChange={(e) => setEditPlan(e.target.value as PlanId)}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground"
               >
-                <option value="starter">Starter — Free</option>
-                <option value="pro">Pro Plan — ₹799/month</option>
-                <option value="enterprise">Enterprise Plan — ₹2,499/month</option>
+                <PlanOptions />
               </select>
             </div>
 
@@ -673,54 +711,11 @@ export default function AdminTeamsPage() {
                 </span>
               </label>
               <p className="text-xs text-muted-foreground pl-6 leading-relaxed">
-                When enabled, {APP_CONFIG.brandName} branding is replaced by the custom company display name and logo across invoices, PDFs, and client emails.
+                When enabled, the owner&apos;s dashboard and shared invoices show their brand instead of {APP_CONFIG.brandName}.
               </p>
             </div>
 
-            {/* White-Label Branding Fields */}
-            {editIsWhiteLabel && (
-              <div className="space-y-3 p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10">
-                <div className="text-xs font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5" />
-                  White-Label Brand Settings
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Company Display Name</label>
-                  <Input
-                    value={editCompanyDisplayName}
-                    onChange={(e) => setEditCompanyDisplayName(e.target.value)}
-                    placeholder="e.g. Acme Invoicing"
-                    className="bg-background border-border text-foreground text-xs h-9"
-                  />
-                  <p className="text-xs text-muted-foreground">Replaces &ldquo;{APP_CONFIG.brandName}&rdquo; everywhere in the app for this workspace.</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Logo URL</label>
-                  <Input
-                    type="url"
-                    value={editLogoUrl}
-                    onChange={(e) => setEditLogoUrl(e.target.value)}
-                    placeholder="https://example.com/logo.png"
-                    className="bg-background border-border text-foreground text-xs h-9"
-                  />
-                  <p className="text-xs text-muted-foreground">Direct link to the company logo (PNG/SVG, max 512×512px recommended).</p>
-                </div>
-
-                {editLogoUrl.trim() && (
-                  <div className="flex items-center gap-3 p-2 rounded-lg bg-background border border-border">
-                    <img
-                      src={editLogoUrl}
-                      alt="Logo preview"
-                      className="h-10 w-10 object-contain rounded border border-border"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                    <span className="text-xs text-muted-foreground">Logo preview</span>
-                  </div>
-                )}
-              </div>
-            )}
+            {editIsWhiteLabel && <BrandingFields value={editBrand} onChange={setEditBrand} />}
 
             <DialogFooter className="pt-2">
               <Button

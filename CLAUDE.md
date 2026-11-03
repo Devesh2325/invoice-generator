@@ -59,9 +59,25 @@ Separately, `apps/web/src/lib/storage/indexed-db.ts` keeps documents in IndexedD
 | Documents | Appwrite if configured, plus `localStorage` when Supabase is not configured |
 | `recordPayment`, `recordRefund`, `updateDocumentStatus` | `localStorage` only |
 | `importPartiesBatch`, `deleteTenant` | `localStorage` only |
-| `AdminApi` and `TeamApi` (users, plans, teams, template availability, audit logs) | `localStorage` only, so admin changes only affect the admin's own browser |
+| Enquiries, plan settings, workspace plan, status and branding | The server (see [Shared platform data](#shared-platform-data)) |
+| Template availability, audit logs, blog, members and invites | `localStorage` only, so these admin changes only affect the admin's own browser |
 
 Appwrite stores each record as a few indexed attributes plus the full object as a JSON string in `data`. `AppwriteAdapter` catches most errors, logs them and returns `null`, so a failed write can look like a success.
+
+### Shared platform data
+
+Enquiries, plan settings and the workspace directory must be the same for everyone, so they live on the server rather than in browser storage: `lib/server/platform-store.ts`, used by `app/api/inquiries`, `app/api/platform`, `app/api/workspaces` and `app/api/admin/*`.
+
+- **Storage:** a private Appwrite collection, created with `pnpm setup:platform`. Without Appwrite it uses `apps/web/.data/platform-store.json` in development, and returns 503 in production so pages can say it isn't connected.
+- **Env names:** use `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_DATABASE_ID` and `APPWRITE_API_KEY`. Setting `NEXT_PUBLIC_APPWRITE_*` on the site would also switch `TenantApi` to Appwrite in every browser.
+- **Admin routes:** middleware only guards `/admin` pages, so every `/api/admin/*` route must call `isAdminRequest` itself (except login and logout).
+- **Plans:** `applyPlanOverrides` updates `PLANS` and `APP_CONFIG.plans` in place. `PlatformProvider` loads the settings, and components that show plan values call `usePlatformPlans()` to re-render.
+- **Workspaces:** signup registers the account and `/api/workspaces/login` signs owners in from any browser with a signed httpOnly cookie. `PlatformProvider` copies plan and branding into browser storage through `applyWorkspaceConfig`. The server's plan always wins, and the billing page only sends a request to the admin inbox.
+- **Workspace data:** `lib/platform/data-sync.ts` compares invoices, customers, products, brand, tenant details and team lists in browser storage with what was last synced, and exchanges the differences through `/api/workspaces/[id]/data`. Pages keep reading browser storage. If a record changed on two devices, the last to sync wins. Every route under `/api/workspaces/[id]` that returns private data must call `canAccessWorkspace`.
+- **Share links:** new links are signed (`sv1.` tokens from `/api/workspaces/[id]/share`) and read through `/api/share`, so they open on any device. Older unsigned links only work in the browser holding the invoice.
+- **Other admin content:** the blog, hidden templates, generator columns and audit log are also on the server. Admin API routes record their own changes with `writeAudit`.
+- **Custom domains:** a white-label workspace can have `branding.customDomain`. On that host, `useHostBrand` applies the brand and sales pages redirect to `/login`. Each domain must also be added in Vercel and DNS.
+- **White-label:** branding is stored in `billcraft_tenant_brand`, which is what `getBrandSettings` reads.
 
 ### Auth and tenancy
 
@@ -122,7 +138,7 @@ Pages are written in English. `lib/i18n/dom-translator.ts` swaps visible text fo
 
 ### Embedding
 
-Other sites add the editor with `public/embed.js`, which frames `/embed`. The guide is `/dashboard/developers` ("Integration Docs"), shown only on plans where `canUseIntegrationDocs` is true. That check hides the guide but doesn't stop anyone using `/embed`, which needs a server-side key to restrict. `DocumentBuilder` with the `embed` prop ignores the visitor's workspace and doesn't save locally. Invoice data is only posted to the origin that sent `invoxa:init`. The message names and prefill schema are in `core/src/embed`. Prefills can't set totals or unlock paid templates. There are no API keys, so anyone can embed it, and there's no REST API.
+Other sites add the editor with `public/embed.js`, which frames `/embed`. The guide is `/dashboard/developers` ("Integration Docs"), shown only on plans where `canUseIntegrationDocs` is true, with samples per code stack in `lib/integration/stacks.ts`. `/integrations` and `/white-label` are the public pages that sell these features. Access is enforced by embed keys (`lib/server/embed-keys.ts`): middleware sets `frame-ancestors` on `/embed` to the websites approved for a valid key on a plan with integrations, and to `'self'` otherwise, so browsers refuse to show it elsewhere. `DocumentBuilder` with the `embed` prop ignores the visitor's workspace and doesn't save locally. Invoice data is only posted to the origin that sent `invoxa:init`. The message names and prefill schema are in `core/src/embed`. Prefills can't set totals or unlock paid templates. There's no REST API.
 
 ## Conventions
 
@@ -140,11 +156,11 @@ Found by reading the code. Confirm each one before relying on it or fixing it.
 ### Security
 
 - A previous super admin password remains in git history and must be treated as public.
-- Customer accounts and all business data are browser-only unless Appwrite is configured, and there is still no customer sign-in on the server.
-- `dashboard/billing` switches plans with no payment step, so anyone can give themselves a paid plan.
+- Only workspace owners can sign in on the server. Team members and invites sync as records, but members have no sign-in of their own.
+- Template and document limits are checked in the browser, so a technical user could get past them locally. The plan itself, integrations and white-label are decided by the server.
 - Admin login lockout is held in memory per server instance, so it resets on restart and isn't shared between instances.
 - `scripts/setup-appwrite.ts` gives collections and the storage bucket read and write access for `Role.any()`, so tenant data is not isolated at the server.
-- Share links are unsigned base64 of `tenantId:docId`, so anyone who knows the IDs can build one.
+- Older share links are unsigned base64 of `tenantId:docId`, but only open in a browser that already holds the invoice.
 
 ### Data correctness
 

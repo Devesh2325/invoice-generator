@@ -135,6 +135,8 @@ export interface TenantBrandSettings {
   // Payment Configuration (Structured Bank Accounts, UPI, QR Code & Display Controls)
   paymentConfig?: DocumentPaymentConfig;
   whiteLabelEnabled?: boolean;
+  supportEmail?: string;
+  websiteUrl?: string;
   customDomain?: string;
   isDomainVerified?: boolean;
 }
@@ -189,6 +191,7 @@ function setLocalStore<T>(key: string, value: T): void {
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
       window.localStorage.setItem(key, serialized);
+      window.dispatchEvent(new Event('billcraft-data-changed'));
     } catch (e) {
       console.error('localStorage write error:', e);
     }

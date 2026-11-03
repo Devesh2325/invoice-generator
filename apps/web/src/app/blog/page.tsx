@@ -12,6 +12,7 @@ import { Sparkles, Search, Clock, ArrowRight, User, FilePlus } from 'lucide-reac
 import { APP_CONFIG } from '@invoice/core';
 import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
+import { loadPublishedBlog } from '@/lib/platform/blog-sync';
 
 export default function BlogIndexPage() {
   const [posts, setPosts] = useState<BlogPost[]>(() => {
@@ -32,6 +33,7 @@ export default function BlogIndexPage() {
       } catch {}
     };
     refresh();
+    void loadPublishedBlog();
     window.addEventListener('invoxa-blog-updated', refresh);
     window.addEventListener('storage', refresh);
     return () => {

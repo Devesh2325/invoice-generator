@@ -26,8 +26,8 @@ const config: Config = {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: '#5B4BFF',
-          hover: '#4A39EA',
+          DEFAULT: 'rgb(var(--brand-primary, 91 75 255) / <alpha-value>)',
+          hover: 'rgb(var(--brand-primary-hover, 74 57 234) / <alpha-value>)',
           foreground: '#FFFFFF',
           50: '#F1EFFF',
           100: '#E4E0FF',

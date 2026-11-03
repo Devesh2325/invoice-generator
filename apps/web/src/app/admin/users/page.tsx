@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminApi } from '@invoice/api';
+import { adminRequest, syncWorkspaces, updateWorkspace, workspaceIdForEmail } from '@/lib/platform/admin-client';
 import { AdminUser, PlanId } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,20 +24,31 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
-    loadUsers();
+    syncWorkspaces().finally(loadUsers);
   }, []);
 
-  const handlePlanChange = (userId: string, plan: PlanId) => {
+  const handlePlanChange = async (userId: string, plan: PlanId) => {
     AdminApi.updateUser(userId, { plan });
+    const email = users.find((user) => user.id === userId)?.email || '';
+    const workspaceId = workspaceIdForEmail(email);
+    if (workspaceId) {
+      const result = await updateWorkspace(workspaceId, { plan });
+      if (!result.ok) toast({ title: 'Plan not saved', description: result.error, variant: 'destructive' });
+    }
+    await syncWorkspaces();
     loadUsers();
   };
 
-  const handleToggleBan = (user: AdminUser) => {
-    if (user.status === 'active') {
+  const handleToggleBan = async (user: AdminUser) => {
+    const banning = user.status === 'active';
+    if (banning) {
       AdminApi.banUser(user.id);
     } else {
       AdminApi.unbanUser(user.id);
     }
+    const workspaceId = workspaceIdForEmail(user.email);
+    if (workspaceId) await updateWorkspace(workspaceId, { status: banning ? 'suspended' : 'active' });
+    await syncWorkspaces();
     loadUsers();
   };
 
@@ -47,6 +59,8 @@ export default function AdminUsersPage() {
     );
     if (!confirmed) return;
 
+    const workspaceId = workspaceIdForEmail(u.email);
+    if (workspaceId) void adminRequest(`/api/admin/workspaces?id=${encodeURIComponent(workspaceId)}`, { method: 'DELETE' });
     const ok = AdminApi.deleteUser(u.id);
     AdminApi.deleteUser(u.email);
 

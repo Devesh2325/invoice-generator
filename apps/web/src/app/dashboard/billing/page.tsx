@@ -1,5 +1,6 @@
 'use client';
 
+import { usePlatformPlans } from '@/lib/platform/platform-provider';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TeamApi, TenantApi } from '@invoice/api';
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function BillingPage() {
+  usePlatformPlans();
   const { activeTenant, refreshTenants } = useTenant();
   const tenantId = activeTenant?.id || 'default_tenant';
 
@@ -59,57 +61,31 @@ export default function BillingPage() {
   const currentPlan = PLANS[currentPlanId] || PLANS.starter;
   const members = TeamApi.getMembers(tenantId);
 
-  const handleSwitchPlan = async (newPlan: PlanId) => {
+  const [requestError, setRequestError] = useState<string | null>(null);
+
+  /** Plans change when the super admin approves them, so choosing one here can't unlock it by itself. */
+  const handleRequestPlan = async (newPlan: PlanId) => {
     if (newPlan === currentPlanId) return;
     setUpgrading(true);
-
+    setRequestError(null);
     try {
-      // 1. Sync TeamApi storage
-      TeamApi.updateTenantPlan(tenantId, newPlan);
-
-      // 2. Sync TenantApi database/localStorage
-      await TenantApi.updateTenant(tenantId, { plan: newPlan });
-
-      // 3. Sync Admin teams table
-      if (typeof window !== 'undefined') {
-        try {
-          const teamsRaw = localStorage.getItem('billcraft_admin_teams');
-          if (teamsRaw) {
-            const teams = JSON.parse(teamsRaw);
-            const updatedTeams = teams.map((t: any) =>
-              t.id === tenantId ? { ...t, plan: newPlan } : t
-            );
-            localStorage.setItem('billcraft_admin_teams', JSON.stringify(updatedTeams));
-          }
-        } catch {}
+      const res = await fetch(`/api/workspaces/${encodeURIComponent(tenantId)}/plan-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: newPlan }),
+      });
+      if (!res.ok) {
+        setRequestError(res.status === 401 ? 'Please sign out and sign in again, then try once more.' : 'We could not send your request. Please contact us instead.');
+        return;
       }
-
-      // 4. Update immediate local state
-      setCurrentPlanId(newPlan);
-
-      // 5. Refresh tenant context
-      await refreshTenants();
-
-      // 6. Broadcast event to header PlanBadge and all listeners
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('billcraft-plan-updated'));
-        window.dispatchEvent(new Event('billcraft-auth-updated'));
-      }
-
-      setSuccessMsg(`Workspace successfully upgraded to ${PLANS[newPlan].name} plan!`);
-      setTimeout(() => setSuccessMsg(null), 3500);
-    } catch (err) {
-      console.error('Plan upgrade error:', err);
+      setSuccessMsg(`Request sent for ${PLANS[newPlan].name}. We'll be in touch.`);
+      setTimeout(() => setSuccessMsg(null), 6000);
+    } catch {
+      setRequestError('We could not send your request. Please contact us instead.');
     } finally {
       setUpgrading(false);
     }
   };
-
-  const invoiceHistory = [
-    { id: 'sub_inv_104', date: '2026-03-01', description: `${currentPlan.name} Plan (Monthly)`, amount: currentPlan.priceMonthly, status: 'paid' },
-    { id: 'sub_inv_103', date: '2026-02-01', description: `${currentPlan.name} Plan (Monthly)`, amount: currentPlan.priceMonthly, status: 'paid' },
-    { id: 'sub_inv_102', date: '2026-01-01', description: `${currentPlan.name} Plan (Monthly)`, amount: currentPlan.priceMonthly, status: 'paid' },
-  ];
 
   return (
     <>
@@ -229,7 +205,7 @@ export default function BillingPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
               <h2 className="text-lg font-bold text-foreground">Available Workspace Plans</h2>
-              <p className="text-xs text-muted-foreground">Switch plans instantly to adjust team limits</p>
+              <p className="text-xs text-muted-foreground">Ask us to change your plan. We'll confirm it with you.</p>
             </div>
 
             <div className="inline-flex items-center gap-2 p-1 rounded-xl bg-card border border-border text-xs font-semibold">
@@ -298,7 +274,7 @@ export default function BillingPage() {
 
                   <Button
                     disabled={isCurrent || upgrading}
-                    onClick={() => handleSwitchPlan(pid)}
+                    onClick={() => handleRequestPlan(pid)}
                     variant={isCurrent ? 'outline' : 'default'}
                     className={`w-full text-xs font-bold transition-all ${
                       isCurrent
@@ -306,7 +282,7 @@ export default function BillingPage() {
                         : 'bg-primary hover:bg-primary-hover text-white shadow-sm font-semibold'
                     }`}
                   >
-                    {isCurrent ? 'Current Plan' : upgrading ? 'Updating...' : `Select ${p.name}`}
+                    {isCurrent ? 'Current Plan' : upgrading ? 'Sending...' : `Request ${p.name}`}
                   </Button>
                 </Card>
               );
@@ -314,54 +290,11 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Subscription Invoice History */}
-        <Card className="border-border bg-card rounded-xl overflow-hidden shadow-xs">
-          <CardHeader className="pb-3 border-b border-border bg-muted/20">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" /> Subscription Payment History
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Past subscription invoices and charges for this workspace
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground uppercase text-xs">
-                  <th className="py-3 px-4">Invoice ID</th>
-                  <th className="py-3 px-4">Billing Date</th>
-                  <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-4 text-right">Amount</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Receipt</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {invoiceHistory.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-muted/10">
-                    <td className="py-3 px-4 tabular-nums font-bold">{inv.id}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{inv.date}</td>
-                    <td className="py-3 px-4 font-medium text-foreground">{inv.description}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-bold">₹{inv.amount}</td>
-                    <td className="py-3 px-4">
-                      <Badge variant="success" className="text-xs">Paid</Badge>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => alert(`Receipt #${inv.id} downloaded.`)}
-                        className="text-xs h-7 px-2 text-primary"
-                      >
-                        <Download className="h-3 w-3 mr-1" /> PDF
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+        {requestError && (
+          <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            {requestError}
+          </p>
+        )}
       </div>
     </>
   );

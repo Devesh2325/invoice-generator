@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AdminApi } from '@invoice/api';
+import { adminRequest } from '@/lib/platform/admin-client';
 import { AdminSystemAuditLog } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,8 +25,23 @@ export default function AdminAuditPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [actorFilter, setActorFilter] = useState<'all' | 'Super Admin' | 'System Worker'>('all');
 
-  const loadLogs = () => {
-    setLogs(AdminApi.getSystemAuditLogs());
+  const loadLogs = async () => {
+    const result = await adminRequest<{ logs: AdminSystemAuditLog[] }>('/api/admin/audit');
+    if (!result.ok) {
+      setLogs(AdminApi.getSystemAuditLogs());
+      return;
+    }
+    // Moves the history kept in this browser to the server, once.
+    const local = AdminApi.getSystemAuditLogs();
+    if (local.length > 0 && !window.localStorage.getItem('billcraft_audit_uploaded')) {
+      const uploaded = await adminRequest('/api/admin/audit', { method: 'POST', body: JSON.stringify({ logs: local.slice(0, 500) }) });
+      if (uploaded.ok) {
+        window.localStorage.setItem('billcraft_audit_uploaded', 'true');
+        const again = await adminRequest<{ logs: AdminSystemAuditLog[] }>('/api/admin/audit');
+        if (again.ok) return setLogs(again.data.logs);
+      }
+    }
+    setLogs(result.data.logs);
   };
 
   useEffect(() => {

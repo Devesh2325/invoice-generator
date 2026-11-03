@@ -4,45 +4,29 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Script from 'next/script';
 import { TeamApi } from '@invoice/api';
-import { APP_CONFIG, canUseIntegrationDocs } from '@invoice/core';
+import { canUseIntegrationDocs } from '@invoice/core';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Lock } from 'lucide-react';
-
-const QUICK_START = (origin: string) => `<div id="invoice"></div>
-
-<script src="${origin}/embed.js"></script>
-<script>
-  Invoxa.mount('#invoice', {
-    document: {
-      currency: 'INR',
-      template: 'creative',
-      sender: { name: 'Your Customer Ltd' },
-      client: { name: 'Globex', address: { state: '29 - Karnataka' } },
-      items: [{ description: 'Website design', quantity: 1, unitPrice: 75000 }],
-    },
-    onSave: function (invoice) {
-      // Send it to your own server here.
-      console.log(invoice.documentNumber, invoice.summary.grandTotal);
-    },
-  });
-</script>`;
+import { ArrowRight, Check, Copy, Lock } from 'lucide-react';
+import { EmbedKeyManager } from '@/components/document/embed-key-manager';
+import { BACKEND_STACKS, FRONTEND_STACKS, type StackSample } from '@/lib/integration/stacks';
 
 const OPTIONS = [
+  ['key', 'Your embed key. Required on your own website.'],
   ['document', 'Fills in the invoice. Every field is optional, as listed below.'],
   ['height', 'Height of the editor, such as "900px". The default is 900px.'],
   ['onReady()', 'The editor has loaded.'],
   ['onChange(invoice)', 'The user edited something. Called shortly after they stop typing.'],
   ['onSave(invoice)', 'The user clicked Save. This is where you store the invoice.'],
-  ['onError(message)', 'The document you passed was rejected, and says which field is wrong.'],
+  ['onError(message)', 'Your key or website was refused, or the document you passed was rejected. The message says why.'],
 ];
 
 const FIELDS = [
   ['type', 'invoice, estimate, purchase_order, pro_forma, receipt, credit_note or debit_note'],
   ['number, reference', 'Document number and PO or reference number'],
   ['issueDate, dueDate', 'Dates as YYYY-MM-DD'],
-  ['currency', 'Three-letter code, such as INR, USD or GBP'],
-  ['template', 'A free template ID, such as in-gst, modern, creative or uk-vat. Other values use the default.'],
+  ['currency', 'Three-letter code, such as USD, EUR, GBP or INR'],
+  ['template', 'A free template ID, such as modern, creative, uk-vat or us-sales-tax. A country template also sets its currency if you leave currency out.'],
   ['accentColor', 'A colour such as #9333EA'],
   ['logoUrl', 'An https URL, or a PNG, JPEG or WebP data URL'],
   ['sender, client', '{ name, email, phone, taxId, address: { street, city, state, postalCode, country } }. For GST, use states such as 27 - Maharashtra.'],
@@ -57,11 +41,48 @@ const LIMITS = [
   'The embedded editor only offers free templates.',
 ];
 
-function Code({ children }: { children: string }) {
+/** Code for one stack at a time, with tabs to switch. */
+function StackTabs({ label, stacks, origin, embedKey }: { label: string; stacks: StackSample[]; origin: string; embedKey?: string }) {
+  const [activeId, setActiveId] = useState(stacks[0].id);
+  const [copied, setCopied] = useState(false);
+  const active = stacks.find((stack) => stack.id === activeId) || stacks[0];
+  const code = active.code(origin).replace(/YOUR_EMBED_KEY/g, embedKey || 'YOUR_EMBED_KEY');
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
-    <pre className="overflow-x-auto rounded-2xl bg-slate-950 p-5 text-sm leading-relaxed text-slate-100">
-      <code>{children}</code>
-    </pre>
+    <div>
+      <div role="tablist" aria-label={label} className="mb-3 flex flex-wrap gap-2">
+        {stacks.map((stack) => (
+          <button
+            key={stack.id}
+            type="button"
+            role="tab"
+            aria-selected={stack.id === active.id}
+            onClick={() => setActiveId(stack.id)}
+            className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+              stack.id === active.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background hover:border-primary/50'
+            }`}
+          >
+            {stack.name}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center justify-between rounded-t-2xl bg-slate-900 px-5 py-2 text-sm text-slate-300">
+        <span className="font-mono">{active.file}</span>
+        <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded px-2 py-1 hover:bg-slate-800">
+          {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+      <pre translate="no" className="overflow-x-auto rounded-b-2xl bg-slate-950 p-5 text-sm leading-relaxed text-slate-100">
+        <code>{code}</code>
+      </pre>
+    </div>
   );
 }
 
@@ -78,7 +99,8 @@ function Rows({ rows }: { rows: string[][] }) {
   );
 }
 
-function Guide() {
+function Guide({ tenantId }: { tenantId: string }) {
+  const [embedKey, setEmbedKey] = useState<string>();
   const demo = useRef<HTMLDivElement>(null);
   const [origin, setOrigin] = useState('');
   const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -107,9 +129,18 @@ function Guide() {
     <>
       <Script src="/embed.js" onReady={() => setScriptLoaded(true)} />
 
+      <EmbedKeyManager tenantId={tenantId} onKey={setEmbedKey} />
+
       <section>
-        <h2 className="mb-4 text-2xl font-bold tracking-tight">Quick start</h2>
-        <Code>{QUICK_START(origin)}</Code>
+        <h2 className="text-2xl font-bold tracking-tight">Step 1: Show the editor</h2>
+        <p className="mb-4 mt-1 text-muted-foreground">Choose your framework. Each sample shows the editor in your page and passes it some starting details.</p>
+        <StackTabs label="Browser frameworks" stacks={FRONTEND_STACKS} origin={origin} embedKey={embedKey} />
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-bold tracking-tight">Step 2: Save the invoice on your server</h2>
+        <p className="mb-4 mt-1 text-muted-foreground">When your user clicks Save, onSave gives you the invoice. Send it to your server and store it. db, InvoiceStore and similar names stand for your own database code.</p>
+        <StackTabs label="Server languages" stacks={BACKEND_STACKS} origin={origin} />
       </section>
 
       <section>
@@ -154,7 +185,7 @@ function Locked() {
       <span className="brand-gradient mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-white">
         <Lock className="h-5 w-5" aria-hidden="true" />
       </span>
-      <h2 className="mt-5 text-2xl font-bold tracking-tight">Integration Docs are on paid plans</h2>
+      <h2 className="mt-5 text-2xl font-bold tracking-tight">Integrations are a premium feature</h2>
       <p className="mx-auto mt-2 max-w-xl leading-relaxed text-muted-foreground">
         Upgrade to Pro or Enterprise for the setup guide, code samples and a live demo of the invoice editor inside your own product.
       </p>
@@ -186,10 +217,10 @@ export default function IntegrationDocsPage() {
           Integration <span className="brand-text">Docs</span>
         </h1>
         <p className="mt-3 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-          Put the {APP_CONFIG.brandName} invoice editor inside your own product, and get the finished invoice back as data.
+          Put the invoice editor inside your own product, and get the finished invoice back as data.
         </p>
       </header>
-      {allowed === true && <Guide />}
+      {allowed === true && activeTenant && <Guide tenantId={activeTenant.id} />}
       {allowed === false && <Locked />}
     </div>
   );

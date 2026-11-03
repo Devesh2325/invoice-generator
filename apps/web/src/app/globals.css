@@ -350,3 +350,8 @@
   .card-3d:hover .card-3d__cta svg { transform: none; }
   .card-3d:hover .card-3d__icon, .card-3d:focus-within .card-3d__icon { transform: none; }
 }
+
+/* White-label workspaces use their own colour instead of the Invoxa gradient. */
+html.white-label .brand-gradient,
+html.white-label .card-3d__icon { background-image: none; background-color: rgb(var(--brand-primary)); box-shadow: none; }
+html.white-label .brand-text { background-image: none; color: rgb(var(--brand-primary)); -webkit-text-fill-color: currentColor; }

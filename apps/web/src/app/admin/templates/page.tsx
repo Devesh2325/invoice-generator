@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { adminRequest } from '@/lib/platform/admin-client';
 import Link from 'next/link';
 import { AdminApi } from '@invoice/api';
 import { GeneratorFieldSettings, getCurrencyTaxProfile, isTemplateAllowedForPlan } from '@invoice/core';
@@ -28,10 +29,16 @@ export default function AdminTemplatesPage() {
 
   useEffect(() => setDisabled(new Set(AdminApi.getDisabledTemplateIds())), []);
 
+  const publish = async (settings: object) => {
+    const result = await adminRequest('/api/admin/settings', { method: 'PUT', body: JSON.stringify(settings) });
+    if (!result.ok) toast({ title: 'Not published to the website', description: result.error, variant: 'destructive' });
+  };
+
   const handleToggleColumn = (field: keyof GeneratorFieldSettings) => {
     const updated = { ...columns, [field]: !columns[field] };
     AdminApi.updateGeneratorSettings(updated);
     setColumns(updated);
+    void publish({ generator: updated as unknown as Record<string, boolean> });
     window.dispatchEvent(new Event('billcraft-generator-settings-updated'));
   };
 
@@ -39,6 +46,7 @@ export default function AdminTemplatesPage() {
     const enable = disabled.has(id);
     AdminApi.setTemplateEnabled(id, enable);
     setDisabled(new Set(AdminApi.getDisabledTemplateIds()));
+    void publish({ disabledTemplates: AdminApi.getDisabledTemplateIds() });
     toast({ title: enable ? `${name} is now available` : `${name} is now hidden` });
   };
 
