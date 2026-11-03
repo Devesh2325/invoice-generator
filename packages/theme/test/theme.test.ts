@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { describe, it, expect } from 'vitest';
-import { isTemplateAllowedForPlan, getCurrencyTaxProfile, CURRENCIES } from '@invoice/core';
+import { isTemplateAllowedForPlan, getCurrencyTaxProfile, CURRENCIES, TEMPLATE_CURRENCIES, templateForCurrency } from '@invoice/core';
 import { getInvoiceTemplate, getTemplate, getTemplatesByCategory, INVOICE_TEMPLATES, mapCanonicalDocumentToTemplateInv, TEMPLATES } from '../src/index';
 
 describe('Document Theme & Templates', () => {
-  it('offers each design once, in one of four categories', () => {
+  it('offers each design once, in one of three categories', () => {
     const grouped = getTemplatesByCategory();
-    expect(grouped.map((g) => g.label)).toEqual(['India GST', 'Country tax invoices', 'Any business', 'Special documents']);
+    expect(grouped.map((g) => g.label)).toEqual(['Any business', 'Country tax invoices', 'Special documents']);
     expect(grouped.every((g) => g.templates.length > 0)).toBe(true);
 
     const presets = Object.keys(TEMPLATES).map((id) => getInvoiceTemplate(id).id);
@@ -74,5 +74,25 @@ describe('Document Theme & Templates', () => {
     const tmpl = getTemplate('non_existent_id');
     expect(tmpl.id).toBe('modern');
     expect(tmpl.defaultTokens.primaryColor).toBe('#2563EB');
+  });
+});
+
+describe('country templates', () => {
+  it('links every country template to a currency whose usual design works with it', () => {
+    const countryTemplates = Object.values(TEMPLATES).filter((template) => template.category === 'international');
+    expect(countryTemplates.length).toBeGreaterThan(0);
+    for (const template of countryTemplates) {
+      const currency = TEMPLATE_CURRENCIES[template.id];
+      expect(currency, template.id).toBeTruthy();
+      expect(templateForCurrency(template.id, currency), template.id).toBe(template.id);
+      expect(TEMPLATE_CURRENCIES[getCurrencyTaxProfile(currency).defaultTemplateId], template.id).toBe(currency);
+    }
+  });
+
+  it('swaps a country template when the currency changes, but not an any-currency design', () => {
+    expect(templateForCurrency('sg-gst', 'INR')).toBe('in-gst');
+    expect(templateForCurrency('in-gst', 'SGD')).toBe('sg-gst');
+    expect(templateForCurrency('creative', 'SGD')).toBe('creative');
+    expect(templateForCurrency('credit-note', 'JPY')).toBe('credit-note');
   });
 });

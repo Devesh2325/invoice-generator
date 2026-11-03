@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateDocument } from '../src/calculations/financial-engine';
-import { formatCurrency } from '../src/types/currency';
+import { detectCurrency, formatCurrency } from '../src/types/currency';
 import { isValidStatusTransition } from '../src/types/document';
 import { formatDocumentNumber, getNextSequenceNumber } from '../src/numbering';
 import { DocumentFormSchema } from '../src/schemas';
@@ -382,3 +382,17 @@ describe('Round-Off, Refund & Payment Validation Engine', () => {
 });
 
 
+
+describe('detectCurrency', () => {
+  it('trusts the time zone over the language setting', () => {
+    expect(detectCurrency('Asia/Kolkata', 'en-US')).toBe('INR');
+    expect(detectCurrency('Asia/Singapore', 'en-US')).toBe('SGD');
+  });
+
+  it('falls back to the language region, then to USD', () => {
+    expect(detectCurrency('Europe/Vienna', 'de-AT')).toBe('EUR');
+    expect(detectCurrency('America/Toronto', 'en-CA')).toBe('CAD');
+    expect(detectCurrency(undefined, 'pt-BR')).toBe('USD');
+    expect(detectCurrency()).toBe('USD');
+  });
+});

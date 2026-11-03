@@ -114,7 +114,7 @@ export const InvoiceOptionsBar: React.FC<InvoiceOptionsBarProps> = (props) => {
         <div>
           <span className={LABEL}>How to get paid</span>
           <Button type="button" variant="outline" className="h-10 w-full rounded-xl text-sm font-medium" onClick={props.onOpenPaymentSettings}>
-            <Landmark className="mr-1.5 h-4 w-4" /> UPI and bank
+            <Landmark className="mr-1.5 h-4 w-4" /> {getCurrencyTaxProfile(props.currency).supportsUpi ? 'UPI and bank' : 'Bank details'}
           </Button>
         </div>
       </div>

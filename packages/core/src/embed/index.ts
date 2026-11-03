@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isTemplateAllowedForPlan } from '../config/app-config';
+import { isTemplateAllowedForPlan, getTemplateCurrency, templateForCurrency } from '../config/app-config';
 import { getCurrencyConfig, getCurrencyTaxProfile } from '../types/currency';
 import type { DocumentModel, DocumentType } from '../types/document';
 
@@ -80,7 +80,8 @@ export type EmbedPrefill = z.infer<typeof EmbedPrefillSchema>;
  * editor's normal defaults. Totals are not accepted from the host: the engine always works them out.
  */
 export function buildDocumentFromPrefill(prefill: EmbedPrefill): DocumentModel {
-  const currency = prefill.currency && getCurrencyConfig(prefill.currency).code;
+  const currency =
+    (prefill.currency && getCurrencyConfig(prefill.currency).code) || (prefill.template && getTemplateCurrency(prefill.template));
   const profile = getCurrencyTaxProfile(currency);
   const defaultState = profile.isIndiaGst ? '27 - Maharashtra' : profile.defaultState;
   const address = (party: EmbedPrefill['sender']) => ({
@@ -106,7 +107,10 @@ export function buildDocumentFromPrefill(prefill: EmbedPrefill): DocumentModel {
     dueDate: prefill.dueDate,
     currency,
     // A host can't unlock paid templates by naming one.
-    templateId: prefill.template && isTemplateAllowedForPlan('starter', prefill.template) ? prefill.template : undefined,
+    templateId:
+      prefill.template && isTemplateAllowedForPlan('starter', prefill.template)
+        ? currency ? templateForCurrency(prefill.template, currency) : prefill.template
+        : undefined,
     customTheme: prefill.accentColor ? { primaryColor: prefill.accentColor } : undefined,
     sender: { ...fields(prefill.sender), logoUrl: prefill.logoUrl, address: address(prefill.sender) },
     client: { id: '', type: 'customer', ...fields(prefill.client), billingAddress: address(prefill.client) },

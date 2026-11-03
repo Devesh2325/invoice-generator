@@ -12,9 +12,9 @@ import { NavigationProgress } from '@/components/layout/navigation-progress';
 const sans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: `${APP_CONFIG.brandName} — Invoice generator for GST and global billing`,
+  title: `${APP_CONFIG.brandName} — Invoice generator for every country`,
   description:
-    'Create GST-ready invoices, estimates and purchase orders with automatic tax calculation, UPI QR codes and PDF download.',
+    'Create invoices, estimates and purchase orders with automatic GST, VAT or sales tax, in your currency, with PDF and Excel downloads.',
   keywords: [
     'invoice generator',
     'gst invoice',
@@ -27,17 +27,17 @@ export const metadata: Metadata = {
   authors: [{ name: `${APP_CONFIG.brandName} Team` }],
   metadataBase: new URL(`https://${APP_CONFIG.brandDomain}`),
   openGraph: {
-    title: `${APP_CONFIG.brandName} — Invoice generator for GST and global billing`,
+    title: `${APP_CONFIG.brandName} — Invoice generator for every country`,
     description:
-      'Create GST-ready invoices with automatic tax calculation, UPI QR codes and PDF download.',
+      'Create invoices with automatic GST, VAT or sales tax, in your currency, with PDF and Excel downloads.',
     url: `https://${APP_CONFIG.brandDomain}`,
     siteName: APP_CONFIG.brandName,
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${APP_CONFIG.brandName} — Invoice generator for GST and global billing`,
-    description: 'Create GST-ready invoices with automatic tax calculation, UPI QR codes and PDF download.',
+    title: `${APP_CONFIG.brandName} — Invoice generator for every country`,
+    description: 'Create invoices with automatic GST, VAT or sales tax, in your currency, with PDF and Excel downloads.',
   },
 };
 

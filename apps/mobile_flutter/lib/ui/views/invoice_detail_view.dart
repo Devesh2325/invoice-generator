@@ -143,14 +143,14 @@ class InvoiceDetailView extends StatelessWidget {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 14, color: AppTheme.slate400),
+                    const Icon(Icons.calendar_today, size: 14, color: AppTheme.slate400),
                     const SizedBox(width: 6),
                     Text(
                       'Issued ${DateFormat('dd MMM yyyy').format(invoice.issueDate)}',
                       style: const TextStyle(fontSize: 12, color: AppTheme.slate500),
                     ),
                     const Spacer(),
-                    Icon(Icons.event_available, size: 14, color: AppTheme.slate400),
+                    const Icon(Icons.event_available, size: 14, color: AppTheme.slate400),
                     const SizedBox(width: 6),
                     Text(
                       'Due ${DateFormat('dd MMM yyyy').format(invoice.dueDate)}',
@@ -425,7 +425,7 @@ Thank you for your business!
                   children: [
                     pw.Text(
                       'INVOXA',
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 28,
                         fontWeight: pw.FontWeight.bold,
                         color: PdfColors.blue700,
@@ -433,7 +433,7 @@ Thank you for your business!
                     ),
                     pw.Text(
                       invoice.documentNumber,
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 20,
                         fontWeight: pw.FontWeight.bold,
                       ),
@@ -447,8 +447,8 @@ Thank you for your business!
                     pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text('BILLED TO:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.grey700)),
-                        pw.Text(invoice.clientName, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                        pw.Text('BILLED TO:', style: const pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.grey700)),
+                        pw.Text(invoice.clientName, style: const pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                         if (invoice.clientAddress != null) pw.Text(invoice.clientAddress!),
                         if (invoice.clientEmail != null) pw.Text(invoice.clientEmail!),
                         if (invoice.clientGstin != null) pw.Text('GSTIN: ${invoice.clientGstin}'),
@@ -459,7 +459,7 @@ Thank you for your business!
                       children: [
                         pw.Text('Issue Date: ${DateFormat('dd/MM/yyyy').format(invoice.issueDate)}'),
                         pw.Text('Due Date: ${DateFormat('dd/MM/yyyy').format(invoice.dueDate)}'),
-                        pw.Text('Status: ${invoice.status.toUpperCase()}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                        pw.Text('Status: ${invoice.status.toUpperCase()}', style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                       ],
                     ),
                   ],
@@ -476,7 +476,7 @@ Thank you for your business!
                       '$currencySymbol${item.lineTotal.toStringAsFixed(2)}',
                     ];
                   }).toList(),
-                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                  headerStyle: const pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
                   headerDecoration: const pw.BoxDecoration(color: PdfColors.blue700),
                   cellHeight: 28,
                   cellAlignments: {
@@ -505,8 +505,8 @@ Thank you for your business!
                           ]),
                           pw.Divider(),
                           pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                            pw.Text('Grand Total:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                            pw.Text('$currencySymbol${invoice.grandTotal.toStringAsFixed(2)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.blue700)),
+                            pw.Text('Grand Total:', style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                            pw.Text('$currencySymbol${invoice.grandTotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.blue700)),
                           ]),
                         ],
                       ),

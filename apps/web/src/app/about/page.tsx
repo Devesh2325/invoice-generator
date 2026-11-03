@@ -21,8 +21,7 @@ export default function AboutPage() {
             wrestling with spreadsheets or complicated accounting software.
           </p>
           <p>
-            You add the details and we handle the rest: GST, totals, rounding and a layout that reflects well on your business.
-            When you need to bill internationally, the same tools work in other currencies too.
+            You add the details and we handle the rest: tax, totals, rounding and a layout that reflects well on your business, in whichever country and currency you work.
           </p>
         </div>
 

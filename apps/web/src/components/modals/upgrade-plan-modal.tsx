@@ -150,7 +150,7 @@ export const UpgradePlanModal: React.FC<UpgradePlanModalProps> = ({
         {/* Footer Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-border">
           <span className="text-xs text-muted-foreground">
-            Cancel anytime • Secure payment via UPI, Cards, NetBanking
+            Cancel anytime
           </span>
           <Button
             variant="ghost"

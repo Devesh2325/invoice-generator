@@ -281,6 +281,26 @@ export function getCurrencyTaxProfile(currencyCode: string = 'INR'): CurrencyTax
   }
 }
 
+const EURO_REGIONS = new Set(['AT', 'BE', 'CY', 'DE', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PT', 'SI', 'SK']);
+const REGION_CURRENCIES: Record<string, string> = {
+  AE: 'AED', AU: 'AUD', CA: 'CAD', CH: 'CHF', GB: 'GBP', IN: 'INR', JP: 'JPY', KW: 'KWD', SG: 'SGD', US: 'USD',
+};
+// A time zone is a better sign of location than a language setting: many people outside the US use en-US.
+const TIME_ZONE_REGIONS: Record<string, string> = {
+  'Asia/Kolkata': 'IN', 'Asia/Calcutta': 'IN', 'Asia/Singapore': 'SG', 'Asia/Dubai': 'AE', 'Asia/Tokyo': 'JP',
+  'Asia/Kuwait': 'KW', 'Europe/London': 'GB', 'Europe/Zurich': 'CH', 'Europe/Berlin': 'DE', 'Europe/Paris': 'FR',
+  'Europe/Madrid': 'ES', 'Europe/Rome': 'IT', 'Europe/Amsterdam': 'NL', 'Europe/Dublin': 'IE', 'America/Toronto': 'CA',
+  'America/Vancouver': 'CA', 'America/New_York': 'US', 'America/Chicago': 'US', 'America/Denver': 'US',
+  'America/Los_Angeles': 'US', 'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU', 'Australia/Perth': 'AU',
+};
+
+/** A starting currency for someone with no saved settings. They can change it, so a wrong guess costs one click. */
+export function detectCurrency(timeZone?: string, language?: string): string {
+  const region = (timeZone && TIME_ZONE_REGIONS[timeZone]) || language?.split('-')[1]?.toUpperCase() || '';
+  if (EURO_REGIONS.has(region)) return 'EUR';
+  return REGION_CURRENCIES[region] || 'USD';
+}
+
 export function formatCurrency(
   amount: number | string,
   currencyCode: string = 'INR',

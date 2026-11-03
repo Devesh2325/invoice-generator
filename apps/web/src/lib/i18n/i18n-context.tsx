@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import enTranslations from './locales/en.json';
 import hiTranslations from './locales/hi.json';
+import { startDomTranslator, type PhraseDictionary } from './dom-translator';
 
 export type LanguageCode = 'en' | 'hi';
 
@@ -42,11 +43,25 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // The English pages need no dictionary, so it only downloads for people who choose Hindi.
+  useEffect(() => {
+    document.documentElement.lang = language;
+    if (language === 'en') return;
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    import('./locales/hi-phrases.json').then(({ default: phrases }) => {
+      if (!cancelled) stop = startDomTranslator(document.body, phrases as PhraseDictionary);
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [language]);
+
   const setLanguage = useCallback((lang: LanguageCode) => {
     setLanguageState(lang);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('billcraft_lang', lang);
-      document.documentElement.lang = lang;
     }
   }, []);
 

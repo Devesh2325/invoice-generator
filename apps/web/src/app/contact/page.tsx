@@ -92,7 +92,7 @@ export default function ContactPage() {
                     <label className="font-semibold text-foreground block mb-1">Your Name *</label>
                     <Input
                       required
-                      placeholder="e.g. Rohan Sen"
+                      placeholder="e.g. Sam Lee"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                     />
@@ -112,7 +112,7 @@ export default function ContactPage() {
                 <div>
                   <label className="font-semibold text-foreground block mb-1">Subject</label>
                   <Input
-                    placeholder="e.g. Enterprise Plan Inquiry / GST Consultation"
+                    placeholder="e.g. Enterprise plan question"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                   />

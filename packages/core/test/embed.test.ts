@@ -58,3 +58,20 @@ describe('Studio Creative Bold', () => {
     expect(isTemplateAllowedForPlan('starter', 'creative')).toBe(true);
   });
 });
+
+describe('country templates and currency', () => {
+  it('uses the currency a country template is made for when the host names no currency', () => {
+    const doc = buildDocumentFromPrefill({ template: 'uk-vat' });
+    expect(doc.currency).toBe('GBP');
+    expect(doc.templateId).toBe('uk-vat');
+  });
+
+  it('replaces a country template that conflicts with the chosen currency', () => {
+    const doc = buildDocumentFromPrefill({ template: 'in-gst', currency: 'USD' });
+    expect(doc.templateId).toBe('us-sales-tax');
+  });
+
+  it('keeps a design that works in any currency', () => {
+    expect(buildDocumentFromPrefill({ template: 'creative', currency: 'USD' }).templateId).toBe('creative');
+  });
+});

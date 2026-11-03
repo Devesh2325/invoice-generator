@@ -32,10 +32,14 @@ import {
   isTemplateAllowedForPlan,
   GeneratorFieldSettings,
   resolveTemplateId,
+  detectCurrency,
+  getTemplateCurrency,
+  templateForCurrency,
 } from '@invoice/core';
 import { TEMPLATES, TEMPLATE_DOCUMENT_TYPES, getTemplate, getTemplatesByCategory, getInvoiceTemplate } from '@invoice/theme';
 import { TenantApi, AdminApi, ProductCatalogItem } from '@invoice/api';
 import { useTenant } from '@/lib/auth/tenant-context';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { getAllDocuments, saveDocument } from '@/lib/storage/indexed-db';
 import { exportDocumentToPdf, triggerPrint } from '@/lib/pdf/export-pdf';
 import { exportDocumentToCsv, exportDocumentToExcel, exportDocumentToPng } from '@/lib/export/export-document';
@@ -133,6 +137,7 @@ const THEME_COLOR_SWATCHES = [
 ];
 
 const LAST_SENDER_KEY = 'invoxa_last_sender';
+const isIndianState = (state: string) => /^\d{2} - /.test(state);
 
 const DEFAULT_PAYMENT_CONFIG: DocumentPaymentConfig = {
   bankAccounts: [],
@@ -196,6 +201,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 }) => {
   const tenantContext = useTenant();
   const { activeTenant, brandSettings, tenantCurrency, user } = embed ? EMBED_TENANT : tenantContext;
+  const tenantLoading = !embed && tenantContext.isLoading;
   const [generatorSettings, setGeneratorSettings] = useState<GeneratorFieldSettings>(() =>
     AdminApi.getGeneratorSettings()
   );
@@ -455,27 +461,31 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     setCurrency(newCurrency);
     const newProfile = getCurrencyTaxProfile(newCurrency);
     const prevProfile = getCurrencyTaxProfile(currency);
+    // A saved business keeps its own address when it bills in another currency.
+    const hasSavedAddress = Boolean(brandSettings?.street || brandSettings?.city);
+
+    const nextTemplateId = templateForCurrency(templateId, newCurrency);
+    if (nextTemplateId !== templateId) {
+      setTemplateId(nextTemplateId);
+      setCustomPrimaryColor(undefined);
+    }
+    setDecimalPrecision(getCurrencyConfig(newCurrency).decimalPlaces);
+    if (paymentTerms === prevProfile.defaultTerms) setPaymentTerms(newProfile.defaultTerms);
+    // Rounding to whole rupees is common in India. Elsewhere it would remove the cents from the total.
+    if (prevProfile.isIndiaGst !== newProfile.isIndiaGst && brandSettings?.enableRoundOff === undefined) {
+      setEnableRoundOff(newProfile.isIndiaGst);
+    }
 
     // If switching between Indian GST (INR) and International (GBP, USD, EUR, KWD, etc.)
     if (prevProfile.isIndiaGst && !newProfile.isIndiaGst) {
       // Switching from INR to foreign currency:
-      if (templateId === 'in-gst') {
-        setTemplateId(newProfile.defaultTemplateId);
-      }
-      if (senderCountry.toLowerCase() === 'india' || !senderCountry || senderState.includes('27 - Maharashtra')) {
+      if (!hasSavedAddress && (senderCountry.toLowerCase() === 'india' || !senderCountry || isIndianState(senderState))) {
         setSenderCountry(newProfile.defaultCountry);
         setSenderState(newProfile.defaultState);
       }
-      if (clientCountry.toLowerCase() === 'india' || !clientCountry || clientState.includes('27 - Maharashtra')) {
+      if (clientCountry.toLowerCase() === 'india' || !clientCountry || isIndianState(clientState)) {
         setClientCountry(newProfile.defaultCountry);
         setClientState(newProfile.defaultState);
-      }
-      if (newCurrency === 'KWD') {
-        setDecimalPrecision(3);
-      } else if (newCurrency === 'JPY') {
-        setDecimalPrecision(0);
-      } else {
-        setDecimalPrecision(2);
       }
       setItems((prev) =>
         prev.map((it) => ({
@@ -502,20 +512,18 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       }
     } else if (!prevProfile.isIndiaGst && newProfile.isIndiaGst) {
       // Switching from foreign currency to INR:
-      setTemplateId('in-gst');
-      setDecimalPrecision(2);
-      if (['United Kingdom', 'United States', 'Germany', 'Australia', 'Canada', 'Kuwait', 'Switzerland', 'Japan', 'Singapore', 'United Arab Emirates', 'International'].includes(senderCountry)) {
+      if (!hasSavedAddress && (!senderCountry || senderCountry === prevProfile.defaultCountry)) {
         setSenderCountry('India');
         setSenderState('27 - Maharashtra');
       }
-      if (['United Kingdom', 'United States', 'Germany', 'Australia', 'Canada', 'Kuwait', 'Switzerland', 'Japan', 'Singapore', 'United Arab Emirates', 'International'].includes(clientCountry)) {
+      if (!clientCountry || clientCountry === prevProfile.defaultCountry) {
         setClientCountry('India');
         setClientState('27 - Maharashtra');
       }
       setItems((prev) =>
         prev.map((it) => ({
           ...it,
-          taxRate: it.taxRate === 20 || it.taxRate === 0 || it.taxRate === 13 || it.taxRate === 10 || it.taxRate === 8.1 || it.taxRate === 5 ? 18 : it.taxRate,
+          taxRate: it.taxRate === prevProfile.defaultTaxRate ? 18 : it.taxRate,
         }))
       );
       setPaymentConfig((prev) => ({
@@ -529,15 +537,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       }));
     } else if (!prevProfile.isIndiaGst && !newProfile.isIndiaGst) {
       // Switching between foreign currencies (e.g. USD <-> GBP <-> KWD)
-      setTemplateId(newProfile.defaultTemplateId);
-      if (newCurrency === 'KWD') {
-        setDecimalPrecision(3);
-      } else if (newCurrency === 'JPY') {
-        setDecimalPrecision(0);
-      } else {
-        setDecimalPrecision(2);
-      }
-      if (senderCountry === prevProfile.defaultCountry || !senderCountry) {
+      if (!hasSavedAddress && (senderCountry === prevProfile.defaultCountry || !senderCountry)) {
         setSenderCountry(newProfile.defaultCountry);
         setSenderState(newProfile.defaultState);
       }
@@ -559,6 +559,13 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         setNotes(newProfile.defaultNotes);
       }
     }
+  };
+
+  /** Choosing a country's design also switches to that country's currency, tax labels and address fields. */
+  const applyTemplate = (id: string) => {
+    const owner = getTemplateCurrency(id);
+    if (owner && owner !== currency) handleCurrencyChange(owner);
+    setTemplateId(id);
   };
 
   // Saved Customers & Catalog Items for active workspace
@@ -646,7 +653,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       if (brandSettings.defaultInstructions)
         setPaymentInstructions(brandSettings.defaultInstructions);
       if (brandSettings.signatoryName) setSignatoryName(brandSettings.signatoryName);
-      if (brandSettings.defaultTemplateId) setTemplateId(resolveTemplateId(brandSettings.defaultTemplateId));
+      setTemplateId(templateForCurrency(brandSettings.defaultTemplateId || templateId, targetCurr));
       setAppliedTenantId(activeTenant.id);
     }
   }, [initialDocument, activeTenant, brandSettings, appliedTenantId]);
@@ -669,6 +676,18 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<string>('');
 
+  // Visitors with no saved settings start in their own country's currency rather than always in INR.
+  const startingCurrencyChosen = useRef(false);
+  useEffect(() => {
+    if (tenantLoading || startingCurrencyChosen.current) return;
+    startingCurrencyChosen.current = true;
+    if (initialDocument || user || activeTenant) return;
+    if (new URLSearchParams(window.location.search).get('template')) return;
+    const detected = detectCurrency(Intl.DateTimeFormat().resolvedOptions().timeZone, navigator.language);
+    if (detected !== currency) handleCurrencyChange(detected);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantLoading]);
+
   // Apply a template chosen from a link such as /create?template=tally_prime.
   // Runs after brand defaults are applied so the customer's choice wins.
   useEffect(() => {
@@ -677,7 +696,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     const requested = param && resolveTemplateId(param);
     if (!requested || !TEMPLATES[requested]) return;
     if (isTemplateAllowedForPlan(activeTenant?.plan || 'starter', requested)) {
-      setTemplateId(requested);
+      applyTemplate(requested);
     } else {
       setUpgradeReason(`The "${TEMPLATES[requested].name}" template is available on paid plans.`);
       setUpgradeModalOpen(true);
@@ -1056,7 +1075,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       setClientState(found.billingAddress.state);
     }
     setClientPostalCode(found.billingAddress?.postalCode || '');
-    setClientCountry(found.billingAddress?.country || 'India');
+    setClientCountry(found.billingAddress?.country || getCurrencyTaxProfile(currency).defaultCountry);
   };
 
   // Select a saved item from workspace catalog for a specific line item row
@@ -1146,7 +1165,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     else if (field === 'issueDate') setIssueDate(value);
     else if (field === 'dueDate') setDueDate(value);
     else if (field === 'currency') handleCurrencyChange(value);
-    else if (field === 'templateId') setTemplateId(value);
+    else if (field === 'templateId') applyTemplate(value);
     else if (field === 'notes') setNotes(value);
     else if (field === 'paymentTerms') setPaymentTerms(value);
     else if (field === 'paymentInstructions') setPaymentInstructions(value);
@@ -1399,7 +1418,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       branchName: '',
       accountType: 'current',
       swiftBicCode: '',
-      country: senderCountry || 'India',
+      country: senderCountry || getCurrencyTaxProfile(currency).defaultCountry,
     });
   };
 
@@ -1529,6 +1548,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         </span>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          {!embed && <LanguageSwitcher compact />}
           <Button
             variant="outline"
             onClick={() => setActiveView((view) => (view === 'editor' ? 'preview' : 'editor'))}
@@ -1610,7 +1630,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 setUpgradeModalOpen(true);
                 return;
               }
-              setTemplateId(id);
+              applyTemplate(id);
               setCustomPrimaryColor(undefined);
               if (TEMPLATE_DOCUMENT_TYPES[id]) setDocType(TEMPLATE_DOCUMENT_TYPES[id]);
             }}
@@ -1703,7 +1723,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                     Payment Settings & Invoice Display Controls
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Configure structured Bank Accounts, UPI ID, and Verified QR Code. Only enabled payment methods appear on the invoice.
+                    Choose how customers can pay you. Only the methods you turn on appear on the invoice.
                   </p>
                 </div>
                 <button
@@ -1735,6 +1755,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                     />
                     <span>Show Bank Details</span>
                   </label>
+                  {getCurrencyTaxProfile(currency).supportsUpi && (
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1749,6 +1770,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                     />
                     <span>Show UPI ID</span>
                   </label>
+                  )}
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1818,7 +1840,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                         branchName: '',
                         accountType: 'current',
                         swiftBicCode: '',
-                        country: senderCountry || 'India',
+                        country: senderCountry || getCurrencyTaxProfile(currency).defaultCountry,
                       });
                       setBankFormErrors({});
                       setShowAddBankForm(true);
@@ -1927,7 +1949,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                           onChange={(e) =>
                             setEditingBank((b) => ({ ...b, accountHolderName: e.target.value }))
                           }
-                          placeholder="e.g. Apex Digital Solutions Pvt Ltd"
+                          placeholder="e.g. Apex Digital Solutions"
                         />
                         {bankFormErrors.accountHolderName && (
                           <p className="text-xs text-red-600 mt-0.5">
@@ -1944,7 +1966,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                           onChange={(e) =>
                             setEditingBank((b) => ({ ...b, bankName: e.target.value }))
                           }
-                          placeholder="e.g. HDFC Bank Ltd"
+                          placeholder="e.g. Your bank name"
                         />
                         {bankFormErrors.bankName && (
                           <p className="text-xs text-red-600 mt-0.5">
@@ -2084,10 +2106,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               {/* 3. UPI ID & QR Code Configuration */}
               <div className="space-y-3 border-t border-slate-200 dark:border-slate-800 pt-4">
                 <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                  3. UPI ID & Verified QR Code
+                  {getCurrencyTaxProfile(currency).supportsUpi ? '3. UPI ID & Verified QR Code' : '3. Payment QR Code'}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                   <div className="md:col-span-2 space-y-3 text-xs">
+                    {getCurrencyTaxProfile(currency).supportsUpi && (
+                    <>
                     <div>
                       <label className="font-semibold text-slate-700 block mb-1">
                         UPI ID / VPA
@@ -2123,8 +2147,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                         placeholder="Merchant / Business Name"
                       />
                     </div>
+                    </>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-3 pt-1">
+                      {getCurrencyTaxProfile(currency).supportsUpi && (
                       <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-slate-700">
                         <input
                           type="checkbox"
@@ -2138,6 +2165,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                         />
                         <span>Auto-generate verified UPI QR</span>
                       </label>
+                      )}
 
                       <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300">
                         <Upload className="h-3.5 w-3.5" /> Upload Custom QR Image
@@ -2181,7 +2209,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       </>
                     ) : (
                       <div className="text-xs text-slate-400 px-2">
-                        Enter a valid UPI ID & Payee Name or upload a QR image to generate preview.
+                        {getCurrencyTaxProfile(currency).supportsUpi
+                          ? 'Enter a valid UPI ID & Payee Name or upload a QR image to generate preview.'
+                          : 'Upload a QR image from your bank or payment app.'}
                       </div>
                     )}
                   </div>
@@ -2275,8 +2305,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       onChange={(e) => setPayMethodInput(e.target.value as PaymentMethod)}
                       className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2 text-xs font-medium"
                     >
-                      <option value="bank_transfer">Bank Transfer / NEFT</option>
-                      <option value="upi">UPI</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      {getCurrencyTaxProfile(currency).supportsUpi && <option value="upi">UPI</option>}
                       <option value="card">Card</option>
                       <option value="cash">Cash</option>
                       <option value="cheque">Cheque</option>
@@ -2301,7 +2331,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   <Input
                     value={payRefInput}
                     onChange={(e) => setPayRefInput(e.target.value)}
-                    placeholder="e.g. UTR / NEFT-994120 / UPI Ref"
+                    placeholder="Bank or payment reference"
                   />
                 </div>
                 <div>
@@ -2515,7 +2545,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                         className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2 text-xs"
                       >
                         <option value="bank_transfer">Bank Transfer</option>
-                        <option value="upi">UPI</option>
+                        {getCurrencyTaxProfile(currency).supportsUpi && <option value="upi">UPI</option>}
                         <option value="card">Card Reversal</option>
                         <option value="cash">Cash</option>
                       </select>
@@ -2591,6 +2621,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       {/* DEDICATED CLEAN A4 PRINT & PDF CAPTURE SHEET (Always Rendered Cleanly) */}
       {/* ==================================================================== */}
       <div
+        translate="no"
         className="print-only-sheet fixed -left-[9999px] top-0 w-[860px] bg-white z-[-1]"
         aria-hidden="true"
       >
