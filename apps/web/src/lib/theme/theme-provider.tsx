@@ -21,6 +21,9 @@ const ThemeContext = createContext<ThemeContextType>({
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>('light');
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+  // Don't apply or save anything until the saved choice has been read,
+  // otherwise the initial default overwrites it.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('billcraft_theme') as Theme | null;
@@ -30,9 +33,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       setThemeState(prefersDark ? 'dark' : 'light');
     }
+    setLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!loaded) return;
     const root = document.documentElement;
     let effective: 'light' | 'dark' = 'light';
 
@@ -51,7 +56,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     localStorage.setItem('billcraft_theme', theme);
-  }, [theme]);
+  }, [theme, loaded]);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);

@@ -1,18 +1,10 @@
 import { AdminUser, AdminInquiry, AdminSiteSettings, AdminSystemAuditLog, AdminTemplateSetting, GeneratorFieldSettings, AdminTeam, PlanId, PlanLimits } from "@invoice/core";
 export declare class AdminApi {
-    private static getSessionKey;
-    private static getRateLimitKey;
-    static login(email: string, pass: string): {
-        success: boolean;
-        error?: string;
-    };
-    static isAuthenticated(): boolean;
-    static logout(): void;
     static getDashboardMetrics(): {
         totalUsers: number;
         activeSubscribers: number;
         monthlyRecurringRevenue: number;
-        invoicesThisMonth: number;
+        documentsCount: number;
         userGrowth: {
             month: string;
             count: number;

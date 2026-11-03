@@ -2,10 +2,11 @@
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
-import { useParams, notFound } from 'next/navigation';
+import { useParams, useRouter, notFound } from 'next/navigation';
 import { TEMPLATES, getTemplate, DocumentTemplateMeta } from '@invoice/theme';
-import { APP_CONFIG, isTemplateAllowedForPlan } from '@invoice/core';
+import { APP_CONFIG, isTemplateAllowedForPlan, resolveTemplateId } from '@invoice/core';
 import { PublicHeader } from '@/components/layout/public-header';
+import { PublicFooter } from '@/components/layout/public-footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -31,10 +32,8 @@ export default function TemplateDetailPage() {
 
   const template = useMemo(() => {
     if (!slug) return null;
-    const found = Object.values(TEMPLATES).find(
-      (t) => t.id === slug || t.id.toLowerCase() === slug.toLowerCase()
-    );
-    return found || null;
+    // Old template URLs keep working and show the design that replaced them.
+    return TEMPLATES[resolveTemplateId(slug.toLowerCase())] || null;
   }, [slug]);
 
   if (!template) {
@@ -44,11 +43,11 @@ export default function TemplateDetailPage() {
       return <TemplateDetailView template={{ ...blankMeta, name: 'Blank Invoice Template', id: 'modern' }} />;
     }
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
+      <div className="min-h-screen flex flex-col font-sans">
         <PublicHeader />
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
           <FileText className="h-12 w-12 text-slate-400" />
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Template Not Found</h1>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Template Not Found</h1>
           <p className="text-sm text-slate-500 max-w-md">
             The template &quot;{slug}&quot; could not be found or has been archived.
           </p>
@@ -66,6 +65,7 @@ export default function TemplateDetailPage() {
 }
 
 function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
+  const router = useRouter();
   const isFree = isTemplateAllowedForPlan('starter', template.id);
   const primaryColor = template.defaultTokens.primaryColor || '#1D4ED8';
 
@@ -135,11 +135,11 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
   };
 
   const handleDownloadPdf = () => {
-    window.location.href = `/create?template=${template.id}`;
+    router.push(`/create?template=${template.id}`);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
+    <div className="min-h-screen text-slate-900 dark:text-slate-100 flex flex-col font-sans">
       <PublicHeader />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-8 py-10 md:py-14 space-y-16 flex-1 w-full">
@@ -185,7 +185,7 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
                 )}
               </div>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-slate-900 dark:text-white leading-tight">
                 {template.name}
               </h1>
 
@@ -236,7 +236,7 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
 
           {/* Right Column: Visual Preview Card matching Image 1 */}
           <div className="lg:col-span-6 flex justify-center">
-            <div className="w-full max-w-md bg-white text-slate-900 rounded-2xl p-6 md:p-8 shadow-2xl border border-slate-200/80 relative overflow-hidden transition-all">
+            <div className="w-full max-w-md bg-white text-slate-900 rounded-xl p-6 md:p-8 shadow-2xl border border-slate-200/80 relative overflow-hidden transition-all">
               {/* Top Accent Strip */}
               <div
                 className="h-2.5 w-full absolute top-0 left-0"
@@ -248,12 +248,12 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <div
-                      className="h-6 w-6 rounded-lg flex items-center justify-center text-white text-xs font-black"
+                      className="h-6 w-6 rounded-lg flex items-center justify-center text-white text-xs font-semibold"
                       style={{ backgroundColor: primaryColor }}
                     >
                       ★
                     </div>
-                    <span className="font-extrabold text-lg tracking-tight text-slate-900 uppercase">
+                    <span className="font-semibold text-lg tracking-tight text-slate-900 uppercase">
                       INVOICE
                     </span>
                   </div>
@@ -268,7 +268,7 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
               {/* Billed To / From Addresses */}
               <div className="grid grid-cols-2 gap-4 py-4 text-xs">
                 <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  <span className="text-[10px] font-bold text-slate-400 block mb-1">
                     Billed To:
                   </span>
                   <div className="font-bold text-slate-800">Acme Corporation Inc.</div>
@@ -276,7 +276,7 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
                   <div className="text-slate-500 text-[11px]">billing@acme.com</div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  <span className="text-[10px] font-bold text-slate-400 block mb-1">
                     Invoice Details:
                   </span>
                   <div className="text-slate-600 text-[11px]">Due in 15 days</div>
@@ -321,7 +321,7 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
                   <span>Tax (0% / Exempt)</span>
                   <span className="font-mono">₹0.00</span>
                 </div>
-                <div className="flex justify-between text-base font-black text-slate-900 border-t border-slate-100 pt-2">
+                <div className="flex justify-between text-base font-semibold text-slate-900 border-t border-slate-100 pt-2">
                   <span>Total Amount Due</span>
                   <span className="font-mono" style={{ color: primaryColor }}>₹12,450.00</span>
                 </div>
@@ -339,7 +339,7 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
         {/* Download Section matching Image 1 */}
         <section id="download-formats" className="space-y-8 pt-8 border-t border-slate-200 dark:border-slate-800">
           <div className="text-center space-y-2 max-w-2xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
               Download a free {template.name.toLowerCase()}
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -350,10 +350,10 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
           {/* 6 Download Format Cards in a 3x2 Grid matching Image 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* 1. Microsoft Word */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black">
+                  <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold">
                     <FileText className="h-5 w-5" />
                   </div>
                   <div>
@@ -376,10 +376,10 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
             </div>
 
             {/* 2. Google Docs */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-black">
+                  <div className="h-10 w-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-semibold">
                     <FileCode className="h-5 w-5" />
                   </div>
                   <div>
@@ -402,10 +402,10 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
             </div>
 
             {/* 3. Microsoft Excel */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-semibold">
                     <Table className="h-5 w-5" />
                   </div>
                   <div>
@@ -428,10 +428,10 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
             </div>
 
             {/* 4. Google Sheets */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center font-black">
+                  <div className="h-10 w-10 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center font-semibold">
                     <TableProperties className="h-5 w-5" />
                   </div>
                   <div>
@@ -454,10 +454,10 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
             </div>
 
             {/* 5. PDF (US Letter) */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-black">
+                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-semibold">
                     <Printer className="h-5 w-5" />
                   </div>
                   <div>
@@ -479,10 +479,10 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
             </div>
 
             {/* 6. PDF (A4) */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black">
+                  <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-semibold">
                     <Printer className="h-5 w-5" />
                   </div>
                   <div>
@@ -506,9 +506,7 @@ function TemplateDetailView({ template }: { template: DocumentTemplateMeta }) {
         </section>
       </main>
 
-      <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 py-8 text-center text-xs text-slate-500 dark:text-slate-400">
-        © 2026 {APP_CONFIG.brandName} Template Studio. Professional financial layouts for modern businesses.
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

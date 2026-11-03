@@ -1,169 +1,111 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Search, ChevronDown, MessageSquare, FilePlus } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { APP_CONFIG } from '@invoice/core';
 import { PublicHeader } from '@/components/layout/public-header';
+import { PublicFooter } from '@/components/layout/public-footer';
+
+const FAQS = [
+  {
+    q: 'Do I need an account to create an invoice?',
+    a: 'No. You can create and download an invoice straight away. Create a free account to save your customers, items and invoice history.',
+  },
+  {
+    q: `Is ${APP_CONFIG.brandName} free?`,
+    a: `The free plan includes ${APP_CONFIG.trialInvoiceLimit} documents and a starter set of templates. Paid plans add unlimited documents, every template and more.`,
+  },
+  {
+    q: 'How is GST worked out?',
+    a: 'We compare your state with your customer’s. If they match, tax is split evenly into CGST and SGST. If they differ, it is charged as IGST. You remain responsible for your tax filings, so please check invoices with your accountant if you are unsure.',
+  },
+  {
+    q: 'How does the UPI QR code work?',
+    a: 'Enter your UPI ID and payee name, and the invoice can show a QR code with the amount filled in. Your customer pays from their UPI app, and the money goes straight to your account.',
+  },
+  {
+    q: 'Can I turn an estimate into an invoice?',
+    a: 'Yes. Open the estimate and choose Convert to Invoice. The customer, items and prices carry over to a new invoice.',
+  },
+  {
+    q: 'Can I add my logo and brand colours?',
+    a: 'Yes. Upload your logo and choose your brand colour in the generator or in Brand Studio.',
+  },
+  {
+    q: 'Where is my data stored?',
+    a: 'Invoices created without an account are stored in your browser. They stay on that device and are lost if you clear your browser data, so download a copy of anything you need to keep.',
+  },
+];
 
 export default function FaqPage() {
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
-  const faqItems = [
-    {
-      category: 'General & Pricing',
-      q: `Is ${APP_CONFIG.brandName} really free to try?`,
-      a: `Yes! Free trial accounts include up to ${APP_CONFIG.trialInvoiceLimit} complete invoices with India GST calculation, verified UPI QR generation, and full PDF export without requiring a credit card. Pro and Enterprise upgrades provide unlimited invoices and multi-tenant white-label power.`,
-    },
-    {
-      category: 'GST & Taxes',
-      q: 'How does India GST auto-calculation work?',
-      a: `${APP_CONFIG.brandName} cross-references the Supplier State against the Customer Place of Supply. When states match, Intra-State tax (CGST + SGST split equally) is levied. When states differ, Inter-State tax (IGST) is levied. Indian state codes (e.g., 27 - Maharashtra) and HSN/SAC codes are printed accurately.`,
-    },
-    {
-      category: 'Payments & UPI',
-      q: 'How does the UPI QR code work on generated invoices?',
-      a: `${APP_CONFIG.brandName} encodes your verified UPI ID, registered payee name, invoice number, and exact balance due into a standardized NPCI URI (upi://pay) formatted as an ISO/IEC 18004 SVG QR code. Clients scanning with Google Pay, PhonePe, Paytm, or BHIM have the exact payment amount pre-filled.`,
-    },
-    {
-      category: 'Workflow & Conversion',
-      q: 'Can I convert an Estimate or Quote to an Invoice?',
-      a: `Yes. Every estimate features a one-click "Convert to Invoice" action. ${APP_CONFIG.brandName} duplicates all client information, items, pricing, and taxes into a new sequential Tax Invoice automatically.`,
-    },
-    {
-      category: 'Data & Privacy',
-      q: 'Is my client and financial data secure?',
-      a: 'Yes. Offline invoices never leave your computer. For cloud workspaces, all data is isolated using PostgreSQL Row Level Security (RLS) and encrypted in transit with TLS 1.3 and at rest with AES-256.',
-    },
-    {
-      category: 'Customization & PDF',
-      q: 'Can I upload my company logo and brand colors?',
-      a: 'Yes. You can upload your high-resolution company logo, select your primary brand color or enter custom HEX codes, and choose between modern sans, executive serif, or technical mono typography.',
-    },
-    {
-      category: 'Team & Collaboration',
-      q: 'How do team permissions work?',
-      a: `${APP_CONFIG.brandName} features 4 granular roles: Owner (full administrative & billing control), Admin (can invite members & change settings), Editor (can create and edit invoices, items, and clients), and Viewer (read-only access to documents and reports).`,
-    },
-  ];
-
-  const categories = ['all', 'General & Pricing', 'GST & Taxes', 'Payments & UPI', 'Workflow & Conversion', 'Data & Privacy', 'Customization & PDF', 'Team & Collaboration'];
-
   const filtered = useMemo(() => {
-    return faqItems.filter((f) => {
-      const matchCat = selectedCategory === 'all' || f.category === selectedCategory;
-      const matchSearch =
-        search === '' ||
-        f.q.toLowerCase().includes(search.toLowerCase()) ||
-        f.a.toLowerCase().includes(search.toLowerCase());
-      return matchCat && matchSearch;
-    });
-  }, [selectedCategory, search]);
+    const query = search.trim().toLowerCase();
+    return FAQS.filter((f) => !query || f.q.toLowerCase().includes(query) || f.a.toLowerCase().includes(query));
+  }, [search]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+    <div className="flex min-h-screen flex-col text-foreground">
       <PublicHeader />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-8 py-16 space-y-12">
-        <div className="text-center space-y-3 max-w-xl mx-auto">
-          <Badge variant="outline" className="text-xs">Help & Documentation</Badge>
-          <h1 className="text-4xl font-black tracking-tight text-foreground">
-            Frequently Asked Questions
-          </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Find immediate answers regarding tax compliance, payment settings, templates, and multi-tenant teams.
-          </p>
+      <main className="mx-auto w-full max-w-3xl px-4 py-14 sm:px-6">
+        <h1 className="text-4xl font-semibold tracking-tight">Frequently asked questions</h1>
 
-          <div className="relative max-w-md mx-auto pt-3">
-            <Search className="absolute left-3 top-5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search help topics (e.g. GST, UPI QR, PDF)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 text-xs"
-            />
-          </div>
+        <div className="relative mt-6">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <Input
+            aria-label="Search questions"
+            placeholder="Search questions"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setOpenIndex(null);
+            }}
+            className="h-10 pl-9 text-sm"
+          />
         </div>
 
-        {/* Categories */}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                selectedCategory === cat
-                  ? 'bg-primary text-primary-foreground shadow-xs'
-                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              {cat === 'all' ? 'All Questions' : cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Accordion */}
-        <div className="space-y-3">
+        <div className="mt-6 divide-y divide-border border-y border-border">
           {filtered.length === 0 ? (
-            <div className="p-8 text-center text-xs text-muted-foreground border rounded-2xl">
-              No matching help articles found for "{search}".
-            </div>
+            <p className="py-8 text-center text-muted-foreground">No questions match “{search}”.</p>
           ) : (
-            filtered.map((item, i) => {
-              const isOpen = openIndex === i;
+            filtered.map((item, index) => {
+              const open = openIndex === index;
               return (
-                <div key={i} className="border border-border rounded-xl bg-card overflow-hidden">
+                <div key={item.q}>
                   <button
-                    onClick={() => setOpenIndex(isOpen ? null : i)}
-                    className="w-full flex justify-between items-center p-4 text-left font-bold text-xs sm:text-sm text-foreground hover:bg-muted/30 transition-colors"
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => setOpenIndex(open ? null : index)}
+                    className="flex w-full items-center justify-between gap-4 py-4 text-left font-medium"
                   >
                     <span>{item.q}</span>
-                    <ChevronDown
-                      className={`h-4 w-4 text-muted-foreground transition-transform ${
-                        isOpen ? 'rotate-180 text-primary' : ''
-                      }`}
-                    />
+                    <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
                   </button>
-                  {isOpen && (
-                    <div className="px-4 pb-4 text-xs text-muted-foreground leading-relaxed border-t border-border/50 pt-3">
-                      {item.a}
-                    </div>
-                  )}
+                  {open && <p className="pb-4 leading-relaxed text-muted-foreground">{item.a}</p>}
                 </div>
               );
             })
           )}
         </div>
 
-        {/* Help Banner */}
-        <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="space-y-1 text-center sm:text-left">
-            <h3 className="font-bold text-sm text-foreground">Still need assistance?</h3>
-            <p className="text-xs text-muted-foreground">Our support team is available during business hours to assist you.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/create">
-              <Button size="sm" className="text-xs font-bold bg-primary text-primary-foreground">
-                <FilePlus className="h-3.5 w-3.5 mr-1.5" /> Start Free
-              </Button>
-            </Link>
-            <Link href="/contact">
-              <Button size="sm" variant="outline" className="text-xs font-semibold">
-                <MessageSquare className="h-3.5 w-3.5 mr-1.5" /> Submit Support Ticket
-              </Button>
-            </Link>
-          </div>
+        <div className="mt-10">
+          <h2 className="text-lg font-semibold">Still have a question?</h2>
+          <p className="mt-1 text-muted-foreground">Send us a message and we’ll help you out.</p>
+          <Link href="/contact" className="mt-4 inline-block">
+            <Button variant="outline" className="h-10 font-medium">
+              Contact us
+            </Button>
+          </Link>
         </div>
       </main>
 
-      <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 {APP_CONFIG.brandName} Help Center & Support. All rights reserved.
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

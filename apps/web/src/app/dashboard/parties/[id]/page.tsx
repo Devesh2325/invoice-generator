@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TenantApi } from '@invoice/api';
 import {
@@ -232,17 +231,17 @@ export default function CustomerDetailPage() {
 
   if (loading) {
     return (
-      <TenantLayout>
+      <>
         <div className="p-10 text-center text-slate-500">Loading customer profile...</div>
-      </TenantLayout>
+      </>
     );
   }
 
   if (notFound || !customer) {
     return (
-      <TenantLayout>
+      <>
         <div className="p-10 text-center space-y-4">
-          <div className="text-xl font-black text-slate-800 dark:text-slate-100">Customer Not Found</div>
+          <div className="text-xl font-semibold text-slate-800 dark:text-slate-100">Customer Not Found</div>
           <p className="text-xs text-slate-500">The customer profile you requested does not exist or belongs to another workspace.</p>
           <Link href="/dashboard/parties">
             <Button size="sm" variant="outline" className="text-xs">
@@ -250,12 +249,12 @@ export default function CustomerDetailPage() {
             </Button>
           </Link>
         </div>
-      </TenantLayout>
+      </>
     );
   }
 
   return (
-    <TenantLayout>
+    <>
       <div className="p-6 lg:p-10 space-y-6 max-w-7xl mx-auto w-full">
         {/* Breadcrumb & Navigation */}
         <div className="flex items-center justify-between">
@@ -304,19 +303,19 @@ export default function CustomerDetailPage() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black text-lg">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-semibold text-lg">
                   {customer.name.slice(0, 2).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                    <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
                       {customer.name}
                     </h1>
-                    <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider capitalize">
+                    <Badge variant="outline" className="text-xs font-bold capitalize">
                       {customer.type}
                     </Badge>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5 font-mono">
+                  <p className="text-xs text-slate-400 mt-0.5 tabular-nums">
                     ID: {customer.id} • Added on {new Date(customer.createdAt || Date.now()).toLocaleDateString()}
                   </p>
                 </div>
@@ -336,7 +335,7 @@ export default function CustomerDetailPage() {
                   </div>
                 )}
                 {customer.taxId && (
-                  <div className="flex items-center gap-1.5 font-mono">
+                  <div className="flex items-center gap-1.5 tabular-nums">
                     <Building className="h-3.5 w-3.5 text-slate-400" />
                     <span>GSTIN / Tax ID: {customer.taxId}</span>
                   </div>
@@ -356,11 +355,11 @@ export default function CustomerDetailPage() {
 
             {/* Quick Balance Pill */}
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-right min-w-[180px] shrink-0">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              <span className="text-xs font-bold text-slate-400 block">
                 Outstanding Balance
               </span>
               <div
-                className={`text-xl font-black mt-0.5 tabular-nums ${
+                className={`text-xl font-semibold mt-0.5 tabular-nums ${
                   financialSummary.totalOutstanding > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600'
                 }`}
               >
@@ -370,7 +369,7 @@ export default function CustomerDetailPage() {
                 <button
                   type="button"
                   onClick={() => setRecordPaymentModalOpen(true)}
-                  className="text-[11px] font-bold text-primary hover:underline mt-1 block w-full text-right cursor-pointer"
+                  className="text-xs font-bold text-primary hover:underline mt-1 block w-full text-right cursor-pointer"
                 >
                   + Record Payment
                 </button>
@@ -382,29 +381,29 @@ export default function CustomerDetailPage() {
         {/* Financial KPI Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">
               Total Invoiced ({invoices.length})
             </span>
-            <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
+            <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
               {formatCurrency(financialSummary.totalBilled, tenantCurrency)}
             </div>
           </Card>
 
           <Card className="p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">
               Total Payments Received
             </span>
-            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
+            <div className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
               {formatCurrency(financialSummary.totalPaid, tenantCurrency)}
             </div>
           </Card>
 
           <Card className="p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">
               Outstanding Balance
             </span>
             <div
-              className={`text-2xl font-black mt-1 tabular-nums ${
+              className={`text-2xl font-semibold mt-1 tabular-nums ${
                 financialSummary.totalOutstanding > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600'
               }`}
             >
@@ -482,10 +481,10 @@ export default function CustomerDetailPage() {
               ))}
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-xs">
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-xs">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 uppercase tracking-wider text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 text-xs font-bold text-slate-500 dark:text-slate-400">
                     <th className="py-3 px-4">Invoice No</th>
                     <th className="py-3 px-3">Issue Date</th>
                     <th className="py-3 px-3">Due Date</th>
@@ -507,7 +506,7 @@ export default function CustomerDetailPage() {
                       const effStatus = computeEffectiveInvoiceStatus(doc);
                       return (
                         <tr key={doc.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                          <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-slate-100">
+                          <td className="py-3 px-4 tabular-nums font-bold text-slate-900 dark:text-slate-100">
                             #{doc.documentNumber}
                           </td>
                           <td className="py-3 px-3 text-slate-600 dark:text-slate-400">
@@ -525,15 +524,15 @@ export default function CustomerDetailPage() {
                                   ? 'destructive'
                                   : 'secondary'
                               }
-                              className="text-[10px] uppercase font-bold"
+                              className="text-xs uppercase font-bold"
                             >
                               {formatInvoiceStatusLabel(effStatus)}
                             </Badge>
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
+                          <td className="py-3 px-4 text-right tabular-nums font-bold text-slate-900 dark:text-slate-100">
                             {formatCurrency(doc.summary.grandTotal, doc.currency)}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold">
+                          <td className="py-3 px-4 text-right tabular-nums font-bold">
                             <span
                               className={
                                 Number(doc.summary.balanceDue) > 0
@@ -563,10 +562,10 @@ export default function CustomerDetailPage() {
 
         {/* TAB 2: PAYMENT HISTORY */}
         {activeTab === 'payments' && (
-          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-xs">
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-xs">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 uppercase tracking-wider text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 text-xs font-bold text-slate-500 dark:text-slate-400">
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-3">Against Invoice</th>
                   <th className="py-3 px-3">Payment Method</th>
@@ -584,10 +583,10 @@ export default function CustomerDetailPage() {
                 ) : (
                   allPayments.map(({ doc, payment }) => (
                     <tr key={payment.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                      <td className="py-3 px-4 font-mono text-slate-700 dark:text-slate-300">
+                      <td className="py-3 px-4 tabular-nums text-slate-700 dark:text-slate-300">
                         {payment.paymentDate}
                       </td>
-                      <td className="py-3 px-3 font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <td className="py-3 px-3 tabular-nums font-bold text-slate-900 dark:text-slate-100">
                         <Link href={`/edit/${doc.id}`} className="hover:underline text-primary">
                           #{doc.documentNumber}
                         </Link>
@@ -595,10 +594,10 @@ export default function CustomerDetailPage() {
                       <td className="py-3 px-3 capitalize text-slate-700 dark:text-slate-300">
                         {payment.paymentMethod.replace('_', ' ')}
                       </td>
-                      <td className="py-3 px-3 font-mono text-slate-500">
+                      <td className="py-3 px-3 tabular-nums text-slate-500">
                         {payment.reference || '—'}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">
+                      <td className="py-3 px-4 text-right tabular-nums font-bold text-emerald-600">
                         +{formatCurrency(payment.amount, doc.currency)}
                       </td>
                     </tr>
@@ -611,10 +610,10 @@ export default function CustomerDetailPage() {
 
         {/* TAB 3: QUOTES & ADJUSTMENTS */}
         {activeTab === 'quotes' && (
-          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-xs">
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-xs">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 uppercase tracking-wider text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 text-xs font-bold text-slate-500 dark:text-slate-400">
                   <th className="py-3 px-4">Document Type</th>
                   <th className="py-3 px-3">Number</th>
                   <th className="py-3 px-3">Date</th>
@@ -635,13 +634,13 @@ export default function CustomerDetailPage() {
                       <td className="py-3 px-4 capitalize font-semibold text-slate-800 dark:text-slate-200">
                         {doc.type.replace('_', ' ')}
                       </td>
-                      <td className="py-3 px-3 font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <td className="py-3 px-3 tabular-nums font-bold text-slate-900 dark:text-slate-100">
                         #{doc.documentNumber}
                       </td>
                       <td className="py-3 px-3 text-slate-600 dark:text-slate-400">
                         {doc.issueDate}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <td className="py-3 px-4 text-right tabular-nums font-bold text-slate-900 dark:text-slate-100">
                         {formatCurrency(doc.summary.grandTotal, doc.currency)}
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -661,7 +660,7 @@ export default function CustomerDetailPage() {
 
         {/* TAB 4: TIMELINE */}
         {activeTab === 'timeline' && (
-          <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
+          <div className="p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <History className="h-4 w-4 text-primary" /> Customer Activity Ledger
             </h3>
@@ -669,8 +668,8 @@ export default function CustomerDetailPage() {
               <div className="relative">
                 <span className="absolute -left-6 top-1 h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-white dark:ring-slate-900" />
                 <div className="text-xs font-bold text-slate-900 dark:text-slate-100">Profile Initialized</div>
-                <div className="text-[11px] text-slate-500">Customer registered in workspace ledger.</div>
-                <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                <div className="text-xs text-slate-500">Customer registered in workspace ledger.</div>
+                <div className="text-xs text-slate-400 mt-0.5 tabular-nums">
                   {new Date(customer.createdAt || Date.now()).toLocaleString()}
                 </div>
               </div>
@@ -681,10 +680,10 @@ export default function CustomerDetailPage() {
                   <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
                     Invoice #{doc.documentNumber} Generated
                   </div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-xs text-slate-500">
                     Billed for {formatCurrency(doc.summary.grandTotal, doc.currency)} (Due: {doc.dueDate || 'Receipt'})
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5 font-mono">{doc.issueDate}</div>
+                  <div className="text-xs text-slate-400 mt-0.5 tabular-nums">{doc.issueDate}</div>
                 </div>
               ))}
             </div>
@@ -694,7 +693,7 @@ export default function CustomerDetailPage() {
         {/* MODAL 1: EDIT CUSTOMER */}
         {editModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
-            <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center border-b pb-3">
                 <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">Edit Customer Profile</h3>
                 <button type="button" onClick={() => setEditModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -756,7 +755,7 @@ export default function CustomerDetailPage() {
         {/* MODAL 2: RECORD PAYMENT */}
         {recordPaymentModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
-            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
               <div className="flex justify-between items-center border-b pb-3">
                 <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">Record Customer Payment</h3>
                 <button type="button" onClick={() => setRecordPaymentModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -774,7 +773,7 @@ export default function CustomerDetailPage() {
                       const doc = invoices.find((d) => d.id === e.target.value);
                       if (doc) setPayAmount(Number(doc.summary.balanceDue) || 0);
                     }}
-                    className="w-full h-9 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs font-mono"
+                    className="w-full h-9 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs tabular-nums"
                     required
                   >
                     <option value="">Select Invoice...</option>
@@ -835,7 +834,7 @@ export default function CustomerDetailPage() {
         {/* MODAL 3: SEND REMINDER */}
         {reminderModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
-            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
               <div className="flex justify-between items-center border-b pb-3">
                 <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                   <Send className="w-4 h-4 text-amber-500" /> Payment Reminder Message
@@ -848,7 +847,7 @@ export default function CustomerDetailPage() {
               <div className="space-y-3 text-xs">
                 <p className="text-slate-500">
                   Send a friendly payment reminder for outstanding balance of{' '}
-                  <strong className="text-amber-600 font-mono">
+                  <strong className="text-amber-600 tabular-nums">
                     {formatCurrency(financialSummary.totalOutstanding, tenantCurrency)}
                   </strong>
                   .
@@ -856,7 +855,7 @@ export default function CustomerDetailPage() {
 
                 <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
                   <div className="font-semibold text-slate-700 dark:text-slate-300">Prefilled Reminder Text:</div>
-                  <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed font-mono">
+                  <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border text-xs text-slate-600 dark:text-slate-300 leading-relaxed tabular-nums">
                     Hi {customer.name}, friendly reminder that you have an outstanding balance of{' '}
                     {formatCurrency(financialSummary.totalOutstanding, tenantCurrency)} with {activeTenant?.name}.
                     Kindly remit at your earliest convenience. Thank you!
@@ -923,11 +922,11 @@ export default function CustomerDetailPage() {
         {/* MODAL 4: STATEMENT OF ACCOUNT */}
         {statementModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
-            <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center border-b pb-3">
                 <div>
-                  <h3 className="font-black text-sm text-slate-900 dark:text-slate-100">Statement of Accounts</h3>
-                  <p className="text-[11px] text-slate-400 font-mono">{customer.name}</p>
+                  <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">Statement of Accounts</h3>
+                  <p className="text-xs text-slate-400 tabular-nums">{customer.name}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={() => window.print()} className="h-7 text-xs bg-primary text-white font-bold">
@@ -942,37 +941,37 @@ export default function CustomerDetailPage() {
               <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
                 <div className="flex justify-between items-start border-b pb-3">
                   <div>
-                    <h4 className="font-black text-base text-slate-900 dark:text-slate-100">{activeTenant?.name}</h4>
-                    <p className="text-[11px] text-slate-500">Client Ledger Statement</p>
+                    <h4 className="font-semibold text-base text-slate-900 dark:text-slate-100">{activeTenant?.name}</h4>
+                    <p className="text-xs text-slate-500">Client Ledger Statement</p>
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-slate-800 dark:text-slate-200">{customer.name}</div>
-                    <div className="text-[11px] text-slate-400">{customer.email || customer.phone}</div>
+                    <div className="text-xs text-slate-400">{customer.email || customer.phone}</div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 dark:bg-slate-950 rounded-lg text-center font-mono">
+                <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 dark:bg-slate-950 rounded-lg text-center tabular-nums">
                   <div>
-                    <span className="text-[10px] text-slate-400 block uppercase">Total Billed</span>
+                    <span className="text-xs text-slate-400 block uppercase">Total Billed</span>
                     <span className="font-bold text-slate-900 dark:text-slate-100">
                       {formatCurrency(financialSummary.totalBilled, tenantCurrency)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block uppercase">Total Received</span>
+                    <span className="text-xs text-slate-400 block uppercase">Total Received</span>
                     <span className="font-bold text-emerald-600">
                       {formatCurrency(financialSummary.totalPaid, tenantCurrency)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block uppercase">Outstanding</span>
+                    <span className="text-xs text-slate-400 block uppercase">Outstanding</span>
                     <span className="font-bold text-amber-600">
                       {formatCurrency(financialSummary.totalOutstanding, tenantCurrency)}
                     </span>
                   </div>
                 </div>
 
-                <table className="w-full text-left border-collapse text-[11px] font-mono">
+                <table className="w-full text-left border-collapse text-xs tabular-nums">
                   <thead>
                     <tr className="border-b text-slate-400">
                       <th className="py-2">Date</th>
@@ -999,6 +998,6 @@ export default function CustomerDetailPage() {
           </div>
         )}
       </div>
-    </TenantLayout>
+    </>
   );
 }

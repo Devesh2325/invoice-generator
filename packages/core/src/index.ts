@@ -8,3 +8,4 @@ export * from './calculations/qr-encoder';
 export * from './numbering/index';
 export * from './schemas/index';
 export * from './config/app-config';
+export * from './embed/index';

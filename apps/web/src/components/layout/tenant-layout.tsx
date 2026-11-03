@@ -11,7 +11,8 @@ import { NotificationCenter } from '@/components/ui/notification-center';
 import { PlanBadge } from '@/components/ui/plan-badge';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useTheme } from '@/lib/theme/theme-provider';
-import { APP_CONFIG } from '@invoice/core';
+import { APP_CONFIG, canUseIntegrationDocs } from '@invoice/core';
+import { TeamApi } from '@invoice/api';
 import {
   LayoutDashboard,
   FileText,
@@ -34,6 +35,8 @@ import {
   Search,
   Sun,
   Moon,
+  BookOpen,
+  Lock,
 } from 'lucide-react';
 
 interface TenantLayoutProps {
@@ -49,6 +52,15 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [impersonatedInfo, setImpersonatedInfo] = useState<{ name?: string; email?: string } | null>(null);
+  const [hasIntegrationDocs, setHasIntegrationDocs] = useState(false);
+
+  useEffect(() => {
+    if (!activeTenant?.id) return;
+    const check = () => setHasIntegrationDocs(canUseIntegrationDocs(TeamApi.getTenantPlan(activeTenant.id)));
+    check();
+    window.addEventListener('billcraft-plan-updated', check);
+    return () => window.removeEventListener('billcraft-plan-updated', check);
+  }, [activeTenant?.id]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -129,6 +141,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
     { label: 'Reports', href: '/dashboard/reports', icon: BarChart3 },
     { label: 'Brand Studio', href: '/dashboard/brand', icon: Palette },
     { label: 'Team', href: '/dashboard/team', icon: UserCheck },
+    { label: 'Integration Docs', href: '/dashboard/developers', icon: BookOpen, paid: true },
     { label: 'Plans & Billing', href: '/dashboard/billing', icon: Shield },
     { label: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
@@ -146,6 +159,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
     if (pathname === '/dashboard/reports') return [{ label: 'Reports' }];
     if (pathname === '/dashboard/brand') return [{ label: 'Brand Studio' }];
     if (pathname === '/dashboard/team') return [{ label: 'Team' }];
+    if (pathname === '/dashboard/developers') return [{ label: 'Integration Docs' }];
     if (pathname === '/dashboard/billing') return [{ label: 'Plans & Billing' }];
     if (pathname === '/dashboard/settings') return [{ label: 'Settings' }];
     if (pathname.startsWith('/edit/')) {
@@ -164,7 +178,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center gap-3">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Verifying workspace session...</p>
       </div>
@@ -176,12 +190,12 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="min-h-screen flex flex-col font-sans text-slate-900 dark:text-slate-100">
       {/* Super Admin Impersonation Banner */}
       {isImpersonating && (
         <div className="bg-amber-500 text-slate-950 px-4 py-2.5 text-xs md:text-sm font-semibold flex flex-wrap items-center justify-between gap-3 shadow-md sticky top-0 z-[100] border-b border-amber-600">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center justify-center bg-slate-950 text-amber-400 p-1 rounded-full text-[11px] font-bold shrink-0">
+            <span className="inline-flex items-center justify-center bg-slate-950 text-amber-400 p-1 rounded-full text-xs font-bold shrink-0">
               <ShieldAlert className="h-3.5 w-3.5" />
             </span>
             <span>
@@ -215,7 +229,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
           ) : (
             <Sparkles className="h-5 w-5 text-primary shrink-0" />
           )}
-          <span className="font-black text-lg text-primary tracking-tight truncate">
+          <span className="font-semibold text-lg text-primary tracking-tight truncate">
             {brandName}
           </span>
         </div>
@@ -257,18 +271,18 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
               ) : (
                 <Sparkles className="h-6 w-6 text-primary shrink-0" />
               )}
-              <span className="font-black text-lg text-primary tracking-tight truncate">
+              <span className="font-semibold text-lg text-primary tracking-tight truncate">
                 {brandName}
               </span>
             </Link>
-            <Badge variant="outline" className="text-[10px] text-slate-600 dark:text-slate-400 font-mono shrink-0">
+            <Badge variant="outline" className="text-xs text-slate-600 dark:text-slate-400 font-mono shrink-0">
               {tenantCurrency}
             </Badge>
           </div>
 
           {/* Active Workspace Switcher */}
           <div className="relative">
-            <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-2 block mb-1">
+            <label className="text-xs uppercase font-bold tracking-wider text-slate-400 px-2 block mb-1">
               Active Workspace
             </label>
             <button
@@ -279,7 +293,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
                 <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                   {activeTenant?.name || 'Select Workspace'}
                 </div>
-                <div className="text-[10px] text-slate-500 capitalize">
+                <div className="text-xs text-slate-500 capitalize">
                   Role: {activeTenant?.role || 'Owner'} • {tenantCurrency}
                 </div>
               </div>
@@ -302,7 +316,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
                     }`}
                   >
                     <span className="truncate">{t.name}</span>
-                    <span className="text-[10px] text-slate-400 uppercase">{t.currency || 'INR'}</span>
+                    <span className="text-xs text-slate-400 uppercase">{t.currency || 'INR'}</span>
                   </button>
                 ))}
               </div>
@@ -339,6 +353,9 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
                 >
                   <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                   <span>{item.label}</span>
+                  {item.paid && !hasIntegrationDocs && (
+                    <Lock className="ml-auto h-3 w-3 opacity-70" aria-label="Paid plans" />
+                  )}
                 </Link>
               );
             })}
@@ -368,7 +385,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
                 <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                   {user?.name || 'Admin User'}
                 </div>
-                <div className="text-[10px] text-slate-500 truncate">{user?.email}</div>
+                <div className="text-xs text-slate-500 truncate">{user?.email}</div>
               </div>
             </Link>
             <button
@@ -396,7 +413,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
             >
               <Search className="h-3.5 w-3.5" />
               <span>Search actions...</span>
-              <kbd className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+              <kbd className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-xs font-mono text-slate-500 dark:text-slate-400">
                 Ctrl+K
               </kbd>
             </button>
@@ -431,7 +448,6 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
         </div>
       </div>
     </div>
-  );
     </div>
   );
 };

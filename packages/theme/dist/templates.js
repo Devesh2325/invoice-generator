@@ -21,7 +21,7 @@ export const TEMPLATES = {
     // 1. GST & TAX COMPLIANT (INDIA)
     cleartax_gst: {
         id: 'cleartax_gst',
-        name: 'ClearTax Pro GST',
+        name: 'GST Standard',
         competitorStyle: 'ClearTax / India GST Standard',
         description: 'Modern GST-compliant tax invoice with HSN/SAC, Place of Supply, and CGST/SGST/IGST split.',
         category: 'gst_india',
@@ -42,7 +42,7 @@ export const TEMPLATES = {
     },
     tally_prime: {
         id: 'tally_prime',
-        name: 'Tally Prime Tax Grid',
+        name: 'GST Ledger Grid',
         competitorStyle: 'Tally Prime / ERP 9',
         description: 'Traditional Indian accounting bordered box layout with GSTIN, State Code, HSN/SAC & Signatory.',
         category: 'gst_india',
@@ -63,7 +63,7 @@ export const TEMPLATES = {
     },
     vyapar_classic: {
         id: 'vyapar_classic',
-        name: 'Vyapar Business GST',
+        name: 'GST Business',
         competitorStyle: 'Vyapar / MyBillBook',
         description: 'High-clarity commercial distributor & wholesale GST layout with bold accent header.',
         category: 'gst_india',
@@ -106,7 +106,7 @@ export const TEMPLATES = {
     },
     stripe_clean: {
         id: 'stripe_clean',
-        name: 'Stripe Billing SaaS',
+        name: 'SaaS Billing',
         competitorStyle: 'Stripe / Linear',
         description: 'Ultra-crisp fintech billing statement with indigo accents and tabular precision.',
         category: 'modern',
@@ -127,7 +127,7 @@ export const TEMPLATES = {
     },
     zoho_standard: {
         id: 'zoho_standard',
-        name: 'Zoho Books Standard',
+        name: 'Books Standard',
         competitorStyle: 'Zoho Invoice / Zoho Books',
         description: 'Structured business invoice with balance due ribbon and clean itemized table.',
         category: 'modern',
@@ -148,7 +148,7 @@ export const TEMPLATES = {
     },
     freshbooks_cloud: {
         id: 'freshbooks_cloud',
-        name: 'FreshBooks Cloud',
+        name: 'Cloud Retainer',
         competitorStyle: 'FreshBooks',
         description: 'Left accent bar layout with prominent amount due callout and client-friendly hierarchy.',
         category: 'modern',
@@ -191,7 +191,7 @@ export const TEMPLATES = {
     },
     professional: {
         id: 'professional',
-        name: 'Deloitte Navy Executive',
+        name: 'Navy Executive',
         competitorStyle: 'Enterprise ERP',
         description: 'Traditional corporate layout with deep navy headers and crisp borders.',
         category: 'corporate',
@@ -233,7 +233,7 @@ export const TEMPLATES = {
     },
     classic: {
         id: 'classic',
-        name: 'Wall Street Classic Serif',
+        name: 'Classic Serif',
         competitorStyle: 'Legal & Financial Advisory',
         description: 'Timeless formal document styling with centered serif typography and double rule borders.',
         category: 'corporate',
@@ -297,7 +297,7 @@ export const TEMPLATES = {
     },
     canva_studio: {
         id: 'canva_studio',
-        name: 'Canva Studio Bold',
+        name: 'Studio Bold',
         competitorStyle: 'Bonsai / HoneyBook',
         description: 'Vibrant purple-rose creative agency layout with modern cards and bold typography.',
         category: 'creative',
@@ -340,7 +340,7 @@ export const TEMPLATES = {
     // 5. MINIMAL & INDUSTRY SPECIALTY
     minimal: {
         id: 'minimal',
-        name: 'Wave Minimal Monochrome',
+        name: 'Minimal Monochrome',
         competitorStyle: 'Wave Financial',
         description: 'Clean typographic layout focusing on whitespace and stark architectural clarity.',
         category: 'minimal',
@@ -425,7 +425,7 @@ export const TEMPLATES = {
     // 18 Standard Print-Ready Templates
     'in-gst': {
         id: 'in-gst',
-        name: 'India GST (IGST)',
+        name: 'India GST',
         competitorStyle: 'ClearTax / India GST',
         description: 'Modern GST-compliant tax invoice with HSN/SAC, Place of Supply, and CGST/SGST/IGST split.',
         category: 'gst_india',

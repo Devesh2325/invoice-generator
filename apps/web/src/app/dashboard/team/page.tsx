@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TeamApi } from '@invoice/api';
 import { TeamMember, TeamInvite, TeamRole, PLANS } from '@invoice/core';
@@ -113,12 +112,12 @@ export default function TeamManagementPage() {
   ];
 
   return (
-    <TenantLayout>
+    <>
       <div className="p-6 lg:p-10 space-y-8 max-w-6xl mx-auto w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-black text-foreground tracking-tight">
+            <h1 className="text-2xl font-semibold text-foreground tracking-tight">
               Team Members & Permissions
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -144,14 +143,14 @@ export default function TeamManagementPage() {
         </div>
 
         {/* Seat Usage Bar */}
-        <Card className="border-border bg-card p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <Card className="border-border bg-card p-4 sm:p-5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-foreground">Active Seats:</span>
-              <span className="text-xs font-mono font-bold text-primary">
+              <span className="text-xs tabular-nums font-bold text-primary">
                 {members.length} / {currentPlan.maxMembers === 999 ? 'Unlimited' : currentPlan.maxMembers} seats
               </span>
-              <Badge variant="outline" className="text-[10px] uppercase font-bold">
+              <Badge variant="outline" className="text-xs uppercase font-bold">
                 {currentPlan.name} Plan
               </Badge>
             </div>
@@ -178,7 +177,7 @@ export default function TeamManagementPage() {
         </Card>
 
         {/* Members Table */}
-        <Card className="border-border bg-card rounded-2xl overflow-hidden shadow-xs">
+        <Card className="border-border bg-card rounded-xl overflow-hidden shadow-xs">
           <CardHeader className="pb-3 border-b border-border bg-muted/20">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" /> Current Team Members ({members.length})
@@ -191,7 +190,7 @@ export default function TeamManagementPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground uppercase text-[10px] tracking-wider">
+                  <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground uppercase text-xs tracking-wider">
                     <th className="py-3 px-4">Member</th>
                     <th className="py-3 px-4">Role</th>
                     <th className="py-3 px-4">Status</th>
@@ -209,17 +208,17 @@ export default function TeamManagementPage() {
                           </div>
                           <div>
                             <div className="font-bold text-foreground">{m.name}</div>
-                            <div className="text-[11px] text-muted-foreground font-mono">{m.email}</div>
+                            <div className="text-xs text-muted-foreground tabular-nums">{m.email}</div>
                           </div>
                         </div>
                       </td>
                       <td className="py-3 px-4">{roleBadge(m.role)}</td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
                           <CheckCircle2 className="h-3 w-3" /> Active
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-muted-foreground text-[11px]">{m.joinedAt}</td>
+                      <td className="py-3 px-4 text-muted-foreground text-xs">{m.joinedAt}</td>
                       <td className="py-3 px-4 text-right">
                         {m.role !== 'owner' ? (
                           <Button
@@ -231,7 +230,7 @@ export default function TeamManagementPage() {
                             <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
                           </Button>
                         ) : (
-                          <span className="text-[10px] text-muted-foreground font-semibold">Primary Owner</span>
+                          <span className="text-xs text-muted-foreground font-semibold">Primary Owner</span>
                         )}
                       </td>
                     </tr>
@@ -244,7 +243,7 @@ export default function TeamManagementPage() {
 
         {/* Pending Invitations */}
         {invites.length > 0 && (
-          <Card className="border-border bg-card rounded-2xl overflow-hidden shadow-xs">
+          <Card className="border-border bg-card rounded-xl overflow-hidden shadow-xs">
             <CardHeader className="pb-3 border-b border-border bg-muted/20">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Clock className="h-4 w-4 text-amber-500" /> Pending Invitations ({invites.length})
@@ -254,7 +253,7 @@ export default function TeamManagementPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground uppercase text-[10px]">
+                    <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground uppercase text-xs">
                       <th className="py-3 px-4">Invited Email</th>
                       <th className="py-3 px-4">Role</th>
                       <th className="py-3 px-4">Invited On</th>
@@ -264,9 +263,9 @@ export default function TeamManagementPage() {
                   <tbody className="divide-y divide-border/60">
                     {invites.map((inv) => (
                       <tr key={inv.id}>
-                        <td className="py-3 px-4 font-mono font-medium">{inv.email}</td>
+                        <td className="py-3 px-4 tabular-nums font-medium">{inv.email}</td>
                         <td className="py-3 px-4">{roleBadge(inv.role)}</td>
-                        <td className="py-3 px-4 text-muted-foreground text-[11px]">
+                        <td className="py-3 px-4 text-muted-foreground text-xs">
                           {new Date(inv.invitedAt).toLocaleDateString()}
                         </td>
                         <td className="py-3 px-4 text-right">
@@ -289,7 +288,7 @@ export default function TeamManagementPage() {
         )}
 
         {/* Role Permissions Matrix */}
-        <Card className="border-border bg-card rounded-2xl overflow-hidden shadow-xs">
+        <Card className="border-border bg-card rounded-xl overflow-hidden shadow-xs">
           <CardHeader className="pb-3 border-b border-border bg-muted/20">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-emerald-600" /> Role-Based Access Matrix
@@ -301,7 +300,7 @@ export default function TeamManagementPage() {
           <CardContent className="p-0">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground uppercase text-[10px]">
+                <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground uppercase text-xs">
                   <th className="py-2.5 px-4">Platform Capability</th>
                   <th className="py-2.5 px-4 text-center">Owner</th>
                   <th className="py-2.5 px-4 text-center">Admin</th>
@@ -347,7 +346,7 @@ export default function TeamManagementPage() {
 
       {/* Invite Member Modal */}
       <Dialog open={inviteModalOpen} onOpenChange={setInviteModalOpen}>
-        <DialogContent className="max-w-md p-6 border-border bg-card rounded-2xl">
+        <DialogContent className="max-w-md p-6 border-border bg-card rounded-xl">
           <DialogHeader className="pb-3 border-b border-border">
             <DialogTitle className="text-base font-bold text-foreground">Invite Team Member</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
@@ -414,6 +413,6 @@ export default function TeamManagementPage() {
         title="Upgrade to Add More Team Members"
         description={`Your current plan allows up to ${currentPlan.maxMembers} seat(s). Upgrade to Professional for 5 seats or Enterprise for unlimited team collaboration.`}
       />
-    </TenantLayout>
+    </>
   );
 }

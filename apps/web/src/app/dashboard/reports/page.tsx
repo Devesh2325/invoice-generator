@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TenantApi } from '@invoice/api';
 import {
@@ -214,12 +213,12 @@ export default function TenantReportsPage() {
   };
 
   return (
-    <TenantLayout>
+    <>
       <div className="p-6 lg:p-10 space-y-6 max-w-7xl mx-auto w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
               Reports
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -255,7 +254,7 @@ export default function TenantReportsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
                   From Date
                 </label>
                 <Input
@@ -266,7 +265,7 @@ export default function TenantReportsPage() {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
                   To Date
                 </label>
                 <Input
@@ -277,7 +276,7 @@ export default function TenantReportsPage() {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
                   Customer
                 </label>
                 <select
@@ -294,7 +293,7 @@ export default function TenantReportsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
                   Invoice Status
                 </label>
                 <select
@@ -313,7 +312,7 @@ export default function TenantReportsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
                   Payment Method
                 </label>
                 <select
@@ -331,7 +330,7 @@ export default function TenantReportsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
                   Currency
                 </label>
                 <select
@@ -355,13 +354,13 @@ export default function TenantReportsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardContent className="p-5 space-y-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Total Invoiced (Accrual)
               </span>
-              <div className="text-2xl font-black text-slate-900 dark:text-slate-100 tabular-nums">
+              <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                 {formatCurrency(stats.totalInvoiced, displayCurrency)}
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-400 dark:text-slate-500">
                 Net Taxable: {formatCurrency(stats.netTaxableRevenue, displayCurrency)}
               </div>
             </CardContent>
@@ -369,13 +368,13 @@ export default function TenantReportsPage() {
 
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardContent className="p-5 space-y-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Actual Cash Collected
               </span>
-              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+              <div className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
                 {formatCurrency(stats.totalCashCollected, displayCurrency)}
               </div>
-              <div className="text-[11px] text-emerald-700 dark:text-emerald-400">
+              <div className="text-xs text-emerald-700 dark:text-emerald-400">
                 Net after refunds: {formatCurrency(stats.netCashRetained, displayCurrency)}
               </div>
             </CardContent>
@@ -383,13 +382,13 @@ export default function TenantReportsPage() {
 
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardContent className="p-5 space-y-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Total Refunds Issued
               </span>
-              <div className="text-2xl font-black text-rose-600 dark:text-rose-400 tabular-nums">
+              <div className="text-2xl font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
                 {formatCurrency(stats.totalRefunded, displayCurrency)}
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-400 dark:text-slate-500">
                 Tracked separately from collections
               </div>
             </CardContent>
@@ -397,13 +396,13 @@ export default function TenantReportsPage() {
 
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardContent className="p-5 space-y-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Outstanding Receivables
               </span>
-              <div className="text-2xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
+              <div className="text-2xl font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
                 {formatCurrency(stats.outstandingReceivables, displayCurrency)}
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-400 dark:text-slate-500">
                 Uncollected customer balances
               </div>
             </CardContent>
@@ -411,13 +410,13 @@ export default function TenantReportsPage() {
 
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardContent className="p-5 space-y-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Total Tax Liability
               </span>
-              <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
+              <div className="text-2xl font-semibold text-indigo-600 dark:text-indigo-400 tabular-nums">
                 {formatCurrency(stats.totalTax, displayCurrency)}
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-400 dark:text-slate-500">
                 CGST / SGST / IGST / Tax total
               </div>
             </CardContent>
@@ -425,13 +424,13 @@ export default function TenantReportsPage() {
 
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <CardContent className="p-5 space-y-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Net Round-Off Adjustments
               </span>
-              <div className="text-2xl font-black text-slate-800 dark:text-slate-200 tabular-nums">
+              <div className="text-2xl font-semibold text-slate-800 dark:text-slate-200 tabular-nums">
                 {formatCurrency(stats.totalRoundOff, displayCurrency, { showSign: true })}
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-slate-500">
+              <div className="text-xs text-slate-400 dark:text-slate-500">
                 Cumulative invoice rounding delta
               </div>
             </CardContent>
@@ -483,7 +482,7 @@ export default function TenantReportsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-950/75 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-950/75 text-slate-500 dark:text-slate-400 font-semibold">
                       <th className="py-3 px-4">Invoice #</th>
                       <th className="py-3 px-4">Customer</th>
                       <th className="py-3 px-4">Issue Date</th>
@@ -502,14 +501,14 @@ export default function TenantReportsPage() {
                         <tr key={doc.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                           <td className="py-3 px-4">
                             <div className="font-bold text-slate-900 dark:text-slate-100">{doc.documentNumber}</div>
-                            <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                            <div className="text-xs text-slate-400 dark:text-slate-500">
                               {doc.invoiceName || 'Invoice'}
                             </div>
                           </td>
                           <td className="py-3 px-4 text-slate-800 dark:text-slate-200">{doc.client?.name || 'Customer'}</td>
                           <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{doc.issueDate}</td>
                           <td className="py-3 px-4">
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className="text-xs">
                               {formatInvoiceStatusLabel(eff)}
                             </Badge>
                           </td>
@@ -535,6 +534,6 @@ export default function TenantReportsPage() {
           </CardContent>
         </Card>
       </div>
-    </TenantLayout>
+    </>
   );
 }

@@ -4,70 +4,116 @@
 
 @layer base {
   :root {
-    --background: 220 33% 98%;
-    --foreground: 222 47% 11%;
+    --background: 240 33% 98%;
+    --foreground: 243 40% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 243 40% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 243 40% 12%;
 
-    --primary: 234 89% 59%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 247 100% 65%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 245 40% 96%;
+    --secondary-foreground: 243 40% 12%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 245 35% 96%;
+    --muted-foreground: 243 12% 42%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 247 60% 96%;
+    --accent-foreground: 243 40% 12%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 234 89% 59%;
+    --border: 245 28% 91%;
+    --input: 245 28% 89%;
+    --ring: 247 100% 65%;
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
+    --background: 245 40% 6%;
+    --foreground: 245 30% 94%;
 
-    --card: 224 71% 6%;
-    --card-foreground: 213 31% 91%;
+    --card: 245 34% 9%;
+    --card-foreground: 245 30% 94%;
 
-    --popover: 224 71% 6%;
-    --popover-foreground: 213 31% 91%;
+    --popover: 245 34% 9%;
+    --popover-foreground: 245 30% 94%;
 
-    --primary: 234 89% 65%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 247 100% 72%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 47% 11%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 245 28% 14%;
+    --secondary-foreground: 245 30% 94%;
 
-    --muted: 223 47% 11%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 245 28% 13%;
+    --muted-foreground: 245 14% 68%;
 
-    --accent: 216 34% 17%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 245 28% 17%;
+    --accent-foreground: 245 30% 94%;
 
     --destructive: 0 62.8% 40.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 234 89% 65%;
+    --border: 245 24% 19%;
+    --input: 245 24% 21%;
+    --ring: 247 100% 72%;
+  }
+}
+
+@layer components {
+  .nav-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 200;
+    height: 3px;
+    width: 100%;
+    transform-origin: left;
+    background-image: linear-gradient(90deg, #5b4bff, #a23dff, #e0359a);
+    animation: nav-progress 8s cubic-bezier(0.08, 0.8, 0.2, 1) forwards;
+  }
+  .brand-gradient {
+    background-image: linear-gradient(120deg, #5b4bff 0%, #8b3dff 60%, #c026d3 100%);
+    box-shadow: 0 8px 22px -10px rgb(91 75 255 / 0.75);
+    transition: filter 0.15s ease, box-shadow 0.15s ease;
+  }
+  .brand-gradient:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 10px 26px -10px rgb(91 75 255 / 0.95);
+  }
+  .brand-text {
+    background-image: linear-gradient(110deg, #5b4bff 10%, #a23dff 55%, #e0359a 95%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* The primary colour is too dark to read as text on a dark background. */
+  .dark .text-primary {
+    color: #a79eff;
+  }
+  .dark .brand-text {
+    background-image: linear-gradient(110deg, #9d92ff 10%, #c78bff 55%, #f472b6 95%);
+  }
+  .glass-card {
+    background-color: hsl(var(--card) / 0.8);
+    border: 1px solid hsl(var(--border) / 0.8);
+    box-shadow: 0 1px 2px rgb(30 27 75 / 0.04), 0 14px 34px -22px rgb(30 27 75 / 0.28);
+    backdrop-filter: blur(16px);
+  }
+  .paper-shadow {
+    box-shadow: 0 2px 6px rgb(30 27 75 / 0.05), 0 30px 60px -30px rgb(30 27 75 / 0.35);
   }
 }
 
 @layer base {
   html {
+    background-color: hsl(var(--background));
     scrollbar-gutter: stable;
     overflow-y: scroll;
   }
@@ -75,11 +121,31 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+    @apply text-foreground antialiased selection:bg-primary/20 selection:text-primary;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     min-height: 100vh;
+  }
+  /* The site-wide gradient. Fixed behind the content, so scrolling doesn't repaint it. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      radial-gradient(70vmax 55vmax at 0% 0%, hsl(247 100% 72% / 0.3), transparent 62%),
+      radial-gradient(60vmax 50vmax at 100% 4%, hsl(322 92% 70% / 0.24), transparent 60%),
+      radial-gradient(70vmax 60vmax at 88% 100%, hsl(190 95% 62% / 0.2), transparent 62%),
+      radial-gradient(60vmax 50vmax at 6% 100%, hsl(268 90% 72% / 0.2), transparent 60%);
+  }
+  .dark body::before {
+    background-image:
+      radial-gradient(70vmax 55vmax at 0% 0%, hsl(247 90% 55% / 0.34), transparent 62%),
+      radial-gradient(60vmax 50vmax at 100% 4%, hsl(322 85% 50% / 0.22), transparent 60%),
+      radial-gradient(70vmax 60vmax at 88% 100%, hsl(190 90% 42% / 0.18), transparent 62%),
+      radial-gradient(60vmax 50vmax at 6% 100%, hsl(268 85% 50% / 0.22), transparent 60%);
   }
   .tabular-nums {
     font-variant-numeric: tabular-nums;
@@ -109,7 +175,19 @@
   margin: 8mm;
 }
 
+@keyframes nav-progress {
+  from {
+    transform: scaleX(0.08);
+  }
+  to {
+    transform: scaleX(0.92);
+  }
+}
+
 @media print {
+  body::before {
+    display: none !important;
+  }
   html,
   body {
     background: #ffffff !important;
@@ -150,6 +228,11 @@
     box-shadow: none !important;
     border: none !important;
     margin: 0 auto !important;
+  }
+  /* The sheet is z-index -1 on screen to stay hidden. Reset it, or it prints behind the page background. */
+  .print-only-sheet {
+    z-index: auto !important;
+    background: #ffffff !important;
   }
   /* Remove dashed borders and interactive focus outlines on inputs when printing */
   input, textarea, select {

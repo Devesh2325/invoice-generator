@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useMemo, useState } from 'react';
+import { toast } from '@/components/ui/use-toast';
 import {
   DocumentModel,
   DocumentType,
@@ -124,6 +125,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   const mutedTextColor = isDarkPaper ? '#94A3B8' : '#64748B';
   const borderColor = isDarkPaper ? '#2A303B' : tpl.line || '#E2E8F0';
   const tintBg = isDarkPaper ? '#161A22' : tpl.tint || '#F8FAFC';
+  // Dark paper uses a bright accent, so text on top of the accent has to be dark.
+  const onAccentColor = isDarkPaper ? '#0E1116' : '#FFFFFF';
 
   // Layout architecture & typography
   const headerLayout = tpl.header; // 'band' | 'center' | 'big' | 'side' | 'left'
@@ -170,7 +173,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert('Logo file must be under 2MB.');
+      toast({ title: 'Logo file must be under 2MB.', variant: 'destructive' });
       return;
     }
     const reader = new FileReader();
@@ -187,7 +190,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   // Dynamic input styling
   const editableInput = isDarkPaper
     ? 'bg-white/5 hover:bg-white/10 focus:bg-slate-900 text-slate-100 placeholder-slate-500 border border-slate-700/60 focus:border-lime-400 rounded px-1.5 py-0.5 outline-none transition-all'
-    : 'bg-transparent hover:bg-slate-50/80 focus:bg-white text-slate-900 placeholder-slate-400 border border-dashed border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded px-1.5 py-0.5 outline-none transition-all';
+    : 'bg-slate-500/[0.04] hover:bg-slate-500/10 focus:bg-white text-slate-900 placeholder-slate-400 border border-transparent focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-1.5 py-0.5 outline-none transition-all';
 
   // Crisp, modern, seamless input styling for line items table (no messy dashed outlines)
   const tableCellInput = isDarkPaper
@@ -294,7 +297,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   return (
     <div
       id="invoice-document-capture"
-      className={`shadow-2xl overflow-hidden max-w-4xl mx-auto ${fontClass} relative transition-all border print:shadow-none print:border-none print:m-0 print:w-full print:max-w-none print:rounded-none canvas-print-target`}
+      className={`paper-shadow overflow-hidden max-w-4xl mx-auto ${fontClass} relative transition-all border print:shadow-none print:border-none print:m-0 print:w-full print:max-w-none print:rounded-none canvas-print-target`}
       style={{
         backgroundColor: paperColor,
         color: textColor,
@@ -346,7 +349,11 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
         </div>
 
         <div className="flex items-center gap-2 text-[10px] font-medium">
-          <span>{tpl.taxLabel} Rate: {tpl.taxRate}%</span>
+          <span>
+            {isIndiaGst
+              ? `Tax: ${isInterState ? 'IGST' : 'CGST + SGST'}`
+              : `Tax: ${effectiveTaxLabel}`}
+          </span>
           <span>•</span>
           <span>Currency: {currency}</span>
         </div>
@@ -382,6 +389,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   placeholder={`${tpl.taxIdLabel}: e.g. CHE-123.456.789`}
                   className={`${bannerEditableInput} font-mono w-full`}
                 />
+                {renderSenderContact(bannerEditableInput)}
                 <input
                   type="text"
                   value={document.sender.address?.street1 || ''}
@@ -434,12 +442,41 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 placeholder={`${tpl.taxIdLabel}: Customer Tax ID`}
                 className={`${bannerEditableInput} font-mono text-xs w-full`}
               />
+              <div className="text-xs">
+                {renderStateField(
+                  document.client.billingAddress?.state || '',
+                  (value) => onUpdateClientAddress('state', value),
+                  bannerEditableInput
+                )}
+              </div>
+              <input
+                type="email"
+                value={document.client.email || ''}
+                onChange={(e) => onUpdateClient('email', e.target.value)}
+                placeholder="Email"
+                className={`${bannerEditableInput} text-xs w-full`}
+              />
+              <input
+                type="text"
+                value={document.client.phone || ''}
+                onChange={(e) => onUpdateClient('phone', e.target.value)}
+                placeholder="Phone"
+                className={`${bannerEditableInput} text-xs w-full`}
+              />
               <input
                 type="text"
                 value={document.client.billingAddress?.street1 || ''}
                 onChange={(e) => onUpdateClientAddress('street1', e.target.value)}
                 placeholder="Billing Street"
                 className={`${bannerEditableInput} text-xs w-full`}
+              />
+              {renderSupplyHint('#FFFFFF')}
+              <input
+                type="text"
+                value={document.client.billingAddress?.postalCode || ''}
+                onChange={(e) => onUpdateClientAddress('postalCode', e.target.value)}
+                placeholder="Postal Code"
+                className={`${bannerEditableInput} text-xs font-mono w-full`}
               />
               <div className="grid grid-cols-2 gap-1 text-xs">
                 <input
@@ -483,7 +520,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
           </div>
 
           {/* Right Main Body of Sidebar Layout */}
-          <div className="flex-1 p-6 md:p-8 space-y-6">
+          <div className="min-w-0 flex-1 p-6 md:p-8 space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b" style={{ borderColor }}>
               <div>
                 <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight" style={{ color: effectiveAccent }}>
@@ -499,7 +536,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             </div>
 
             {/* Metadata line */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs p-3 rounded-lg" style={{ backgroundColor: tintBg, borderColor }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs p-3 rounded-lg" style={{ backgroundColor: tintBg, borderColor }}>
               <div>
                 <span className="text-[10px] font-bold block" style={{ color: mutedTextColor }}>Doc No:</span>
                 <input
@@ -537,6 +574,16 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   className={`${editableInput} w-full`}
                 />
               </div>
+              <div>
+                <span className="text-[10px] font-bold block" style={{ color: mutedTextColor }}>Terms:</span>
+                <input
+                  type="text"
+                  value={document.paymentTerms || ''}
+                  onChange={(e) => onUpdateDoc('paymentTerms', e.target.value)}
+                  placeholder="Net 30 Days"
+                  className={`${editableInput} w-full`}
+                />
+              </div>
             </div>
 
             {/* Line items table */}
@@ -566,7 +613,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             {isBannerHeader ? (
               /* --- BAND HEADER (UK VAT, AU GST, NZ GST, Proforma) --- */
               <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                <div className="space-y-2">
+                <div className="w-full md:w-7/12 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">
                       {resolvedHeading}
@@ -582,6 +629,25 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   )}
                   <div className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/20 text-white mt-1">
                     {document.type.replace('_', ' ')}
+                  </div>
+                  <div className="pt-3 space-y-2">
+                    {renderLogo(true)}
+                    <input
+                      type="text"
+                      value={document.sender.name}
+                      onChange={(e) => onUpdateSender('name', e.target.value)}
+                      placeholder="Your Business Name"
+                      className={`${bannerEditableInput} text-lg font-black w-full`}
+                    />
+                    <input
+                      type="text"
+                      value={document.sender.taxId || ''}
+                      onChange={(e) => onUpdateSender('taxId', e.target.value.toUpperCase())}
+                      placeholder={effectiveTaxIdLabel}
+                      className={`${bannerEditableInput} font-mono text-xs w-full`}
+                    />
+                    {renderSenderContact(bannerEditableInput)}
+                    {renderSenderAddress(bannerEditableInput)}
                   </div>
                 </div>
 
@@ -623,6 +689,16 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       className={`${bannerEditableInput} w-36 md:text-right`}
                     />
                   </div>
+                  <div className="flex items-center md:justify-end gap-2">
+                    <span className="font-semibold text-white/80">Terms:</span>
+                    <input
+                      type="text"
+                      value={document.paymentTerms || ''}
+                      onChange={(e) => onUpdateDoc('paymentTerms', e.target.value)}
+                      placeholder="Net 30 Days"
+                      className={`${bannerEditableInput} w-36 md:text-right`}
+                    />
+                  </div>
                 </div>
               </div>
             ) : isCenteredHeader ? (
@@ -646,14 +722,10 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       placeholder="Tax ID"
                       className={`${editableInput} font-mono text-center w-36`}
                     />
-                    <span>•</span>
-                    <input
-                      type="email"
-                      value={document.sender.email || ''}
-                      onChange={(e) => onUpdateSender('email', e.target.value)}
-                      placeholder="email@company.com"
-                      className={`${editableInput} text-center w-40`}
-                    />
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    {renderSenderContact(editableInput)}
+                    {renderSenderAddress(editableInput)}
                   </div>
                 </div>
 
@@ -666,19 +738,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       {resolvedTypeBadge}
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-mono" style={{ color: mutedTextColor }}>
-                    <div>
-                      <span>#{document.documentNumber}</span>
-                    </div>
-                    <div>•</div>
-                    <div>
-                      <span>Date: {document.issueDate}</span>
-                    </div>
-                    <div>•</div>
-                    <div>
-                      <span>{tpl.dueLabel}: {document.dueDate || '—'}</span>
-                    </div>
-                  </div>
+                  <div className="w-full max-w-xs mx-auto text-left">{renderDocMeta()}</div>
                 </div>
               </div>
             ) : isBigHeader ? (
@@ -696,9 +756,10 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       {resolvedTypeBadge}
                     </span>
                   </div>
+                  <div className="mt-4 w-full max-w-xs">{renderDocMeta()}</div>
                 </div>
 
-                <div className="space-y-2 md:text-right">
+                <div className="w-full md:w-5/12 space-y-2 md:text-right">
                   {renderLogo()}
                   <div>
                     <input
@@ -718,6 +779,10 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       placeholder="Tax ID"
                       className={`${editableInput} font-mono font-bold w-36`}
                     />
+                  </div>
+                  <div className="space-y-1 text-left">
+                    {renderSenderContact(editableInput)}
+                    {renderSenderAddress(editableInput)}
                   </div>
                 </div>
               </div>
@@ -755,19 +820,11 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         <span className="font-bold shrink-0" style={{ color: mutedTextColor }}>
                           State:
                         </span>
-                        <select
-                          value={document.sender.address?.state || '27 - Maharashtra'}
-                          onChange={(e) => onUpdateSenderAddress('state', e.target.value)}
-                          className={`${editableInput} font-semibold w-full cursor-pointer`}
-                          style={{ backgroundColor: paperColor }}
-                        >
-                          <option value="">Select GST State</option>
-                          {INDIAN_STATES.map((st) => (
-                            <option key={st.code} value={st.label}>
-                              {st.label}
-                            </option>
-                          ))}
-                        </select>
+                        {renderStateField(
+                          document.sender.address?.state || '',
+                          (value) => onUpdateSenderAddress('state', value),
+                          `${editableInput} font-semibold`
+                        )}
                       </div>
                     ) : (
                       <div className="flex items-center gap-1">
@@ -788,7 +845,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       type="email"
                       value={document.sender.email || ''}
                       onChange={(e) => onUpdateSender('email', e.target.value)}
-                      placeholder="billing@company.com"
+                      placeholder="Email"
                       className={`${editableInput} w-full`}
                     />
 
@@ -796,7 +853,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       type="text"
                       value={document.sender.phone || ''}
                       onChange={(e) => onUpdateSender('phone', e.target.value)}
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="Phone"
                       className={`${editableInput} w-full`}
                     />
 
@@ -862,7 +919,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         type="text"
                         value={document.referenceNumber || ''}
                         onChange={(e) => onUpdateDoc('referenceNumber', e.target.value)}
-                        placeholder="PO-99201"
+                        placeholder="Optional"
                         className={`${editableInput} md:text-right w-40`}
                       />
                     </div>
@@ -910,10 +967,10 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
           {/* ================================================================ */}
           <div className="p-6 md:p-8 space-y-6">
             {/* Bill To & Supply Info Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div>
               {/* Customer / Bill To Card */}
               <div
-                className={`md:col-span-7 p-4 border space-y-2 ${cardRadius}`}
+                className={`p-4 border space-y-2 ${cardRadius}`}
                 style={{ backgroundColor: tintBg, borderColor }}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b" style={{ borderColor }}>
@@ -978,19 +1035,11 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       <span className="font-bold shrink-0" style={{ color: mutedTextColor }}>
                         State:
                       </span>
-                      <select
-                        value={document.client.billingAddress?.state || '27 - Maharashtra'}
-                        onChange={(e) => onUpdateClientAddress('state', e.target.value)}
-                        className={`${editableInput} font-semibold w-full cursor-pointer`}
-                        style={{ backgroundColor: paperColor }}
-                      >
-                        <option value="">Select GST State</option>
-                        {INDIAN_STATES.map((st) => (
-                          <option key={st.code} value={st.label}>
-                            {st.label}
-                          </option>
-                        ))}
-                      </select>
+                      {renderStateField(
+                        document.client.billingAddress?.state || '',
+                        (value) => onUpdateClientAddress('state', value),
+                        `${editableInput} font-semibold`
+                      )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-1">
@@ -1011,7 +1060,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     type="email"
                     value={document.client.email || ''}
                     onChange={(e) => onUpdateClient('email', e.target.value)}
-                    placeholder="client@domain.com"
+                    placeholder="Email"
                     className={`${editableInput} w-full`}
                   />
 
@@ -1019,7 +1068,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     type="text"
                     value={document.client.phone || ''}
                     onChange={(e) => onUpdateClient('phone', e.target.value)}
-                    placeholder="+1 555 123 4567"
+                    placeholder="Phone"
                     className={`${editableInput} w-full`}
                   />
 
@@ -1057,75 +1106,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 </div>
               </div>
 
-              {/* Tax & Supply Callout / Balance Due */}
-              <div
-                className={`md:col-span-5 p-4 border flex flex-col justify-between space-y-3 ${cardRadius}`}
-                style={{ backgroundColor: tintBg, borderColor }}
-              >
-                <div className="space-y-2 text-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: mutedTextColor }}>
-                    {isIndiaGst ? (tpl.supplyTitle || 'Tax & Supply Determination') : `${taxProfile.taxLabel} Tax & Regulatory Standard`}
-                  </span>
-                  <div className="p-2.5 rounded-lg border space-y-1.5" style={{ backgroundColor: paperColor, borderColor }}>
-                    {isIndiaGst ? (
-                      <>
-                        <div className="flex justify-between">
-                          <span style={{ color: mutedTextColor }}>Supplier State:</span>
-                          <span className="font-bold">{document.sender.address?.state || '27 - Maharashtra'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span style={{ color: mutedTextColor }}>Place of Supply:</span>
-                          <span className="font-bold">{document.client.billingAddress?.state || '27 - Maharashtra'}</span>
-                        </div>
-                        <div className="pt-1 border-t flex justify-between items-center" style={{ borderColor }}>
-                          <span style={{ color: mutedTextColor }}>Tax Classification:</span>
-                          <span
-                            className="font-bold px-2 py-0.5 rounded text-[11px]"
-                            style={{ backgroundColor: `${effectiveAccent}18`, color: effectiveAccent }}
-                          >
-                            {isInterState ? 'IGST (Inter-State)' : 'CGST + SGST (Intra-State)'}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex justify-between">
-                          <span style={{ color: mutedTextColor }}>Tax Rule:</span>
-                          <span className="font-bold">
-                            {taxProfile.taxLabel} Standard ({taxProfile.defaultTaxRate}%)
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span style={{ color: mutedTextColor }}>Jurisdiction:</span>
-                          <span className="font-bold">{taxProfile.defaultCountry} Standards</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span style={{ color: mutedTextColor }}>Billing Region:</span>
-                          <span className="font-bold">{document.client.billingAddress?.country || taxProfile.defaultCountry}</span>
-                        </div>
-                        {taxProfile.defaultNotes && (
-                          <div className="pt-1 border-t text-[10px]" style={{ borderColor, color: mutedTextColor }}>
-                            {taxProfile.defaultCountry} Standard Compliance
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div
-                  className="p-3.5 rounded-xl flex justify-between items-center text-white"
-                  style={{ backgroundColor: effectiveAccent }}
-                >
-                  <div>
-                    <div className="text-[10px] uppercase font-black opacity-85">{tpl.balanceLabel}</div>
-                    <div className="text-xs opacity-90">{currency}</div>
-                  </div>
-                  <div className="text-xl font-black font-mono">
-                    {formatCurrency(summary.balanceDue, currency)}
-                  </div>
-                </div>
-              </div>
+              {renderSupplyHint(mutedTextColor)}
             </div>
 
             {/* Line items table */}
@@ -1140,15 +1121,153 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   );
 
   /* ======================================================================== */
-  /* HELPER SUB-RENDERERS: LINE ITEMS TABLE & TOTALS */
+  /* HELPER SUB-RENDERERS: HEADER FIELDS, LINE ITEMS TABLE & TOTALS */
   /* ======================================================================== */
+  function renderStateField(value: string, onChange: (value: string) => void, inputClass: string) {
+    if (!isIndiaGst) {
+      return (
+        <input
+          type="text"
+          aria-label="State or region"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="County / State / Region"
+          className={`${inputClass} w-full`}
+        />
+      );
+    }
+    // The state decides IGST vs CGST + SGST, so show exactly what is stored, even if it is empty or an old value.
+    const isKnownState = INDIAN_STATES.some((st) => st.label === value);
+    return (
+      <select
+        aria-label="GST state"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`${inputClass} w-full cursor-pointer`}
+      >
+        <option value="" className="bg-white text-slate-900">Select GST State</option>
+        {value && !isKnownState && (
+          <option value={value} className="bg-white text-slate-900">{value}</option>
+        )}
+        {INDIAN_STATES.map((st) => (
+          <option key={st.code} value={st.label} className="bg-white text-slate-900">
+            {st.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  /** The one thing worth saying about supply type while editing. The full details are on the printed invoice. */
+  function renderSupplyHint(color: string) {
+    if (!isIndiaGst) return null;
+    return (
+      <p className="mt-2 text-xs no-print" style={{ color }} role="status">
+        {isInterState
+          ? 'Customer is in another state, so IGST applies.'
+          : 'Customer is in your state, so CGST and SGST apply.'}
+      </p>
+    );
+  }
+
+  function renderSenderContact(inputClass: string) {
+    return (
+      <div className="grid grid-cols-1 gap-1 text-xs text-left">
+        {renderStateField(
+          document.sender.address?.state || '',
+          (value) => onUpdateSenderAddress('state', value),
+          inputClass
+        )}
+        <input
+          type="email"
+          value={document.sender.email || ''}
+          onChange={(e) => onUpdateSender('email', e.target.value)}
+          placeholder="Email"
+          className={`${inputClass} w-full`}
+        />
+        <input
+          type="text"
+          value={document.sender.phone || ''}
+          onChange={(e) => onUpdateSender('phone', e.target.value)}
+          placeholder="Phone"
+          className={`${inputClass} w-full`}
+        />
+      </div>
+    );
+  }
+
+  function renderSenderAddress(inputClass: string) {
+    return (
+      <div className="grid grid-cols-3 gap-1 text-xs text-left">
+        <input
+          type="text"
+          value={document.sender.address?.street1 || ''}
+          onChange={(e) => onUpdateSenderAddress('street1', e.target.value)}
+          placeholder="Street Address"
+          className={`${inputClass} col-span-3 w-full`}
+        />
+        <input
+          type="text"
+          value={document.sender.address?.city || ''}
+          onChange={(e) => onUpdateSenderAddress('city', e.target.value)}
+          placeholder="City"
+          className={`${inputClass} w-full`}
+        />
+        <input
+          type="text"
+          value={document.sender.address?.postalCode || ''}
+          onChange={(e) => onUpdateSenderAddress('postalCode', e.target.value)}
+          placeholder="Postal Code"
+          className={`${inputClass} w-full font-mono`}
+        />
+        <input
+          type="text"
+          value={document.sender.address?.country || ''}
+          onChange={(e) => onUpdateSenderAddress('country', e.target.value)}
+          placeholder="Country"
+          className={`${inputClass} w-full`}
+        />
+      </div>
+    );
+  }
+
+  function renderDocMeta() {
+    const rows: { label: string; field: string; type: string; value: string; placeholder?: string }[] = [
+      { label: 'Doc No', field: 'documentNumber', type: 'text', value: document.documentNumber },
+      { label: 'PO / Ref', field: 'referenceNumber', type: 'text', value: document.referenceNumber || '', placeholder: 'Optional' },
+      { label: 'Issue Date', field: 'issueDate', type: 'date', value: document.issueDate },
+      { label: tpl.dueLabel, field: 'dueDate', type: 'date', value: document.dueDate || '' },
+      { label: 'Terms', field: 'paymentTerms', type: 'text', value: document.paymentTerms || '', placeholder: 'Net 30 Days' },
+    ];
+    return (
+      <div className="space-y-1.5 text-xs">
+        {rows.map((row) => (
+          <label key={row.field} className="flex items-center justify-between gap-2">
+            <span className="shrink-0 font-semibold" style={{ color: mutedTextColor }}>
+              {row.label}:
+            </span>
+            <input
+              type={row.type}
+              value={row.value}
+              onChange={(e) => onUpdateDoc(row.field, e.target.value)}
+              placeholder={row.placeholder}
+              className={`${editableInput} w-40 font-medium`}
+            />
+          </label>
+        ))}
+      </div>
+    );
+  }
+
   function renderLineItemsTable() {
     // Determine table header style - clean solid accent header banner matching modern invoice standard
     const headBg = effectiveAccent;
-    const headColor = '#FFFFFF';
+    const headColor = onAccentColor;
 
     const hasExtraCols = showHsn || showTaxColumns || showDiscount;
     const tableMinW = hasExtraCols ? 'min-w-[920px]' : 'min-w-[560px]';
+    // Amount is before tax. The gross subtotal only adds up to that column when no line has its own discount.
+    const hasLineDiscounts = document.items.some((item) => Number(item.lineDiscount) > 0);
 
     return (
       <div className="space-y-3">
@@ -1227,7 +1346,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 return (
                   <tr
                     key={item.id}
-                    className="group transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
+                    className="group"
                     style={{ backgroundColor: rowBg }}
                   >
                     <td className="py-2.5 px-3 text-center font-mono font-medium" style={{ color: mutedTextColor }}>
@@ -1293,7 +1412,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         type="number"
                         min="0"
                         step="any"
-                        value={item.quantity}
+                        value={item.quantity || ''}
                         onChange={(e) => onUpdateItem(idx, 'quantity', Number(e.target.value))}
                         className={`${tableCellInput} w-full text-right font-mono font-medium`}
                       />
@@ -1315,7 +1434,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         type="number"
                         min="0"
                         step="any"
-                        value={item.unitPrice}
+                        value={item.unitPrice || ''}
+                        placeholder="0"
                         onChange={(e) => onUpdateItem(idx, 'unitPrice', Number(e.target.value))}
                         className={`${tableCellInput} w-full text-right font-mono font-medium`}
                       />
@@ -1327,7 +1447,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                           min="0"
                           max="100"
                           step="any"
-                          value={item.discountValue || 0}
+                          value={item.discountValue || ''}
+                          placeholder="0"
                           onChange={(e) =>
                             onUpdateItem(idx, 'discountValue', Number(e.target.value))
                           }
@@ -1347,11 +1468,13 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                               className={`${tableCellInput} w-full text-right font-mono cursor-pointer`}
                               style={{ backgroundColor: paperColor }}
                             >
-                              <option value={0}>0%</option>
-                              <option value={5}>5%</option>
-                              <option value={12}>12%</option>
-                              <option value={18}>18%</option>
-                              <option value={28}>28%</option>
+                              {[...new Set([0, 5, 12, 18, 28, Number(item.taxRate ?? 18)])]
+                                .sort((a, b) => a - b)
+                                .map((rate) => (
+                                  <option key={rate} value={rate}>
+                                    {rate}%
+                                  </option>
+                                ))}
                             </select>
                           </td>
                           {isInterState ? (
@@ -1392,7 +1515,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     )}
 
                     <td className="py-2 px-3 text-right font-mono font-bold text-sm min-w-[110px]">
-                      {formatCurrency(item.lineTotal, currency)}
+                      {formatCurrency(item.lineNet, currency)}
                     </td>
 
                     <td className="py-2 px-1.5 text-center no-print w-14 min-w-[56px]">
@@ -1427,18 +1550,19 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             <tfoot
               className="border-t-2 font-bold"
               style={{
+                color: textColor,
                 borderColor: isDarkPaper ? '#334155' : '#CBD5E1',
                 borderBottom: `2px solid ${isDarkPaper ? '#334155' : '#0F172A'}`,
               }}
             >
               <tr className="text-xs md:text-sm">
                 <td
-                  className="py-3 px-3 font-black text-slate-800 dark:text-slate-100"
+                  className="py-3 px-3 font-black"
                   colSpan={showHsn ? 3 : 2}
                 >
                   Total
                 </td>
-                <td className="py-3 px-2 text-right font-mono font-black text-slate-900 dark:text-white">
+                <td className="py-3 px-2 text-right font-mono font-black">
                   {totalQuantity}
                 </td>
                 {showUnit && <td className="py-3 px-2 text-center" />}
@@ -1449,16 +1573,16 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     <>
                       <td className="py-3 px-2" />
                       {isInterState ? (
-                        <td className="py-3 px-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
-                          {formatCurrency(summary.totalTax, currency)}
+                        <td className="py-3 px-2 text-right font-mono font-bold">
+                          {formatCurrency(summary.igstTotal || 0, currency)}
                         </td>
                       ) : (
                         <>
-                          <td className="py-3 px-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
-                            {formatCurrency(summary.totalTax / 2, currency)}
+                          <td className="py-3 px-2 text-right font-mono font-bold">
+                            {formatCurrency(summary.cgstTotal || 0, currency)}
                           </td>
-                          <td className="py-3 px-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
-                            {formatCurrency(summary.totalTax / 2, currency)}
+                          <td className="py-3 px-2 text-right font-mono font-bold">
+                            {formatCurrency(summary.sgstTotal || 0, currency)}
                           </td>
                         </>
                       )}
@@ -1466,14 +1590,14 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   ) : (
                     <>
                       <td className="py-3 px-2" />
-                      <td className="py-3 px-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                      <td className="py-3 px-2 text-right font-mono font-bold">
                         {formatCurrency(summary.totalTax, currency)}
                       </td>
                     </>
                   )
                 )}
-                <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white text-sm md:text-base">
-                  {formatCurrency(summary.subtotal, currency)}
+                <td className="py-3 px-3 text-right font-mono font-black text-sm md:text-base">
+                  {!hasLineDiscounts && formatCurrency(summary.subtotal, currency)}
                 </td>
                 <td className="py-3 px-2 no-print" />
               </tr>
@@ -1717,7 +1841,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
               <input
                 type="number"
                 min="0"
-                value={document.documentDiscountValue || 0}
+                value={document.documentDiscountValue || ''}
+                placeholder="0"
                 onChange={(e) =>
                   onUpdateDiscount(
                     document.documentDiscountType || 'percentage',
@@ -1748,7 +1873,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
               <input
                 type="number"
                 min="0"
-                value={document.shippingFee || 0}
+                value={document.shippingFee || ''}
+                placeholder="0"
                 onChange={(e) => onUpdateShipping(Number(e.target.value))}
                 className={`${editableInput} w-24 text-right font-mono`}
               />
@@ -1759,7 +1885,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
               <input
                 type="number"
                 min="0"
-                value={document.extraCharges || 0}
+                value={document.extraCharges || ''}
+                placeholder="0"
                 onChange={(e) => onUpdateExtra(Number(e.target.value))}
                 className={`${editableInput} w-24 text-right font-mono`}
               />
@@ -1791,7 +1918,11 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 <input
                   type="number"
                   min="0"
-                  value={summary.amountPaid || 0}
+                  value={summary.amountPaid || ''}
+                  placeholder="0"
+                  // Once payments are recorded, the paid amount comes from those records.
+                  readOnly={Boolean(document.payments?.length)}
+                  title={document.payments?.length ? 'Calculated from recorded payments' : undefined}
                   onChange={(e) => onUpdatePaid(Number(e.target.value))}
                   className={`${editableInput} w-28 text-right font-mono`}
                 />

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { TenantLayout } from '@/components/layout/tenant-layout';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TeamApi, TenantApi } from '@invoice/api';
 import { PlanId, PLANS } from '@invoice/core';
@@ -113,12 +112,12 @@ export default function BillingPage() {
   ];
 
   return (
-    <TenantLayout>
+    <>
       <div className="p-6 lg:p-10 space-y-8 max-w-6xl mx-auto w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-black text-foreground tracking-tight">
+            <h1 className="text-2xl font-semibold text-foreground tracking-tight">
               Plans & In-App Billing
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -135,25 +134,25 @@ export default function BillingPage() {
 
         {/* Current Plan Overview Card */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="md:col-span-2 border-border bg-card p-6 rounded-2xl space-y-4">
+          <Card className="md:col-span-2 border-border bg-card p-6 rounded-xl space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-4">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="text-xs font-bold text-muted-foreground">
                   Current Workspace Plan
                 </span>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <h2 className="text-2xl font-black text-foreground">{currentPlan.name}</h2>
-                  <Badge variant="default" className="text-[10px] uppercase font-bold">
+                  <h2 className="text-2xl font-semibold text-foreground">{currentPlan.name}</h2>
+                  <Badge variant="default" className="text-xs uppercase font-bold">
                     Active
                   </Badge>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-black font-mono text-primary">
+                <div className="text-2xl font-semibold tabular-nums text-primary">
                   ₹{currentPlan.priceMonthly}
                   <span className="text-xs font-normal text-muted-foreground"> / mo</span>
                 </div>
-                <div className="text-[10px] text-muted-foreground">Next renewal: May 1, 2026</div>
+                <div className="text-xs text-muted-foreground">Next renewal: May 1, 2026</div>
               </div>
             </div>
 
@@ -162,7 +161,7 @@ export default function BillingPage() {
               <div className="p-4 rounded-xl bg-muted/30 border border-border space-y-2">
                 <div className="flex justify-between text-xs font-semibold">
                   <span className="text-foreground">Team Seats</span>
-                  <span className="font-mono text-primary font-bold">
+                  <span className="tabular-nums text-primary font-bold">
                     {members.length} / {currentPlan.maxMembers === 999 ? 'Unlimited' : currentPlan.maxMembers}
                   </span>
                 </div>
@@ -177,7 +176,7 @@ export default function BillingPage() {
                     }}
                   />
                 </div>
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   {currentPlan.maxMembers - members.length > 0
                     ? `${currentPlan.maxMembers - members.length} seat(s) remaining`
                     : 'Seat limit reached'}
@@ -187,27 +186,27 @@ export default function BillingPage() {
               <div className="p-4 rounded-xl bg-muted/30 border border-border space-y-2">
                 <div className="flex justify-between text-xs font-semibold">
                   <span className="text-foreground">Monthly Invoices</span>
-                  <span className="font-mono text-primary font-bold">
+                  <span className="tabular-nums text-primary font-bold">
                     12 / {currentPlan.maxInvoicesPerMonth === 99999 ? 'Unlimited' : currentPlan.maxInvoicesPerMonth}
                   </span>
                 </div>
                 <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full w-1/4" />
                 </div>
-                <div className="text-[10px] text-muted-foreground">Resets in 18 days</div>
+                <div className="text-xs text-muted-foreground">Resets in 18 days</div>
               </div>
             </div>
           </Card>
 
           {/* Quick Entitlements Card */}
-          <Card className="border-border bg-card p-6 rounded-2xl space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
+          <Card className="border-border bg-card p-6 rounded-xl space-y-3">
+            <h3 className="font-bold text-xs text-muted-foreground">
               Plan Entitlements
             </h3>
             <div className="space-y-2.5 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>All 8+ Layout Templates: {currentPlan.hasAllTemplates ? 'Enabled' : 'Free (3) Only'}</span>
+                <span>Templates: {currentPlan.hasAllTemplates ? 'All templates' : 'Free templates'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -215,7 +214,7 @@ export default function BillingPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>Custom Domain: {currentPlan.canUseCustomDomain ? 'Supported' : 'Enterprise Only'}</span>
+                <span>Integration Docs: {currentPlan.hasIntegrationDocs ? 'Included' : 'Paid plans'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -249,7 +248,7 @@ export default function BillingPage() {
                 }`}
               >
                 <span>Yearly</span>
-                <span className="rounded bg-emerald-500/20 text-emerald-600 px-1 py-0.2 text-[10px] font-bold">
+                <span className="rounded bg-emerald-500/20 text-emerald-600 px-1 py-0.2 text-xs font-bold">
                   -20%
                 </span>
               </button>
@@ -265,7 +264,7 @@ export default function BillingPage() {
               return (
                 <Card
                   key={pid}
-                  className={`border p-6 rounded-2xl flex flex-col justify-between space-y-6 bg-card transition-all ${
+                  className={`border p-6 rounded-xl flex flex-col justify-between space-y-6 bg-card transition-all ${
                     isCurrent ? 'border-primary ring-2 ring-primary shadow-lg' : 'border-border hover:shadow-md'
                   }`}
                 >
@@ -273,12 +272,12 @@ export default function BillingPage() {
                     <div className="flex justify-between items-start">
                       <h3 className="font-bold text-base text-foreground">{p.name}</h3>
                       {isCurrent && (
-                        <Badge variant="default" className="text-[10px] uppercase font-bold">
+                        <Badge variant="default" className="text-xs uppercase font-bold">
                           Current
                         </Badge>
                       )}
                     </div>
-                    <div className="text-2xl font-black text-foreground">
+                    <div className="text-2xl font-semibold text-foreground">
                       ₹{price} <span className="text-xs font-normal text-muted-foreground">/ month</span>
                     </div>
                     <div className="space-y-2 text-xs text-muted-foreground pt-2 border-t border-border">
@@ -304,7 +303,7 @@ export default function BillingPage() {
                     className={`w-full text-xs font-bold transition-all ${
                       isCurrent
                         ? 'border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 cursor-default'
-                        : 'bg-primary hover:bg-primary-hover text-white shadow-sm font-extrabold'
+                        : 'bg-primary hover:bg-primary-hover text-white shadow-sm font-semibold'
                     }`}
                   >
                     {isCurrent ? 'Current Plan' : upgrading ? 'Updating...' : `Select ${p.name}`}
@@ -316,7 +315,7 @@ export default function BillingPage() {
         </div>
 
         {/* Subscription Invoice History */}
-        <Card className="border-border bg-card rounded-2xl overflow-hidden shadow-xs">
+        <Card className="border-border bg-card rounded-xl overflow-hidden shadow-xs">
           <CardHeader className="pb-3 border-b border-border bg-muted/20">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <Clock className="h-4 w-4 text-primary" /> Subscription Payment History
@@ -328,7 +327,7 @@ export default function BillingPage() {
           <CardContent className="p-0">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground uppercase text-[10px]">
+                <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground uppercase text-xs">
                   <th className="py-3 px-4">Invoice ID</th>
                   <th className="py-3 px-4">Billing Date</th>
                   <th className="py-3 px-4">Description</th>
@@ -340,12 +339,12 @@ export default function BillingPage() {
               <tbody className="divide-y divide-border/60">
                 {invoiceHistory.map((inv) => (
                   <tr key={inv.id} className="hover:bg-muted/10">
-                    <td className="py-3 px-4 font-mono font-bold">{inv.id}</td>
+                    <td className="py-3 px-4 tabular-nums font-bold">{inv.id}</td>
                     <td className="py-3 px-4 text-muted-foreground">{inv.date}</td>
                     <td className="py-3 px-4 font-medium text-foreground">{inv.description}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold">₹{inv.amount}</td>
+                    <td className="py-3 px-4 text-right tabular-nums font-bold">₹{inv.amount}</td>
                     <td className="py-3 px-4">
-                      <Badge variant="success" className="text-[10px]">Paid</Badge>
+                      <Badge variant="success" className="text-xs">Paid</Badge>
                     </td>
                     <td className="py-3 px-4 text-right">
                       <Button
@@ -364,6 +363,6 @@ export default function BillingPage() {
           </CardContent>
         </Card>
       </div>
-    </TenantLayout>
+    </>
   );
 }

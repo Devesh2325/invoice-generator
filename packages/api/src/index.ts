@@ -257,7 +257,7 @@ const DEMO_BRAND_SETTINGS: Record<string, TenantBrandSettings> = {
     primaryColor: '#3157D5',
     secondaryColor: '#0F172A',
     fontFamily: 'sans',
-    defaultTemplateId: 'cleartax_gst',
+    defaultTemplateId: 'in-gst',
     defaultTerms: 'Payment due within 15 days. Subject to Mumbai Jurisdiction.',
     defaultInstructions: 'NEFT / RTGS / UPI accepted. Please mention Invoice No. in transfer reference.',
     footerText: 'Thank you for your business!',
@@ -989,22 +989,9 @@ export const TenantApi = {
       );
 
     const existing = storeBrand[tenantId];
-    const defaultBank: BankAccountDetails = {
-      id: `bank_${tenantId.slice(0, 8)}`,
-      accountHolderName: existing?.businessName || tenantObj?.name || 'Business Account',
-      bankName: 'HDFC Bank Ltd',
-      accountNumber: '50200049182731',
-      confirmAccountNumber: '50200049182731',
-      ifscOrRoutingCode: 'HDFC0000124',
-      branchName: tenantObj?.city || 'Main Branch',
-      accountType: 'current',
-      country: tenantObj?.country || 'India',
-      isPrimary: true,
-    };
-
     const fallbackPaymentConfig: DocumentPaymentConfig = {
-      bankAccounts: [defaultBank],
-      selectedBankAccountIds: [defaultBank.id],
+      bankAccounts: [],
+      selectedBankAccountIds: [],
       upiId: '',
       upiPayeeName: existing?.businessName || tenantObj?.name || '',
       autoGenerateUpiQr: true,
@@ -1040,7 +1027,7 @@ export const TenantApi = {
       primaryColor: '#3157D5',
       secondaryColor: '#0F172A',
       fontFamily: 'sans',
-      defaultTemplateId: 'cleartax_gst',
+      defaultTemplateId: 'in-gst',
       defaultTerms: 'Net 15 Days',
       defaultInstructions: 'NEFT / RTGS / IMPS / UPI accepted.',
       footerText: 'Thank you for your business!',

@@ -107,7 +107,7 @@ export function getCurrencyTaxProfile(currencyCode: string = 'INR'): CurrencyTax
         routingLabel: 'IBAN / BIC',
         defaultCountry: 'Germany',
         defaultState: 'Berlin',
-        defaultTemplateId: 'eu-reverse-charge',
+        defaultTemplateId: 'eu-vat',
         isIndiaGst: false,
         supportsUpi: false,
         supportsHsn: false,

@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { CURRENCIES, formatCurrency } from '@invoice/core';
+import { describe, it, expect, vi } from 'vitest';
+import { CURRENCIES, DocumentModel, calculateDocument, formatCurrency } from '@invoice/core';
+import { buildCsv } from '../src/lib/export/export-document';
 import {
   DOCUMENT_TYPE_OPTIONS,
   DOCUMENT_TYPE_SECTIONS,
@@ -9,7 +10,11 @@ import {
   renderInvoice,
   INVOICE_TEMPLATES,
   getInvoiceTemplate,
+  mapCanonicalDocumentToTemplateInv,
 } from '@invoice/theme';
+
+// PDF capture needs a browser, and the CSV code under test doesn't use it.
+vi.mock('@/lib/pdf/export-pdf', () => ({ captureInvoice: vi.fn() }));
 
 describe('Web Configuration & Helpers', () => {
   it('formats currency correctly for web preview displays', () => {
@@ -56,9 +61,109 @@ describe('Document Type Selector Two-Section Structure', () => {
   });
 });
 
-describe('18 Print-Ready Template Engine', () => {
-  it('registers all 18 standard templates', () => {
-    expect(INVOICE_TEMPLATES.length).toBe(18);
+describe('Invoice totals match the calculation engine', () => {
+  const makeDoc = (senderState: string, clientState: string): any => {
+    const calc = calculateDocument({
+      currency: 'INR',
+      senderState,
+      clientState,
+      items: [{ id: '1', description: 'Steel rods', quantity: 2, unitPrice: 1000, taxRate: 18 }],
+      documentDiscountType: 'percentage',
+      documentDiscountValue: 10,
+      shippingFee: 100,
+    });
+    return {
+      id: 'd1',
+      type: 'invoice',
+      status: 'pending',
+      documentNumber: 'INV-1',
+      issueDate: '2026-11-01',
+      currency: 'INR',
+      sender: { name: 'Seller', address: { state: senderState } },
+      client: { id: 'c1', type: 'customer', name: 'Buyer', billingAddress: { state: clientState } },
+      items: calc.items,
+      summary: calc.summary,
+      templateId: 'cleartax_gst',
+      payments: [],
+      createdAt: '',
+      updatedAt: '',
+    };
+  };
+  const render = (doc: any) => renderInvoice(mapCanonicalDocumentToTemplateInv(doc), doc.templateId);
+
+  it('includes document discount and shipping in the invoice total', () => {
+    const doc = makeDoc('27 - Maharashtra', '27 - Maharashtra');
+    expect(doc.summary.grandTotal).toBe(2224);
+    const html = render(doc);
+    expect(html).toContain('2,224.00');
+    expect(html).toContain('Shipping');
+    expect(html).toContain('Discount');
+  });
+
+  it('shows CGST and SGST, and never IGST, within one state', () => {
+    const html = render(makeDoc('27 - Maharashtra', '27 - Maharashtra'));
+    expect(html).toContain('CGST');
+    expect(html).toContain('SGST');
+    expect(html).not.toContain('IGST');
+  });
+
+  it('shows IGST, and never CGST or SGST, between states', () => {
+    const html = render(makeDoc('27 - Maharashtra', '29 - Karnataka'));
+    expect(html).toContain('IGST');
+    expect(html).not.toContain('CGST');
+    expect(html).not.toContain('SGST');
+  });
+
+  it('does not invent notes, bank details or a sample QR for a real document', () => {
+    const doc = makeDoc('27 - Maharashtra', '27 - Maharashtra');
+    doc.paymentConfig = {
+      bankAccounts: [],
+      display: { showBankDetails: false, showUpiId: false, showQrCode: false, showPaymentInstructions: true, showPaymentTerms: true },
+    };
+    const inv = mapCanonicalDocumentToTemplateInv(doc);
+    const html = renderInvoice(inv, doc.templateId, { preview: true });
+    expect(html).not.toContain('Late payment');
+    expect(html).not.toContain('Bank account details');
+    expect(html).not.toContain('QR code placeholder');
+  });
+});
+
+describe('CSV export tax lines', () => {
+  const exportFor = (currency: string, senderState: string, clientState: string) => {
+    const { items, summary } = calculateDocument({
+      currency,
+      senderState,
+      clientState,
+      items: [{ id: '1', description: 'Work', quantity: 1, unitPrice: 100, taxRate: 10, taxInclusive: false, discountType: 'percentage', discountValue: 0 }],
+    } as Parameters<typeof calculateDocument>[0]);
+    return buildCsv({
+      type: 'invoice',
+      documentNumber: 'INV-1',
+      issueDate: '2026-01-01',
+      currency,
+      sender: { name: 'Seller' },
+      client: { name: 'Buyer' },
+      items,
+      summary,
+    } as unknown as DocumentModel);
+  };
+
+  it('shows the real tax, and no GST split, outside India', () => {
+    const csv = exportFor('USD', 'NY', 'CA');
+    expect(csv).toContain('Sales Tax,10');
+    expect(csv).not.toContain('CGST');
+    expect(csv).not.toContain('IGST');
+  });
+
+  it('splits GST for INR', () => {
+    expect(exportFor('INR', '27 - Maharashtra', '27 - Maharashtra')).toContain('CGST,5');
+    expect(exportFor('INR', '27 - Maharashtra', '29 - Karnataka')).toContain('IGST,10');
+  });
+});
+
+describe('Print-Ready Template Engine', () => {
+  it('registers all standard templates', () => {
+    expect(INVOICE_TEMPLATES.length).toBe(21);
     const ids = INVOICE_TEMPLATES.map((t) => t.id);
     expect(ids).toContain('in-gst');
     expect(ids).toContain('uk-vat');

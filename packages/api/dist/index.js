@@ -703,21 +703,9 @@ export const TenantApi = {
         const tenantObj = customTenants.find((t) => t.id === tenantId) ||
             DEMO_TENANTS.map((d) => ({ ...d, ...(demoOverrides[d.id] || {}) })).find((t) => t.id === tenantId);
         const existing = storeBrand[tenantId];
-        const defaultBank = {
-            id: `bank_${tenantId.slice(0, 8)}`,
-            accountHolderName: existing?.businessName || tenantObj?.name || 'Business Account',
-            bankName: 'HDFC Bank Ltd',
-            accountNumber: '50200049182731',
-            confirmAccountNumber: '50200049182731',
-            ifscOrRoutingCode: 'HDFC0000124',
-            branchName: tenantObj?.city || 'Main Branch',
-            accountType: 'current',
-            country: tenantObj?.country || 'India',
-            isPrimary: true,
-        };
         const fallbackPaymentConfig = {
-            bankAccounts: [defaultBank],
-            selectedBankAccountIds: [defaultBank.id],
+            bankAccounts: [],
+            selectedBankAccountIds: [],
             upiId: '',
             upiPayeeName: existing?.businessName || tenantObj?.name || '',
             autoGenerateUpiQr: true,

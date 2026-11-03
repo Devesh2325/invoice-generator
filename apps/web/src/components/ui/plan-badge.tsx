@@ -68,7 +68,7 @@ export const PlanBadge: React.FC = () => {
         color: '#06B6D4',
         perks: [
           'Unlimited Invoices, POs & Estimates',
-          'Full White-Label Branding & Custom Domains',
+          'Full White-Label Branding',
           'Automated GST CGST/SGST/IGST & E-Way Bill Sync',
           'Multi-Tenant Roles & Unlimited Team Seats',
           '24/7 Dedicated VIP Priority Support',

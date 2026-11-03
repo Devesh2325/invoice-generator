@@ -21,21 +21,6 @@ export interface AdminInquiry {
   notes?: string;
 }
 
-export interface AdminSiteSettings {
-  announcementBanner: {
-    enabled: boolean;
-    text: string;
-    variant: 'info' | 'warning' | 'success';
-  };
-  maintenanceMode: boolean;
-  defaultCurrency: string;
-  allowPublicSignups: boolean;
-  seoDefaults: {
-    title: string;
-    description: string;
-  };
-}
-
 export interface AdminSystemAuditLog {
   id: string;
   actor: string;
@@ -43,19 +28,6 @@ export interface AdminSystemAuditLog {
   target: string;
   timestamp: string;
   ipAddress?: string;
-}
-
-export interface AdminTemplateSetting {
-  id: string;
-  name: string;
-  category: string;
-  isPro: boolean;
-  enabled: boolean;
-  downloadsCount: number;
-  description?: string;
-  primaryColor?: string;
-  fontFamily?: string;
-  region?: string;
 }
 
 export interface GeneratorFieldSettings {

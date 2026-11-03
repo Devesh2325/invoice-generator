@@ -6,6 +6,7 @@ import { useParams, notFound } from 'next/navigation';
 import { BlogApi, SEEDED_BLOG_POSTS } from '@invoice/api';
 import { APP_CONFIG, BlogPost } from '@invoice/core';
 import { PublicHeader } from '@/components/layout/public-header';
+import { PublicFooter } from '@/components/layout/public-footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -64,32 +65,32 @@ export default function BlogPostPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+    <div className="min-h-screen text-foreground flex flex-col font-sans">
       <PublicHeader />
 
       <div className="border-b border-border bg-muted/20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between text-xs">
+        <div className="max-w-4xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between text-sm">
           <Link href="/blog" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground font-semibold transition-colors">
             <ArrowLeft className="h-3.5 w-3.5" /> Back to all articles
           </Link>
-          <Button variant="outline" size="sm" onClick={handleShare} className="h-7 text-xs font-semibold gap-1.5">
+          <Button variant="outline" size="sm" onClick={handleShare} className="h-7 text-sm font-semibold gap-1.5">
             <Share2 className="h-3.5 w-3.5" /> Share Article
           </Button>
         </div>
       </div>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-8 py-12 space-y-10">
+      <main className="w-full min-w-0 max-w-4xl mx-auto px-4 sm:px-8 py-12 space-y-10">
         {/* Article Header */}
         <div className="space-y-4 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-            <Badge variant="outline" className="text-xs font-semibold text-primary">{post.category}</Badge>
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Badge variant="outline" className="text-sm font-semibold text-primary">{post.category}</Badge>
+            <span className="text-sm text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" /> {post.readingTimeMinutes} min read
             </span>
-            <span className="text-xs text-muted-foreground">• Published {post.publishedAt}</span>
+            <span className="text-sm text-muted-foreground">• Published {post.publishedAt}</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-foreground tracking-tight leading-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-foreground tracking-tight leading-tight">
             {post.title}
           </h1>
 
@@ -109,7 +110,7 @@ export default function BlogPostPage() {
                 {post.author.name[0]}
               </div>
             )}
-            <div className="text-left text-xs">
+            <div className="text-left text-sm">
               <div className="font-bold text-foreground">{post.author.name}</div>
               <div className="text-muted-foreground">{post.author.role}</div>
             </div>
@@ -118,7 +119,7 @@ export default function BlogPostPage() {
 
         {/* Cover Image */}
         {post.coverImage && (
-          <div className="rounded-2xl overflow-hidden border border-border shadow-md max-h-[420px]">
+          <div className="rounded-xl overflow-hidden border border-border shadow-md max-h-[420px]">
             <img
               src={post.coverImage}
               alt={post.title}
@@ -129,23 +130,23 @@ export default function BlogPostPage() {
 
         {/* Article Body */}
         <article className="prose dark:prose-invert max-w-none text-sm text-foreground/90 leading-relaxed space-y-6 border-y border-border py-8">
-          <div className="whitespace-pre-wrap font-sans text-xs sm:text-sm leading-relaxed">
+          <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
             {post.content}
           </div>
         </article>
 
         {/* In-Article Conversion Banner */}
-        <div className="p-6 sm:p-8 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="p-6 sm:p-8 rounded-xl bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="space-y-1 text-center sm:text-left">
             <h3 className="font-bold text-base text-foreground">
               Put this knowledge to work with {APP_CONFIG.brandName}
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Generate 100% compliant GST invoices with automated CGST/SGST splits and scannable UPI QR codes in 60 seconds.
             </p>
           </div>
           <Link href="/create" className="shrink-0">
-            <Button size="sm" className="font-bold text-xs px-5 shadow-sm">
+            <Button size="sm" className="font-bold text-sm px-5 shadow-sm">
               Create Invoice Now
             </Button>
           </Link>
@@ -157,22 +158,20 @@ export default function BlogPostPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {relatedPosts.map((rel) => (
               <Card key={rel.id} className="p-4 rounded-xl border-border bg-card space-y-2 hover:border-primary/50 transition-colors">
-                <span className="text-[10px] font-bold text-primary uppercase">{rel.category}</span>
+                <span className="text-sm font-bold text-primary uppercase">{rel.category}</span>
                 <Link href={`/blog/${rel.slug}`}>
-                  <h4 className="font-bold text-xs text-foreground hover:underline line-clamp-2">
+                  <h4 className="font-bold text-sm text-foreground hover:underline line-clamp-2">
                     {rel.title}
                   </h4>
                 </Link>
-                <p className="text-[11px] text-muted-foreground line-clamp-2">{rel.excerpt}</p>
+                <p className="text-sm text-muted-foreground line-clamp-2">{rel.excerpt}</p>
               </Card>
             ))}
           </div>
         </div>
       </main>
 
-      <footer className="mt-auto border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 {APP_CONFIG.brandName} Knowledge Hub. Educational tax and business resources.
-      </footer>
+      <PublicFooter />
     </div>
   );
 }
