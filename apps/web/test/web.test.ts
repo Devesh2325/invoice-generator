@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { CURRENCIES, calculateDocument, formatCurrency } from '@invoice/core';
+import { describe, it, expect, vi } from 'vitest';
+import { CURRENCIES, DocumentModel, calculateDocument, formatCurrency } from '@invoice/core';
+import { buildCsv } from '../src/lib/export/export-document';
 import {
   DOCUMENT_TYPE_OPTIONS,
   DOCUMENT_TYPE_SECTIONS,
@@ -11,6 +12,9 @@ import {
   getInvoiceTemplate,
   mapCanonicalDocumentToTemplateInv,
 } from '@invoice/theme';
+
+// PDF capture needs a browser, and the CSV code under test doesn't use it.
+vi.mock('@/lib/pdf/export-pdf', () => ({ captureInvoice: vi.fn() }));
 
 describe('Web Configuration & Helpers', () => {
   it('formats currency correctly for web preview displays', () => {
@@ -124,9 +128,42 @@ describe('Invoice totals match the calculation engine', () => {
   });
 });
 
+describe('CSV export tax lines', () => {
+  const exportFor = (currency: string, senderState: string, clientState: string) => {
+    const { items, summary } = calculateDocument({
+      currency,
+      senderState,
+      clientState,
+      items: [{ id: '1', description: 'Work', quantity: 1, unitPrice: 100, taxRate: 10, taxInclusive: false, discountType: 'percentage', discountValue: 0 }],
+    } as Parameters<typeof calculateDocument>[0]);
+    return buildCsv({
+      type: 'invoice',
+      documentNumber: 'INV-1',
+      issueDate: '2026-01-01',
+      currency,
+      sender: { name: 'Seller' },
+      client: { name: 'Buyer' },
+      items,
+      summary,
+    } as unknown as DocumentModel);
+  };
+
+  it('shows the real tax, and no GST split, outside India', () => {
+    const csv = exportFor('USD', 'NY', 'CA');
+    expect(csv).toContain('Sales Tax,10');
+    expect(csv).not.toContain('CGST');
+    expect(csv).not.toContain('IGST');
+  });
+
+  it('splits GST for INR', () => {
+    expect(exportFor('INR', '27 - Maharashtra', '27 - Maharashtra')).toContain('CGST,5');
+    expect(exportFor('INR', '27 - Maharashtra', '29 - Karnataka')).toContain('IGST,10');
+  });
+});
+
 describe('Print-Ready Template Engine', () => {
   it('registers all standard templates', () => {
-    expect(INVOICE_TEMPLATES.length).toBe(19);
+    expect(INVOICE_TEMPLATES.length).toBe(21);
     const ids = INVOICE_TEMPLATES.map((t) => t.id);
     expect(ids).toContain('in-gst');
     expect(ids).toContain('uk-vat');

@@ -11,6 +11,17 @@ import { FileText, Lock, Mail, AlertCircle } from 'lucide-react';
 import { APP_CONFIG } from '@invoice/core';
 import { hashPassword, isHashedPassword, verifyPassword } from '@/lib/auth/password';
 
+/** The redirect comes from the URL, so only same-site paths are followed. */
+function safeRedirectPath(value: string | null): string {
+  if (!value) return '/dashboard';
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.origin === window.location.origin ? `${url.pathname}${url.search}${url.hash}` : '/dashboard';
+  } catch {
+    return '/dashboard';
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { refreshTenants } = useTenant();
@@ -75,8 +86,7 @@ export default function LoginPage() {
           }
           await refreshTenants();
           window.dispatchEvent(new Event('billcraft-auth-updated'));
-          const redirectParam = new URLSearchParams(window.location.search).get('redirect');
-          router.push(redirectParam || '/dashboard');
+          router.push(safeRedirectPath(new URLSearchParams(window.location.search).get('redirect')));
           return;
         }
       }

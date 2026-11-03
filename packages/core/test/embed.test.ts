@@ -25,6 +25,12 @@ describe('Embed prefill', () => {
     expect(doc.items[0].id).toBe('item_1');
   });
 
+  it('accepts an item with no description, as the guide says every field is optional', () => {
+    const doc = buildDocumentFromPrefill(EmbedPrefillSchema.parse({ items: [{ quantity: 2, unitPrice: 50 }] }));
+    expect(doc.items[0].description).toBe('');
+    expect(doc.items[0].quantity).toBe(2);
+  });
+
   it('ignores totals sent by the host', () => {
     const parsed = EmbedPrefillSchema.parse({ summary: { grandTotal: 1 } });
     expect(buildDocumentFromPrefill(parsed).summary).toBeUndefined();

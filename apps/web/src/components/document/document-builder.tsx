@@ -15,6 +15,7 @@ import {
   PaymentRecord,
   RefundRecord,
   calculateDocument,
+  getCurrencyConfig,
   DEFAULT_NUMBERING_RULES,
   formatDocumentNumber,
   getNextSequenceNumber,
@@ -148,6 +149,45 @@ const DEFAULT_PAYMENT_CONFIG: DocumentPaymentConfig = {
   },
 };
 
+/** Sample accounts follow the currency. An account the user entered is never rewritten. */
+function localizeSampleBanks(
+  accounts: BankAccountDetails[],
+  profile: ReturnType<typeof getCurrencyTaxProfile>
+): BankAccountDetails[] {
+  return accounts.map((bank) =>
+    bank.id.startsWith('bank_demo') || /^DEMO?0+$/.test(bank.ifscOrRoutingCode)
+      ? {
+          ...bank,
+          bankName: profile.defaultBankName,
+          branchName: profile.defaultBankBranch,
+          ifscOrRoutingCode: profile.routingLabel.includes('IBAN')
+            ? 'KW81NBOK00000000000000'
+            : profile.routingLabel === 'Sort code'
+            ? '20-00-00'
+            : '021000021',
+          country: profile.defaultCountry,
+        }
+      : bank
+  );
+}
+
+/**
+ * A saved invoice stores "hidden" for anything that had nothing to show when it was saved.
+ * Undo that on load, so a bank account or UPI ID added later appears on the invoice.
+ */
+function restoreEmptyPaymentDisplay(config: DocumentPaymentConfig, isIndia: boolean): DocumentPaymentConfig {
+  const { display } = config;
+  return {
+    ...config,
+    display: {
+      ...display,
+      showBankDetails: display.showBankDetails || config.bankAccounts.length === 0,
+      showUpiId: display.showUpiId || (isIndia && !config.upiId),
+      showQrCode: display.showQrCode || (isIndia && !config.qrCodeDataUrl),
+    },
+  };
+}
+
 export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   initialDocument,
   onSaved,
@@ -184,10 +224,13 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     return all
       .map((cat) => ({
         ...cat,
-        templates: cat.templates.filter((t) => !disabledTemplateIds.has(t.id)),
+        // An embed has no workspace to upgrade, so it only offers free templates.
+        templates: cat.templates.filter(
+          (t) => !disabledTemplateIds.has(t.id) && (!embed || isTemplateAllowedForPlan('starter', t.id))
+        ),
       }))
       .filter((cat) => cat.templates.length > 0);
-  }, [disabledTemplateIds]);
+  }, [disabledTemplateIds, embed]);
 
   // Core Invoice Metadata
   const [docId] = useState<string>(initialDocument?.id || `doc_${Date.now()}`);
@@ -198,7 +241,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const [status, setStatus] = useState<DocumentStatus>(initialDocument?.status || 'draft');
   const [docNumber, setDocNumber] = useState<string>(
     initialDocument?.documentNumber ||
-      formatDocumentNumber(DEFAULT_NUMBERING_RULES['invoice'], 1, new Date())
+      formatDocumentNumber(DEFAULT_NUMBERING_RULES[initialDocument?.type || 'invoice'], 1, new Date())
   );
   const [referenceNumber, setReferenceNumber] = useState<string>(
     initialDocument?.referenceNumber || ''
@@ -223,7 +266,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.roundingMode || brandSettings?.roundingMode || 'nearest_integer'
   );
   const [decimalPrecision, setDecimalPrecision] = useState<number>(
-    initialDocument?.decimalPrecision ?? brandSettings?.decimalPrecision ?? 2
+    initialDocument?.decimalPrecision ??
+      brandSettings?.decimalPrecision ??
+      getCurrencyConfig(initialCurrency).decimalPlaces
   );
 
   // Sender details
@@ -351,7 +396,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
   // Payment Configuration (Bank Accounts, UPI, QR Code, Display Toggles)
   const [paymentConfig, setPaymentConfig] = useState<DocumentPaymentConfig>(() => {
-    if (initialDocument?.paymentConfig) return initialDocument.paymentConfig;
+    if (initialDocument?.paymentConfig) {
+      return restoreEmptyPaymentDisplay(initialDocument.paymentConfig, initialTaxProfile.isIndiaGst);
+    }
     if (brandSettings?.paymentConfig) return brandSettings.paymentConfig;
     if (!initialTaxProfile.isIndiaGst) {
       return {
@@ -445,21 +492,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           showQrCode: false,
         },
         autoGenerateUpiQr: false,
-        bankAccounts: prev.bankAccounts.map((b) =>
-          b.country === 'India' || b.ifscOrRoutingCode === 'DEM00000000' || b.ifscOrRoutingCode === 'DEMO0000000'
-            ? {
-                ...b,
-                bankName: newProfile.defaultBankName,
-                branchName: newProfile.defaultBankBranch,
-                ifscOrRoutingCode: newProfile.routingLabel.includes('IBAN')
-                  ? 'KW81NBOK00000000000000'
-                  : newProfile.routingLabel === 'Sort code'
-                  ? '20-00-00'
-                  : '021000021',
-                country: newProfile.defaultCountry,
-              }
-            : b
-        ),
+        bankAccounts: localizeSampleBanks(prev.bankAccounts, newProfile),
       }));
       if (notes.includes('Mumbai jurisdiction') || notes.includes('15 days')) {
         setNotes(newProfile.defaultNotes);
@@ -520,21 +553,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       );
       setPaymentConfig((prev) => ({
         ...prev,
-        bankAccounts: prev.bankAccounts.map((b) =>
-          b.country === prevProfile.defaultCountry
-            ? {
-                ...b,
-                bankName: newProfile.defaultBankName,
-                branchName: newProfile.defaultBankBranch,
-                ifscOrRoutingCode: newProfile.routingLabel.includes('IBAN')
-                  ? 'KW81NBOK00000000000000'
-                  : newProfile.routingLabel === 'Sort code'
-                  ? '20-00-00'
-                  : '021000021',
-                country: newProfile.defaultCountry,
-              }
-            : b
-        ),
+        bankAccounts: localizeSampleBanks(prev.bankAccounts, newProfile),
       }));
       if (notes === prevProfile.defaultNotes) {
         setNotes(newProfile.defaultNotes);
@@ -621,8 +640,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       if (brandSettings.logoUrl !== undefined) setSenderLogo(brandSettings.logoUrl || '');
       if (brandSettings.enableRoundOff !== undefined) setEnableRoundOff(brandSettings.enableRoundOff);
       if (brandSettings.roundingMode) setRoundingMode(brandSettings.roundingMode);
-      if (brandSettings.decimalPrecision !== undefined)
-        setDecimalPrecision(brandSettings.decimalPrecision);
+      setDecimalPrecision(brandSettings.decimalPrecision ?? getCurrencyConfig(targetCurr).decimalPlaces);
       if (brandSettings.paymentConfig) setPaymentConfig(brandSettings.paymentConfig);
       if (brandSettings.defaultTerms) setPaymentTerms(brandSettings.defaultTerms);
       if (brandSettings.defaultInstructions)
@@ -654,7 +672,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   // Apply a template chosen from a link such as /create?template=tally_prime.
   // Runs after brand defaults are applied so the customer's choice wins.
   useEffect(() => {
-    if (initialDocument) return;
+    if (initialDocument || embed) return;
     const param = new URLSearchParams(window.location.search).get('template');
     const requested = param && resolveTemplateId(param);
     if (!requested || !TEMPLATES[requested]) return;
@@ -664,7 +682,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       setUpgradeReason(`The "${TEMPLATES[requested].name}" template is available on paid plans.`);
       setUpgradeModalOpen(true);
     }
-  }, [initialDocument, appliedTenantId, activeTenant?.plan]);
+  }, [initialDocument, embed, appliedTenantId, activeTenant?.plan]);
 
   // New documents get the next free number for their type, not always 00001.
   useEffect(() => {
@@ -765,8 +783,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   }, [refunds]);
 
   // Recalculate document model reactively using core financial, rounding & GST engine
-  const calculated = useMemo(() => {
-    return calculateDocument({
+  const calculationInput = useMemo(
+    () => ({
       currency,
       senderState,
       clientState,
@@ -787,22 +805,24 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       enableRoundOff,
       roundingMode,
       decimalPrecision,
-    });
-  }, [
-    currency,
-    senderState,
-    clientState,
-    items,
-    docDiscountType,
-    docDiscountValue,
-    shippingFee,
-    extraCharges,
-    totalPaymentsRecorded,
-    totalRefundsRecorded,
-    enableRoundOff,
-    roundingMode,
-    decimalPrecision,
-  ]);
+    }),
+    [
+      currency,
+      senderState,
+      clientState,
+      items,
+      docDiscountType,
+      docDiscountValue,
+      shippingFee,
+      extraCharges,
+      totalPaymentsRecorded,
+      totalRefundsRecorded,
+      enableRoundOff,
+      roundingMode,
+      decimalPrecision,
+    ]
+  );
+  const calculated = useMemo(() => calculateDocument(calculationInput), [calculationInput]);
 
   const effectiveStatus = useMemo(() => {
     return computeEffectiveInvoiceStatus({
@@ -958,13 +978,19 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
   // Track edits in memory - DO NOT auto-save empty drafts to database
   const isFirstMount = useRef(true);
+  const lastStatus = useRef(status);
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
       return;
     }
+    // Saving moves a draft to pending, and that alone isn't an edit.
+    if (lastStatus.current !== status) {
+      lastStatus.current = status;
+      return;
+    }
     setSaveStatus('unsaved');
-  }, [documentModel]);
+  }, [documentModel, status]);
 
   useEffect(() => {
     if (!onDocumentChange) return;
@@ -1255,7 +1281,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     const newPayment: PaymentRecord = {
       id: `pay_${Date.now()}`,
       documentId: docId,
-      amount: Number(amt.toFixed(2)),
+      amount: Number(amt.toFixed(decimalPrecision)),
       paymentDate: payDateInput || new Date().toISOString().split('T')[0],
       paymentMethod: payMethodInput,
       reference: payRefInput,
@@ -1269,15 +1295,35 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     if (status === 'draft') {
       setStatus('pending');
     }
+    // documentModel still holds the totals from before this payment, and lists and status read the saved summary.
+    const nextSummary = calculateDocument({
+      ...calculationInput,
+      amountPaid: nextPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
+    }).summary;
     const updatedDoc: DocumentModel = {
       ...documentModel,
-      status: nextStatus,
+      status: computeEffectiveInvoiceStatus({ status: nextStatus, dueDate, summary: nextSummary }),
+      summary: nextSummary,
       payments: nextPayments,
       updatedAt: new Date().toISOString(),
     };
-    await saveDocument(updatedDoc);
-    if (activeTenant?.id) {
-      await TenantApi.saveDocument(activeTenant.id, updatedDoc);
+    try {
+      await saveDocument(updatedDoc);
+      if (activeTenant?.id) {
+        await TenantApi.saveDocument(activeTenant.id, updatedDoc);
+      }
+    } catch (err: any) {
+      console.error('Failed to record payment:', err);
+      setPayments(payments);
+      setStatus(status);
+      setRecordPaymentModalOpen(false);
+      if (err?.name === 'PlanLimitReachedError') {
+        setUpgradeReason(err.message);
+        setUpgradeModalOpen(true);
+      } else {
+        toast({ title: 'Payment not saved', description: err?.message || 'Please try again.', variant: 'destructive' });
+      }
+      return;
     }
     setIsPersisted(true);
     setSaveStatus('saved');
@@ -1296,7 +1342,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     const newRefund: RefundRecord = {
       id: `ref_${Date.now()}`,
       documentId: docId,
-      amount: Number(amt.toFixed(2)),
+      amount: Number(amt.toFixed(decimalPrecision)),
       refundDate: refundDateInput || new Date().toISOString().split('T')[0],
       refundMethod: refundMethodInput,
       reason: refundReasonInput,
@@ -2358,7 +2404,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                         variant="outline"
                         onClick={() => {
                           setRefundAmountInput(
-                            Number((totalPaymentsRecorded - totalRefundsRecorded).toFixed(2))
+                            Number((totalPaymentsRecorded - totalRefundsRecorded).toFixed(decimalPrecision))
                           );
                           setRefundModalOpen(true);
                         }}

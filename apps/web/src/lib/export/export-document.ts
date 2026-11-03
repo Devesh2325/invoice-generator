@@ -33,21 +33,32 @@ const partyLines = (party: { email?: string; phone?: string; taxId?: string }, a
 /** Totals in print order. All of these come from the calculation engine. */
 function summaryRows(doc: DocumentModel): [string, number][] {
   const s = doc.summary;
-  const taxLabel = getCurrencyTaxProfile(doc.currency).taxLabel;
+  const profile = getCurrencyTaxProfile(doc.currency);
   const rows: [string, number][] = [['Subtotal', s.subtotal]];
   if (s.discountTotal > 0) rows.push(['Discount', -s.discountTotal]);
   rows.push(['Taxable amount', s.taxableSubtotal]);
-  if (s.gstSupplyType === 'inter') rows.push(['IGST', s.igstTotal || 0]);
-  else if (s.gstSupplyType === 'intra') rows.push(['CGST', s.cgstTotal || 0], ['SGST', s.sgstTotal || 0]);
-  else rows.push([taxLabel, s.totalTax]);
+  // The engine reports a supply type for every currency, but only INR has a GST split.
+  if (!profile.isIndiaGst) rows.push([profile.taxLabel, s.totalTax]);
+  else if (s.gstSupplyType === 'inter') rows.push(['IGST', s.igstTotal || 0]);
+  else rows.push(['CGST', s.cgstTotal || 0], ['SGST', s.sgstTotal || 0]);
   if (s.shippingFee > 0) rows.push(['Shipping', s.shippingFee]);
   if (s.extraCharges > 0) rows.push(['Extra charges', s.extraCharges]);
   if (s.roundOffAmount) rows.push(['Round-off', s.roundOffAmount]);
   return rows;
 }
 
-const taxColumnLabel = (doc: DocumentModel) =>
-  doc.summary.gstSupplyType === 'inter' || doc.summary.gstSupplyType === 'intra' ? 'GST' : getCurrencyTaxProfile(doc.currency).taxLabel;
+const taxColumnLabel = (doc: DocumentModel) => {
+  const profile = getCurrencyTaxProfile(doc.currency);
+  return profile.isIndiaGst ? 'GST' : profile.taxLabel;
+};
+
+/** Excel refuses these characters in a sheet name, and titles such as "Estimate / Quotation" contain them. */
+const worksheetName = (title: string) =>
+  title
+    .replace(/[*?:\\/[\]]/g, '-')
+    .slice(0, 31)
+    .replace(/^'+|'+$/g, '')
+    .trim() || 'Invoice';
 
 export async function exportDocumentToPng(doc: DocumentModel): Promise<void> {
   const canvas = await captureInvoice('invoice-pdf-export-sheet');
@@ -123,7 +134,7 @@ export async function exportDocumentToExcel(doc: DocumentModel): Promise<void> {
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = APP_CONFIG.brandName;
-  const sheet = workbook.addWorksheet(documentTitle(doc).slice(0, 31), {
+  const sheet = workbook.addWorksheet(worksheetName(documentTitle(doc)), {
     views: [{ showGridLines: false }],
     pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
@@ -244,7 +255,12 @@ export async function exportDocumentToExcel(doc: DocumentModel): Promise<void> {
 
   // Payment details and notes, beside the totals.
   const payment = doc.paymentConfig;
-  const bank = payment?.display.showBankDetails ? payment.bankAccounts : [];
+  const selectedIds = payment?.selectedBankAccountIds;
+  const bank = !payment?.display.showBankDetails
+    ? []
+    : selectedIds?.length
+    ? payment.bankAccounts.filter((account) => selectedIds.includes(account.id))
+    : payment.bankAccounts;
   const footer = lines([
     ...bank.flatMap((account) => [
       account.bankName,

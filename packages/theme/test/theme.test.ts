@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { describe, it, expect } from 'vitest';
 import { isTemplateAllowedForPlan, getCurrencyTaxProfile, CURRENCIES } from '@invoice/core';
-import { getInvoiceTemplate, getTemplate, getTemplatesByCategory, INVOICE_TEMPLATES, TEMPLATES } from '../src/index';
+import { getInvoiceTemplate, getTemplate, getTemplatesByCategory, INVOICE_TEMPLATES, mapCanonicalDocumentToTemplateInv, TEMPLATES } from '../src/index';
 
 describe('Document Theme & Templates', () => {
   it('offers each design once, in one of four categories', () => {
@@ -43,6 +43,26 @@ describe('Document Theme & Templates', () => {
   it.each(['za-vat', 'nz-gst', 'mx-iva'])('keeps the retired design %s for saved invoices, but stops offering it', (id) => {
     expect(INVOICE_TEMPLATES.some((t) => t.id === id)).toBe(true);
     expect(TEMPLATES[id]).toBeUndefined();
+  });
+
+  it('prints the selected bank account, not just the first one', () => {
+    const accounts = [
+      { id: 'a', bankName: 'First Bank', accountNumber: '111', ifscOrRoutingCode: 'AAA' },
+      { id: 'b', bankName: 'Second Bank', accountNumber: '222', ifscOrRoutingCode: 'BBB' },
+    ];
+    const display = { showBankDetails: true, showUpiId: false, showQrCode: false, showPaymentInstructions: true, showPaymentTerms: true };
+    const doc = (selected: string[]) =>
+      ({
+        documentNumber: 'T-1',
+        currency: 'INR',
+        type: 'invoice',
+        items: [],
+        sender: { name: 'A' },
+        client: { name: 'B' },
+        paymentConfig: { bankAccounts: accounts, selectedBankAccountIds: selected, display },
+      }) as any;
+    expect(mapCanonicalDocumentToTemplateInv(doc(['b'])).payment.bankName).toBe('Second Bank');
+    expect(mapCanonicalDocumentToTemplateInv(doc([])).payment.bankName).toBe('First Bank');
   });
 
   it('keeps paid templates paid under their old IDs', () => {

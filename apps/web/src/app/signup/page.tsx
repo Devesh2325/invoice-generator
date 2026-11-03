@@ -198,14 +198,14 @@ export default function SignUpPage() {
 
               <div>
                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Password (min. 6 characters)
+                  Password (min. 8 characters)
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     type="password"
                     required
-                    minLength={6}
+                    minLength={8}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-9 text-sm bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"

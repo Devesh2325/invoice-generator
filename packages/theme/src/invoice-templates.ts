@@ -1149,7 +1149,11 @@ export function mapCanonicalDocumentToTemplateInv(doc: CanonicalDocument): any {
   const payConfig = doc.paymentConfig || anyDoc.paymentDetails;
   let payment: any = undefined;
   if (payConfig) {
-    const bank = (payConfig.bankAccounts && payConfig.bankAccounts[0]) || payConfig;
+    const selectedIds: string[] = payConfig.selectedBankAccountIds || [];
+    const bank =
+      payConfig.bankAccounts?.find((b: any) => selectedIds.includes(b.id)) ||
+      (payConfig.bankAccounts && payConfig.bankAccounts[0]) ||
+      payConfig;
     const isGbp = doc.currency === 'GBP';
     const showBank = payConfig.display ? payConfig.display.showBankDetails : true;
     const showUpi = isIndia && (payConfig.display ? payConfig.display.showUpiId : Boolean(payConfig.upiId));

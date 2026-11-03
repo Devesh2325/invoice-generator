@@ -42,7 +42,7 @@ const EmbedPartySchema = z
   .partial();
 
 const EmbedItemSchema = z.object({
-  description: text(500),
+  description: text(500).default(''),
   hsnCode: text(20).optional(),
   unit: text(20).optional(),
   quantity: amount.default(1),

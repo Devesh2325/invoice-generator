@@ -9,6 +9,10 @@ import {
 
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 15 * 60 * 1000;
+// A caller without a proxy in front can still invent addresses, so failures from everyone are capped too.
+const ALL_CLIENTS = '*';
+const MAX_ATTEMPTS_ALL_CLIENTS = 50;
+const MAX_TRACKED_CLIENTS = 10_000;
 
 // Per-server-instance limit. On multi-instance hosting, use a shared store as well.
 const attempts = new Map<string, { count: number; lockedUntil: number }>();
@@ -16,6 +20,26 @@ const attempts = new Map<string, { count: number; lockedUntil: number }>();
 function matches(a: string, b: string): boolean {
   const hash = (value: string) => createHash('sha256').update(value).digest();
   return timingSafeEqual(hash(a), hash(b));
+}
+
+/** The last address is the one our proxy added. Everything before it is supplied by the caller. */
+function clientAddress(request: NextRequest): string {
+  return request.headers.get('x-forwarded-for')?.split(',').pop()?.trim() || 'local';
+}
+
+function recordFailure(key: string, limit: number) {
+  const count = (attempts.get(key)?.count || 0) + 1;
+  attempts.set(key, {
+    count: count >= limit ? 0 : count,
+    lockedUntil: count >= limit ? Date.now() + LOCK_MS : 0,
+  });
+}
+
+function forgetIdleClients() {
+  if (attempts.size <= MAX_TRACKED_CLIENTS) return;
+  attempts.forEach((record, key) => {
+    if (key !== ALL_CLIENTS && record.lockedUntil <= Date.now()) attempts.delete(key);
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -30,10 +54,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const client = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
-  const record = attempts.get(client);
-  if (record && record.lockedUntil > Date.now()) {
-    const minutes = Math.ceil((record.lockedUntil - Date.now()) / 60000);
+  const client = clientAddress(request);
+  const lockedUntil = Math.max(attempts.get(client)?.lockedUntil || 0, attempts.get(ALL_CLIENTS)?.lockedUntil || 0);
+  if (lockedUntil > Date.now()) {
+    const minutes = Math.ceil((lockedUntil - Date.now()) / 60000);
     return NextResponse.json(
       { error: `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.` },
       { status: 429 }
@@ -55,15 +79,14 @@ export async function POST(request: NextRequest) {
   const passwordOk = matches(password, adminPassword);
 
   if (!emailOk || !passwordOk) {
-    const count = (record?.count || 0) + 1;
-    attempts.set(client, {
-      count: count >= MAX_ATTEMPTS ? 0 : count,
-      lockedUntil: count >= MAX_ATTEMPTS ? Date.now() + LOCK_MS : 0,
-    });
+    recordFailure(client, MAX_ATTEMPTS);
+    recordFailure(ALL_CLIENTS, MAX_ATTEMPTS_ALL_CLIENTS);
+    forgetIdleClients();
     return NextResponse.json({ error: 'Incorrect email or password.' }, { status: 401 });
   }
 
   attempts.delete(client);
+  attempts.delete(ALL_CLIENTS);
   const response = NextResponse.json({ success: true });
   response.cookies.set(ADMIN_COOKIE, await createAdminSession(secret), {
     httpOnly: true,

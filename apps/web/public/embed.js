@@ -37,10 +37,10 @@
       if (event.source !== iframe.contentWindow || event.origin !== origin || !event.data) return;
       switch (event.data.type) {
         case 'invoxa:ready':
-          if (ready) break;
-          ready = true;
+          // Sent again if the iframe reloads, so it gets its prefill and the host's origin back.
           iframe.contentWindow.postMessage({ type: 'invoxa:init', document: options.document }, origin);
-          if (options.onReady) options.onReady();
+          if (!ready && options.onReady) options.onReady();
+          ready = true;
           break;
         case 'invoxa:change':
           latest = event.data.document;
