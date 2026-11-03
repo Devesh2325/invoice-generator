@@ -25,8 +25,8 @@ export default function PricingPage() {
       popular: false,
       highlights: [
         `${APP_CONFIG.trialInvoiceLimit} documents`,
-        'Automatic GST',
-        'UPI QR codes',
+        'Automatic GST, VAT and sales tax',
+        'Bank details and payment QR codes',
         'Starter templates',
         'PDF download and print',
       ],
@@ -63,8 +63,8 @@ export default function PricingPage() {
 
   const comparisonRows = [
     { feature: 'Documents', starter: String(APP_CONFIG.trialInvoiceLimit), pro: 'Unlimited', enterprise: 'Unlimited' },
-    { feature: 'Automatic GST', starter: true, pro: true, enterprise: true },
-    { feature: 'UPI QR codes', starter: true, pro: true, enterprise: true },
+    { feature: 'Automatic GST, VAT and sales tax', starter: true, pro: true, enterprise: true },
+    { feature: 'Bank details and payment QR codes', starter: true, pro: true, enterprise: true },
     { feature: 'Templates', starter: 'Starter set', pro: 'All', enterprise: 'All' },
     { feature: 'Products and stock', starter: false, pro: true, enterprise: true },
     { feature: 'Users', starter: String(PLANS.starter.maxMembers), pro: `Up to ${PLANS.pro.maxMembers}`, enterprise: 'Unlimited' },

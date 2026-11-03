@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   APP_CONFIG,
   CURRENCIES,
-  INDIAN_STATES,
   PLANS,
   calculateDocument,
+  detectCurrency,
+  getCurrencyTaxProfile,
   formatCurrency,
   isTemplateAllowedForPlan,
 } from '@invoice/core';
@@ -28,51 +29,62 @@ import {
   Users,
 } from 'lucide-react';
 
-const SENDER_STATE = '27 - Maharashtra';
-const SAME_STATE_CLIENT = SENDER_STATE;
-const OTHER_STATE_CLIENT = '29 - Karnataka';
-
-const SAMPLE_ITEMS = [
-  { id: 'a', description: 'Website design', hsnCode: '998314', quantity: 1, unitPrice: 75000, taxRate: 18 },
-  { id: 'b', description: 'Security audit', hsnCode: '998313', quantity: 2, unitPrice: 25000, taxRate: 18 },
+// Sample invoices calculated by the same engine as real ones, so visitors see how each country looks.
+const SAMPLE_COUNTRIES = [
+  { currency: 'USD', label: 'USA', taxRate: 8, unit: 1 },
+  { currency: 'GBP', label: 'UK', taxRate: 20, unit: 1 },
+  { currency: 'INR', label: 'India', taxRate: 18, unit: 50 },
+  { currency: 'SGD', label: 'Singapore', taxRate: 9, unit: 1 },
 ];
 
 const STEPS = [
   { title: 'Add your details', body: 'Enter your business, your customer and the items you are billing for.' },
-  { title: 'Let tax work itself out', body: 'Totals and GST update as you type, based on both parties’ states.' },
+  { title: 'Let tax work itself out', body: 'Totals and tax update as you type, using GST, VAT or sales tax for your country.' },
   { title: 'Download or share', body: 'Save a PDF, print it, or send your customer a link to view it.' },
 ];
 
 const FEATURES = [
   {
     icon: Calculator,
-    title: 'Automatic GST',
-    body: 'Applies CGST and SGST within a state and IGST between states, with HSN/SAC codes on each line.',
+    title: 'Automatic tax',
+    body: 'Works out GST, VAT or sales tax for your country, including the CGST, SGST and IGST split in India.',
+    cta: 'Create an invoice',
+    href: '/create',
   },
   {
     icon: QrCode,
-    title: 'UPI QR codes',
-    body: 'Add a QR code for the invoice amount, so customers can pay from any UPI app.',
+    title: 'Payment details and QR codes',
+    body: 'Show your bank details in your country’s format, and add a payment QR code to make paying easy.',
+    cta: 'Add payment details',
+    href: '/create',
   },
   {
     icon: Download,
     title: 'PDF, Excel and more',
     body: 'Download as PDF, Excel, CSV or PNG, or print directly from your browser.',
+    cta: 'Download an invoice',
+    href: '/create',
   },
   {
     icon: Globe,
     title: 'Multiple currencies',
     body: `Bill in ${Object.keys(CURRENCIES).length} currencies, with tax labels and rounding set for each one.`,
+    cta: 'Pick your currency',
+    href: '/create',
   },
   {
     icon: CreditCard,
     title: 'Payment tracking',
     body: 'Record full or partial payments and refunds, and see what is still outstanding.',
+    cta: 'Create a free account',
+    href: '/signup',
   },
   {
     icon: Users,
     title: 'Customers and items',
     body: 'Save customers and products once, then reuse them on every new invoice.',
+    cta: 'Create a free account',
+    href: '/signup',
   },
 ];
 
@@ -86,8 +98,8 @@ const FAQS = [
     a: `The free plan includes ${APP_CONFIG.trialInvoiceLimit} documents and a starter set of templates. Upgrade to a paid plan for unlimited documents and every template.`,
   },
   {
-    q: 'How is GST worked out?',
-    a: 'We compare your state with your customer’s. If they match, tax is split evenly into CGST and SGST. If they differ, it is charged as IGST. Please check invoices with your accountant, as you remain responsible for your tax filings.',
+    q: 'How is tax worked out?',
+    a: 'Each currency has its own tax label and default rate, and you can change the rate on any line. In India, we also compare your state with your customer’s to split tax into CGST and SGST or charge IGST. Please check invoices with your accountant, as you remain responsible for your tax filings.',
   },
   {
     q: 'Where is my data stored?',
@@ -101,23 +113,28 @@ function formatPrice(price: number) {
 
 export default function LandingPage() {
   const { user } = useTenant();
-  const [interState, setInterState] = useState(true);
+  const [sample, setSample] = useState(SAMPLE_COUNTRIES[0]);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  const clientState = interState ? OTHER_STATE_CLIENT : SAME_STATE_CLIENT;
-  const { summary } = useMemo(
-    () =>
-      calculateDocument({
-        currency: 'INR',
-        senderState: SENDER_STATE,
-        clientState,
-        items: SAMPLE_ITEMS,
-      }),
-    [clientState]
-  );
+  // Starts on the same sample as the server's HTML, then moves to the visitor's own country.
+  useEffect(() => {
+    const local = detectCurrency(Intl.DateTimeFormat().resolvedOptions().timeZone, navigator.language);
+    const match = SAMPLE_COUNTRIES.find((country) => country.currency === local);
+    if (match) setSample(match);
+  }, []);
 
-  const clientStateName =
-    INDIAN_STATES.find((s) => s.label === clientState)?.name || clientState;
+  const sampleItems = useMemo(
+    () => [
+      { id: 'a', description: 'Website design', quantity: 1, unitPrice: 1500 * sample.unit, taxRate: sample.taxRate },
+      { id: 'b', description: 'Security audit', quantity: 2, unitPrice: 500 * sample.unit, taxRate: sample.taxRate },
+    ],
+    [sample]
+  );
+  const { summary } = useMemo(
+    () => calculateDocument({ currency: sample.currency, items: sampleItems }),
+    [sample, sampleItems]
+  );
+  const sampleProfile = getCurrencyTaxProfile(sample.currency);
 
   const featuredTemplates = useMemo(
     () =>
@@ -139,7 +156,7 @@ export default function LandingPage() {
       features: [
         `${APP_CONFIG.trialInvoiceLimit} documents`,
         'Starter templates',
-        'GST and UPI QR codes',
+        'GST, VAT and sales tax',
         `${PLANS.starter.maxMembers} user`,
       ],
       cta: 'Start free',
@@ -178,10 +195,10 @@ export default function LandingPage() {
               Free to start, with PDF and Excel downloads
             </span>
             <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
-              Create GST invoices <span className="brand-text">without the paperwork</span>
+              Invoices for any country, <span className="brand-text">without the paperwork</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
-              Add your items and {APP_CONFIG.brandName} works out the tax, adds a UPI QR code and gives you an invoice ready to send.
+              Add your items and {APP_CONFIG.brandName} works out GST, VAT or sales tax in your currency and gives you an invoice ready to send.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Link href="/create">
@@ -202,25 +219,22 @@ export default function LandingPage() {
           <div className="glass-card min-w-0 rounded-3xl p-5 sm:p-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold">Tax invoice</div>
+                <div className="text-sm font-semibold">Sample invoice</div>
                 <div className="text-sm text-muted-foreground">INV-2026-00042</div>
               </div>
               <div
                 className="inline-flex rounded-lg bg-muted p-1 text-sm"
                 role="group"
-                aria-label="Customer location"
+                aria-label="Sample country"
               >
-                {[
-                  { value: true, label: 'Other state' },
-                  { value: false, label: 'Same state' },
-                ].map((option) => (
+                {SAMPLE_COUNTRIES.map((option) => (
                   <button
-                    key={option.label}
+                    key={option.currency}
                     type="button"
-                    aria-pressed={interState === option.value}
-                    onClick={() => setInterState(option.value)}
-                    className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-                      interState === option.value
+                    aria-pressed={sample.currency === option.currency}
+                    onClick={() => setSample(option)}
+                    className={`rounded-md px-2.5 py-1.5 font-medium transition-colors ${
+                      sample.currency === option.currency
                         ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
@@ -235,12 +249,12 @@ export default function LandingPage() {
               <div>
                 <div className="text-muted-foreground">From</div>
                 <div className="font-medium">Sample Studio</div>
-                <div className="text-muted-foreground">Maharashtra</div>
+                <div className="text-muted-foreground">{sampleProfile.defaultCountry}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Bill to</div>
                 <div className="font-medium">Sample Client</div>
-                <div className="text-muted-foreground">{clientStateName}</div>
+                <div className="text-muted-foreground">{sampleProfile.defaultCountry}</div>
               </div>
             </div>
 
@@ -253,12 +267,12 @@ export default function LandingPage() {
                 </tr>
               </thead>
               <tbody>
-                {SAMPLE_ITEMS.map((item) => (
+                {sampleItems.map((item) => (
                   <tr key={item.id} className="border-b border-border/60">
                     <td className="py-2.5">{item.description}</td>
                     <td className="py-2.5 text-right tabular-nums">{item.quantity}</td>
                     <td className="py-2.5 text-right tabular-nums">
-                      {formatCurrency(item.quantity * item.unitPrice, 'INR')}
+                      {formatCurrency(item.quantity * item.unitPrice, sample.currency)}
                     </td>
                   </tr>
                 ))}
@@ -268,28 +282,15 @@ export default function LandingPage() {
             <dl className="ml-auto mt-4 space-y-1.5 text-sm sm:max-w-xs">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Subtotal</dt>
-                <dd className="tabular-nums">{formatCurrency(summary.taxableSubtotal, 'INR')}</dd>
+                <dd className="tabular-nums">{formatCurrency(summary.taxableSubtotal, sample.currency)}</dd>
               </div>
-              {interState ? (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">IGST (18%)</dt>
-                  <dd className="tabular-nums">{formatCurrency(summary.igstTotal || 0, 'INR')}</dd>
-                </div>
-              ) : (
-                <>
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-muted-foreground">CGST (9%)</dt>
-                    <dd className="tabular-nums">{formatCurrency(summary.cgstTotal || 0, 'INR')}</dd>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-muted-foreground">SGST (9%)</dt>
-                    <dd className="tabular-nums">{formatCurrency(summary.sgstTotal || 0, 'INR')}</dd>
-                  </div>
-                </>
-              )}
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">{sampleProfile.taxLabel} ({sample.taxRate}%)</dt>
+                <dd className="tabular-nums">{formatCurrency(summary.totalTax, sample.currency)}</dd>
+              </div>
               <div className="flex justify-between gap-4 border-t border-border pt-2 text-base font-semibold">
                 <dt>Total</dt>
-                <dd className="tabular-nums">{formatCurrency(summary.grandTotal, 'INR')}</dd>
+                <dd className="tabular-nums">{formatCurrency(summary.grandTotal, sample.currency)}</dd>
               </div>
             </dl>
           </div>
@@ -315,14 +316,17 @@ export default function LandingPage() {
         <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6">
           <h2 className="text-3xl font-semibold tracking-tight">Everything you need to get paid</h2>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="glass-card rounded-2xl p-6 transition-transform hover:-translate-y-1">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                  <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
+            {FEATURES.map(({ icon: Icon, title, body, cta, href }) => (
+              <article key={title} className="card-3d">
+                <span className="card-3d__icon">
+                  <Icon className="h-6 w-6" aria-hidden="true" />
                 </span>
                 <h3 className="mt-4 text-lg font-semibold">{title}</h3>
-                <p className="mt-1 leading-relaxed text-muted-foreground">{body}</p>
-              </div>
+                <p className="mt-1.5 mb-1 leading-relaxed text-muted-foreground">{body}</p>
+                <Link href={href} className="card-3d__cta" aria-label={`${cta}: ${title}`}>
+                  {cta} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </article>
             ))}
           </div>
         </section>

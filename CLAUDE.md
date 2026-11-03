@@ -88,7 +88,8 @@ Appwrite stores each record as a few indexed attributes plus the full object as 
 
 ### Templates
 
-- `packages/theme/src/templates.ts`: the `TEMPLATES` people can choose, in four categories. Each one must be a different design.
+- `packages/theme/src/templates.ts`: the `TEMPLATES` people can choose, in three categories. Each one must be a different design.
+- `TEMPLATE_CURRENCIES` in `core/src/config/app-config.ts` ties each country's design to its currency. Choosing the design switches the currency, and changing the currency swaps a design from another country (`templateForCurrency`). Tax labels and the Indian state list follow the currency, so this is what stops them mixing. Add new country templates there too.
 - `packages/theme/src/invoice-templates.ts`: `INVOICE_TEMPLATES`, the designs rendered to print-ready HTML. It also keeps retired designs (`za-vat`, `nz-gst`, `mx-iva`) so saved invoices still render. Don't remove a design that saved invoices may use.
 - `core/src/config/app-config.ts`: `FREE_TEMPLATE_IDS`, plus `LEGACY_TEMPLATE_IDS` and `resolveTemplateId`, which map old IDs such as `cleartax_gst` to current ones. Every lookup goes through `resolveTemplateId`.
 - `TEMPLATE_DOCUMENT_TYPES` links the special document templates to a document type, so a credit note design can't print on a tax invoice.
@@ -108,6 +109,16 @@ The generator is one column with no side panel: `invoice-options-bar.tsx` (curre
 Downloads are PDF and PNG (`lib/pdf/export-pdf.ts`, captured from the hidden print sheet) and Excel and CSV (`lib/export/export-document.ts`, built from `DocumentModel`). Excel holds the engine's values, not formulas.
 
 **Invoice output must use the engine's numbers.** `mapCanonicalDocumentToTemplateInv` passes `calculatedTotals` and per-line `calculated` values to the templates. Never let a template recompute a real document's totals: it once ignored discounts and shipping, so invoices showed the wrong amount. Check print changes by viewing the printed image, because `.print-only-sheet` can be present in the page and still print blank.
+
+### Countries
+
+The product is for any country, not only India. New visitors and new workspaces start in `detectCurrency` (from the time zone, then the browser language, then USD). Show India-only things (GSTIN, state list, CGST/SGST/IGST, HSN, UPI) only when `getCurrencyTaxProfile(currency)` says so, and keep public copy country-neutral.
+
+The line items table has no sideways scroll. `.line-items` in `globals.css` uses fixed column widths, and a container query turns each line into a small card when the table is too narrow. When you add a column, add its `data-label` and check that all columns still fit.
+
+### Language
+
+Pages are written in English. `lib/i18n/dom-translator.ts` swaps visible text for the entries in `locales/hi-phrases.json`, which only downloads when someone chooses Hindi. When you add interface text, add it there too, or it stays in English. A `#` in a key matches any value and `$1` places it in the translation. Anything inside `translate="no"` is skipped: the invoice canvas, preview and print sheet use that, because invoices go to customers and must not follow the screen language. The older `t()` function only covers the public header. Admin pages, legal pages, the blog and messages sent to customers are English only.
 
 ### Embedding
 

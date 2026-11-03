@@ -146,6 +146,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
         )}
         <div
           id={captureId}
+          translate="no"
           className="w-[794px] bg-white mx-auto print-container"
           dangerouslySetInnerHTML={{ __html: innerMarkup }}
         />
@@ -319,6 +320,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
       {/* Hidden high-fidelity DOM element dedicated for html2canvas PDF export */}
       <div
         id={captureId}
+          translate="no"
         aria-hidden="true"
         style={{
           position: 'fixed',

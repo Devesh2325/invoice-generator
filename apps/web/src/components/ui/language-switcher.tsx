@@ -33,8 +33,9 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
           aria-label="Change Language"
         >
           <Globe className="h-3.5 w-3.5 shrink-0" />
-          <span className="font-mono text-[11px] uppercase">{currentMeta.code}</span>
-          {!compact && <span className="hidden sm:inline font-sans text-xs">{currentMeta.flag}</span>}
+          <span className={compact ? 'font-mono text-[11px] uppercase' : 'text-xs'} translate="no">
+            {compact ? currentMeta.code : currentMeta.label}
+          </span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-36 p-1 border-border bg-card shadow-lg z-50">
@@ -48,10 +49,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
                 isSelected ? 'font-bold bg-primary/10 text-primary' : 'text-foreground'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <span>{lang.flag}</span>
-                <span>{lang.label}</span>
-              </div>
+              <span translate="no">{lang.label}</span>
               {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
             </DropdownMenuItem>
           );

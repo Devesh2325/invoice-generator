@@ -337,7 +337,7 @@ export default function CustomerDetailPage() {
                 {customer.taxId && (
                   <div className="flex items-center gap-1.5 tabular-nums">
                     <Building className="h-3.5 w-3.5 text-slate-400" />
-                    <span>GSTIN / Tax ID: {customer.taxId}</span>
+                    <span>Tax ID: {customer.taxId}</span>
                   </div>
                 )}
                 {customer.billingAddress?.city && (
@@ -806,7 +806,7 @@ export default function CustomerDetailPage() {
                     onChange={(e) => setPayMethod(e.target.value as any)}
                     className="w-full h-9 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs"
                   >
-                    <option value="bank_transfer">Bank Transfer (NEFT/RTGS/IMPS)</option>
+                    <option value="bank_transfer">Bank Transfer</option>
                     <option value="upi">UPI / Instant Pay</option>
                     <option value="cash">Cash Payment</option>
                     <option value="card">Credit / Debit Card</option>
@@ -814,8 +814,8 @@ export default function CustomerDetailPage() {
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Transaction Reference / UTR</label>
-                  <Input value={payRef} onChange={(e) => setPayRef(e.target.value)} placeholder="e.g. UTR-9821898129" />
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Transaction Reference</label>
+                  <Input value={payRef} onChange={(e) => setPayRef(e.target.value)} placeholder="e.g. REF-98218" />
                 </div>
 
                 <div className="flex justify-end gap-2 pt-3 border-t">

@@ -208,7 +208,7 @@ export default function TenantInvoicesPage() {
     if (emptyDrafts.length === 0) return;
     if (
       !window.confirm(
-        `Found ${emptyDrafts.length} empty draft invoice(s) with ₹0 total. Do you want to permanently delete all of them to clean your database?`
+        `Found ${emptyDrafts.length} empty draft invoice(s) with a zero total. Do you want to permanently delete all of them to clean your database?`
       )
     ) {
       return;
@@ -274,7 +274,7 @@ export default function TenantInvoicesPage() {
                 variant="outline"
                 onClick={handleCleanEmptyDrafts}
                 className="text-xs font-semibold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 shadow-xs flex items-center gap-1.5"
-                title="Permanently remove empty ₹0 drafts generated in error"
+                title="Permanently remove empty drafts with a zero total"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Clean {emptyDrafts.length} Empty Draft{emptyDrafts.length > 1 ? 's' : ''}
@@ -728,7 +728,7 @@ export default function TenantInvoicesPage() {
                       Transaction Reference
                     </label>
                     <Input
-                      placeholder="e.g. UTR / NEFT-89412 or UPI Ref"
+                      placeholder="e.g. Bank or payment reference"
                       value={paymentRef}
                       onChange={(e) => setPaymentRef(e.target.value)}
                       className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100"

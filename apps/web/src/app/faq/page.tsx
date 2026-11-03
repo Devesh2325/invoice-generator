@@ -19,11 +19,11 @@ const FAQS = [
     a: `The free plan includes ${APP_CONFIG.trialInvoiceLimit} documents and a starter set of templates. Paid plans add unlimited documents, every template and more.`,
   },
   {
-    q: 'How is GST worked out?',
-    a: 'We compare your state with your customer’s. If they match, tax is split evenly into CGST and SGST. If they differ, it is charged as IGST. You remain responsible for your tax filings, so please check invoices with your accountant if you are unsure.',
+    q: 'How is tax worked out?',
+    a: 'Each currency has its own tax label and default rate, and you can change the rate on any line. In India, we also compare your state with your customer’s to split tax into CGST and SGST or charge IGST. You remain responsible for your tax filings, so please check invoices with your accountant if you are unsure.',
   },
   {
-    q: 'How does the UPI QR code work?',
+    q: 'How does the UPI QR code work in India?',
     a: 'Enter your UPI ID and payee name, and the invoice can show a QR code with the amount filled in. Your customer pays from their UPI app, and the money goes straight to your account.',
   },
   {

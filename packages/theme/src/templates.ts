@@ -1,6 +1,6 @@
 import { DocumentType, resolveTemplateId } from '@invoice/core';
 
-export type TemplateCategory = 'india' | 'international' | 'style' | 'documents';
+export type TemplateCategory = 'international' | 'style' | 'documents';
 
 export interface DocumentTemplateMeta {
   id: string;
@@ -15,9 +15,8 @@ export interface DocumentTemplateMeta {
 }
 
 export const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string }[] = [
-  { id: 'india', label: 'India GST' },
-  { id: 'international', label: 'Country tax invoices' },
   { id: 'style', label: 'Any business' },
+  { id: 'international', label: 'Country tax invoices' },
   { id: 'documents', label: 'Special documents' },
 ];
 
@@ -44,23 +43,22 @@ const entry = (
  */
 export const TEMPLATES: Record<string, DocumentTemplateMeta> = Object.fromEntries(
   [
-    entry('in-gst', 'India GST', 'india', '#1D4ED8', 'GST tax invoice with HSN/SAC codes, place of supply and the CGST, SGST or IGST split.'),
-
-    entry('uk-vat', 'UK VAT', 'international', '#1D3557', 'UK VAT invoice with VAT registration number, sort code and tax point.'),
-    entry('eu-vat', 'EU VAT', 'international', '#334155', 'Standard EU VAT invoice with VAT ID and IBAN.', 'serif'),
-    entry('eu-reverse-charge', 'EU VAT (reverse charge)', 'international', '#334155', 'For B2B sales between EU countries, where the customer accounts for the VAT.', 'serif'),
-    entry('us-sales-tax', 'US Sales Tax', 'international', '#0F766E', 'US invoice with sales tax, EIN and ABA routing number.'),
-    entry('ca-hst', 'Canada GST/HST', 'international', '#4338CA', 'Canadian invoice with GST/HST and Business Number.'),
-    entry('au-gst', 'Australia GST', 'international', '#166534', 'Australian tax invoice with ABN, BSB and GST.'),
-    entry('sg-gst', 'Singapore GST', 'international', '#BE123C', 'Singapore tax invoice with GST registration number and UEN.'),
-    entry('ae-vat', 'UAE VAT', 'international', '#0B3D4A', 'English and Arabic tax invoice with TRN and IBAN.'),
-    entry('jp-qualified', 'Japan Qualified Invoice', 'international', '#C1121F', 'Qualified invoice with registration number and consumption tax.'),
-    entry('ch-sidebar', 'Switzerland VAT', 'international', '#1F2937', 'Swiss VAT invoice with a sidebar layout, UID and IBAN.'),
-
     entry('modern', 'Modern Clean', 'style', '#2563EB', 'A clean, simple layout that works in any currency.'),
     entry('creative', 'Studio Creative Bold', 'style', '#9333EA', 'A bold colour band and strong type for studios and agencies.'),
     entry('dark-tech', 'Dark Mode Tech', 'style', '#C6F432', 'Dark paper with a lime accent and monospaced numbers.', 'mono'),
     entry('hk-no-tax', 'No Sales Tax', 'style', '#581C87', 'A centred, formal layout for businesses that don’t charge sales tax.', 'serif'),
+
+    entry('au-gst', 'Australia GST', 'international', '#166534', 'Australian tax invoice with ABN, BSB and GST.'),
+    entry('ca-hst', 'Canada GST/HST', 'international', '#4338CA', 'Canadian invoice with GST/HST and Business Number.'),
+    entry('eu-vat', 'EU VAT', 'international', '#334155', 'Standard EU VAT invoice with VAT ID and IBAN.', 'serif'),
+    entry('eu-reverse-charge', 'EU VAT (reverse charge)', 'international', '#334155', 'For B2B sales between EU countries, where the customer accounts for the VAT.', 'serif'),
+    entry('in-gst', 'India GST', 'international', '#1D4ED8', 'GST tax invoice with HSN/SAC codes, place of supply and the CGST, SGST or IGST split.'),
+    entry('jp-qualified', 'Japan Qualified Invoice', 'international', '#C1121F', 'Qualified invoice with registration number and consumption tax.'),
+    entry('sg-gst', 'Singapore GST', 'international', '#BE123C', 'Singapore tax invoice with GST registration number and UEN.'),
+    entry('ch-sidebar', 'Switzerland VAT', 'international', '#1F2937', 'Swiss VAT invoice with a sidebar layout, UID and IBAN.'),
+    entry('ae-vat', 'UAE VAT', 'international', '#0B3D4A', 'English and Arabic tax invoice with TRN and IBAN.'),
+    entry('uk-vat', 'UK VAT', 'international', '#1D3557', 'UK VAT invoice with VAT registration number, sort code and tax point.'),
+    entry('us-sales-tax', 'US Sales Tax', 'international', '#0F766E', 'US invoice with sales tax, EIN and ABA routing number.'),
 
     entry('proforma', 'Proforma Invoice', 'documents', '#B45309', 'Marked “Not a tax invoice”, for payment before delivery.'),
     entry('credit-note', 'Credit Note', 'documents', '#7F1D1D', 'Shows amounts as credits against an invoice you already issued.'),

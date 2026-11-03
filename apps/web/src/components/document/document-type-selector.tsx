@@ -51,7 +51,7 @@ export const DOCUMENT_TYPE_OPTIONS: DocumentTypeOption[] = [
     label: 'Tax Invoice',
     shortCode: 'INV',
     prefix: 'INV-',
-    description: 'Standard commercial sales invoice with full GST/tax breakdown',
+    description: 'Standard sales invoice with a full tax breakdown',
     icon: FileText,
     section: 'sales',
   },

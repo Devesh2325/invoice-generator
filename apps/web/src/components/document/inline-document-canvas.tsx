@@ -297,6 +297,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
   return (
     <div
       id="invoice-document-capture"
+      translate="no"
       className={`paper-shadow overflow-hidden max-w-4xl mx-auto ${fontClass} relative transition-all border print:shadow-none print:border-none print:m-0 print:w-full print:max-w-none print:rounded-none canvas-print-target`}
       style={{
         backgroundColor: paperColor,
@@ -1265,7 +1266,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
     const headColor = onAccentColor;
 
     const hasExtraCols = showHsn || showTaxColumns || showDiscount;
-    const tableMinW = hasExtraCols ? 'min-w-[920px]' : 'min-w-[560px]';
+
     // Amount is before tax. The gross subtotal only adds up to that column when no line has its own discount.
     const hasLineDiscounts = document.items.some((item) => Number(item.lineDiscount) > 0);
 
@@ -1284,8 +1285,8 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
           <option value="LTR">Liters (LTR)</option>
         </datalist>
 
-        <div className="overflow-x-auto border rounded-xl shadow-xs" style={{ borderColor }}>
-          <table className={`w-full ${tableMinW} text-left border-collapse text-xs`}>
+        <div className={`line-items ${hasExtraCols ? 'line-items--wide' : ''} border rounded-xl shadow-xs`} style={{ borderColor }}>
+          <table className="text-left border-collapse text-xs">
             <thead>
               <tr
                 className="uppercase tracking-wider text-[11px] font-bold select-none"
@@ -1294,43 +1295,43 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   color: headColor,
                 }}
               >
-                <th className="py-2.5 px-3 w-10 min-w-[36px] text-center font-bold">#</th>
-                <th className="py-2.5 px-3 min-w-[200px] text-left font-bold">Item name</th>
+                <th className="py-2.5 px-3 w-[26px] text-center font-bold">#</th>
+                <th className="py-2.5 px-3 text-left font-bold">Item name</th>
                 {showHsn && (
-                  <th className="py-2.5 px-2 w-24 min-w-[90px] text-center font-bold">
+                  <th className="py-2.5 px-2 w-[68px] text-center font-bold">
                     {isIndiaGst ? 'HSN/SAC' : 'Code'}
                   </th>
                 )}
-                <th className="py-2.5 px-2 w-20 min-w-[70px] text-right font-bold">Quantity</th>
+                <th className="py-2.5 px-2 w-[42px] text-right font-bold">Qty</th>
                 {showUnit && (
-                  <th className="py-2.5 px-2 w-20 min-w-[70px] text-center font-bold">Unit</th>
+                  <th className="py-2.5 px-2 w-[50px] text-center font-bold">Unit</th>
                 )}
-                <th className="py-2.5 px-2 w-28 min-w-[95px] text-right font-bold">Price/ Unit</th>
+                <th className="py-2.5 px-2 w-[88px] text-right font-bold">Price</th>
                 {showDiscount && (
-                  <th className="py-2.5 px-2 w-20 min-w-[70px] text-right font-bold">Disc %</th>
+                  <th className="py-2.5 px-2 w-[42px] text-right font-bold">Disc</th>
                 )}
                 {showTaxColumns && (
                   isIndiaGst ? (
                     <>
-                      <th className="py-2.5 px-2 w-20 min-w-[75px] text-right font-bold">GST %</th>
+                      <th className="py-2.5 px-2 w-[50px] text-right font-bold">GST %</th>
                       {isInterState ? (
-                        <th className="py-2.5 px-2 w-24 min-w-[90px] text-right font-bold">IGST Amt</th>
+                        <th className="py-2.5 px-2 w-[84px] text-right font-bold">IGST Amt</th>
                       ) : (
                         <>
-                          <th className="py-2.5 px-2 w-20 min-w-[75px] text-right font-bold">CGST</th>
-                          <th className="py-2.5 px-2 w-20 min-w-[75px] text-right font-bold">SGST</th>
+                          <th className="py-2.5 px-2 w-[78px] text-right font-bold">CGST</th>
+                          <th className="py-2.5 px-2 w-[78px] text-right font-bold">SGST</th>
                         </>
                       )}
                     </>
                   ) : (
                     <>
-                      <th className="py-2.5 px-2 w-20 min-w-[75px] text-right font-bold">{effectiveTaxLabel} %</th>
-                      <th className="py-2.5 px-2 w-24 min-w-[90px] text-right font-bold">{effectiveTaxLabel} Amt</th>
+                      <th className="py-2.5 px-2 w-[56px] text-right font-bold">{effectiveTaxLabel} %</th>
+                      <th className="py-2.5 px-2 w-[84px] text-right font-bold">{effectiveTaxLabel} Amt</th>
                     </>
                   )
                 )}
-                <th className="py-2.5 px-3 w-32 min-w-[110px] text-right font-bold">Amount</th>
-                <th className="py-2.5 px-2 w-14 min-w-[56px] text-center font-bold no-print">Act</th>
+                <th className="py-2.5 px-3 w-[100px] text-right font-bold">Amount</th>
+                <th className="py-2.5 px-2 w-[50px] text-center font-bold no-print" aria-label="Actions"></th>
               </tr>
             </thead>
 
@@ -1349,10 +1350,10 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     className="group"
                     style={{ backgroundColor: rowBg }}
                   >
-                    <td className="py-2.5 px-3 text-center font-mono font-medium" style={{ color: mutedTextColor }}>
+                    <td data-label="#" className="li-index py-2.5 px-3 text-center font-mono font-medium" style={{ color: mutedTextColor }}>
                       {idx + 1}
                     </td>
-                    <td className="py-2 px-2.5">
+                    <td data-label="Item name" className="li-item py-2 px-2.5">
                       <div className="relative flex items-center gap-1.5 w-full">
                         <input
                           type="text"
@@ -1397,7 +1398,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       </div>
                     </td>
                     {showHsn && (
-                      <td className="py-2 px-2 min-w-[90px]">
+                      <td data-label={isIndiaGst ? 'HSN/SAC' : 'Code'} className="py-2 px-2">
                         <input
                           type="text"
                           value={item.hsnCode || ''}
@@ -1407,7 +1408,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         />
                       </td>
                     )}
-                    <td className="py-2 px-2 min-w-[70px]">
+                    <td data-label="Quantity" className="py-2 px-2">
                       <input
                         type="number"
                         min="0"
@@ -1418,7 +1419,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       />
                     </td>
                     {showUnit && (
-                      <td className="py-2 px-2 min-w-[70px]">
+                      <td data-label="Unit" className="py-2 px-2">
                         <input
                           type="text"
                           value={(item as any).unit || ''}
@@ -1429,7 +1430,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         />
                       </td>
                     )}
-                    <td className="py-2 px-2 min-w-[95px]">
+                    <td data-label="Price / unit" className="py-2 px-2">
                       <input
                         type="number"
                         min="0"
@@ -1441,7 +1442,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       />
                     </td>
                     {showDiscount && (
-                      <td className="py-2 px-2 min-w-[70px]">
+                      <td data-label="Disc %" className="py-2 px-2">
                         <input
                           type="number"
                           min="0"
@@ -1461,7 +1462,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     {showTaxColumns && (
                       isIndiaGst ? (
                         <>
-                          <td className="py-2 px-2 min-w-[75px]">
+                          <td data-label="GST %" className="py-2 px-2">
                             <select
                               value={item.taxRate ?? 18}
                               onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
@@ -1478,17 +1479,17 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                             </select>
                           </td>
                           {isInterState ? (
-                            <td className="py-2 px-2 text-right font-mono min-w-[90px]" style={{ color: mutedTextColor }}>
+                            <td data-label="IGST" className="py-2 px-2 text-right font-mono" style={{ color: mutedTextColor }}>
                               <div>{formatCurrency(item.igstAmount ?? item.taxAmount, currency)}</div>
                               <div className="text-[10px] opacity-75">({item.taxRate || 0}%)</div>
                             </td>
                           ) : (
                             <>
-                              <td className="py-2 px-2 text-right font-mono min-w-[75px]" style={{ color: mutedTextColor }}>
+                              <td data-label="CGST" className="py-2 px-2 text-right font-mono" style={{ color: mutedTextColor }}>
                                 <div>{formatCurrency(item.cgstAmount ?? item.taxAmount / 2, currency)}</div>
                                 <div className="text-[10px] opacity-75">({(item.taxRate || 0) / 2}%)</div>
                               </td>
-                              <td className="py-2 px-2 text-right font-mono min-w-[75px]" style={{ color: mutedTextColor }}>
+                              <td data-label="SGST" className="py-2 px-2 text-right font-mono" style={{ color: mutedTextColor }}>
                                 <div>{formatCurrency(item.sgstAmount ?? item.taxAmount / 2, currency)}</div>
                                 <div className="text-[10px] opacity-75">({(item.taxRate || 0) / 2}%)</div>
                               </td>
@@ -1497,28 +1498,28 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                         </>
                       ) : (
                         <>
-                          <td className="py-2 px-2 min-w-[75px]">
+                          <td data-label={`${effectiveTaxLabel} %`} className="py-2 px-2">
                             <input
                               type="number"
                               min="0"
                               step="any"
                               value={item.taxRate ?? (tpl.id === 'in-gst' ? taxProfile.defaultTaxRate : (tpl.taxRate ?? taxProfile.defaultTaxRate))}
                               onChange={(e) => onUpdateItem(idx, 'taxRate', Number(e.target.value))}
-                              className={`${tableCellInput} w-full min-w-[65px] text-right font-mono`}
+                              className={`${tableCellInput} w-full text-right font-mono`}
                             />
                           </td>
-                          <td className="py-2 px-2 text-right font-mono min-w-[90px]" style={{ color: mutedTextColor }}>
+                          <td data-label={`${effectiveTaxLabel} Amt`} className="py-2 px-2 text-right font-mono" style={{ color: mutedTextColor }}>
                             {formatCurrency(item.taxAmount, currency)}
                           </td>
                         </>
                       )
                     )}
 
-                    <td className="py-2 px-3 text-right font-mono font-bold text-sm min-w-[110px]">
+                    <td data-label="Amount" className="py-2 px-3 text-right font-mono font-bold">
                       {formatCurrency(item.lineNet, currency)}
                     </td>
 
-                    <td className="py-2 px-1.5 text-center no-print w-14 min-w-[56px]">
+                    <td className="li-actions py-2 px-1.5 text-center no-print w-14">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           type="button"
@@ -1556,13 +1557,13 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
               }}
             >
               <tr className="text-xs md:text-sm">
-                <td
+                <td data-foot="total"
                   className="py-3 px-3 font-black"
                   colSpan={showHsn ? 3 : 2}
                 >
                   Total
                 </td>
-                <td className="py-3 px-2 text-right font-mono font-black">
+                <td data-label="Quantity" className="py-3 px-2 text-right font-mono font-black">
                   {totalQuantity}
                 </td>
                 {showUnit && <td className="py-3 px-2 text-center" />}
@@ -1573,15 +1574,15 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     <>
                       <td className="py-3 px-2" />
                       {isInterState ? (
-                        <td className="py-3 px-2 text-right font-mono font-bold">
+                        <td data-label="IGST" className="py-3 px-2 text-right font-mono font-bold">
                           {formatCurrency(summary.igstTotal || 0, currency)}
                         </td>
                       ) : (
                         <>
-                          <td className="py-3 px-2 text-right font-mono font-bold">
+                          <td data-label="CGST" className="py-3 px-2 text-right font-mono font-bold">
                             {formatCurrency(summary.cgstTotal || 0, currency)}
                           </td>
-                          <td className="py-3 px-2 text-right font-mono font-bold">
+                          <td data-label="SGST" className="py-3 px-2 text-right font-mono font-bold">
                             {formatCurrency(summary.sgstTotal || 0, currency)}
                           </td>
                         </>
@@ -1590,13 +1591,13 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                   ) : (
                     <>
                       <td className="py-3 px-2" />
-                      <td className="py-3 px-2 text-right font-mono font-bold">
+                      <td data-label="Tax" className="py-3 px-2 text-right font-mono font-bold">
                         {formatCurrency(summary.totalTax, currency)}
                       </td>
                     </>
                   )
                 )}
-                <td className="py-3 px-3 text-right font-mono font-black text-sm md:text-base">
+                <td data-label="Amount" className="py-3 px-3 text-right font-mono font-black">
                   {!hasLineDiscounts && formatCurrency(summary.subtotal, currency)}
                 </td>
                 <td className="py-3 px-2 no-print" />
@@ -1606,7 +1607,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
         </div>
 
         {/* Action button: Add item & Column toggle */}
-        <div className="no-print flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div translate="yes" className="no-print flex flex-wrap items-center justify-between gap-3 pt-1">
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -1652,13 +1653,13 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
             onClick={() => setShowAdvancedColumns(!showAdvancedColumns)}
             className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 hover:opacity-90"
             style={{ borderColor, color: mutedTextColor, backgroundColor: tintBg }}
-            title="Toggle additional tax, HSN code, and discount columns on table"
+            title="Show or hide the extra columns"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
             <span>
               {showAdvancedColumns
-                ? 'Simplified Standard View'
-                : '+ Add HSN / Tax / Discount Columns'}
+                ? 'Simple view'
+                : isIndiaGst ? '+ Add HSN / Tax / Discount Columns' : '+ Add Tax / Discount Columns'}
             </span>
           </button>
         </div>
@@ -1671,15 +1672,15 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t" style={{ borderColor }}>
         {/* Left 7 Cols: Tax Summary, Payment Coordinates, Notes */}
         <div className="md:col-span-7 space-y-4">
-          {/* GST breakdown (for India) or Tax Summary (for foreign) */}
-          {summary.taxBreakdown.length > 0 && (
+          {/* Only useful with mixed rates. With one rate the totals box already shows the tax. */}
+          {summary.taxBreakdown.length > 1 && (
             <div className="border rounded-lg overflow-hidden" style={{ backgroundColor: tintBg, borderColor }}>
               <div
-                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider flex justify-between border-b"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border-b"
                 style={{ backgroundColor: `${effectiveAccent}12`, borderColor, color: effectiveAccent }}
               >
-                <span>{effectiveTaxLabel} Tax Breakdown</span>
-                <span>Rate Analysis</span>
+                <span>{effectiveTaxLabel} by rate</span>
+
               </div>
               <table className="w-full text-[11px] font-mono">
                 <thead>

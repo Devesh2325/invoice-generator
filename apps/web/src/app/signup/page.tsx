@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileText, Building, Mail, Lock, User, CheckCircle2, AlertCircle, Sun, Moon } from 'lucide-react';
-import { APP_CONFIG } from '@invoice/core';
+import { APP_CONFIG, detectCurrency, getCurrencyTaxProfile } from '@invoice/core';
 import { hashPassword } from '@/lib/auth/password';
 
 export default function SignUpPage() {
@@ -35,6 +35,8 @@ export default function SignUpPage() {
 
     setLoading(true);
     try {
+      const startingCurrency = detectCurrency(Intl.DateTimeFormat().resolvedOptions().timeZone, navigator.language);
+      const { defaultCountry, defaultState } = getCurrencyTaxProfile(startingCurrency);
       const userId = `usr_${Date.now()}`;
       const tenantId = `tenant_${Date.now()}`;
       const slug = workspaceName
@@ -75,9 +77,9 @@ export default function SignUpPage() {
         custom_domain: null,
         is_domain_verified: false,
         role: 'owner',
-        currency: 'INR',
-        country: 'India',
-        gstState: '27 - Maharashtra',
+        currency: startingCurrency,
+        country: defaultCountry,
+        gstState: defaultState,
       });
 
       await TenantApi.updateBrandSettings(tenantId, {
@@ -87,9 +89,9 @@ export default function SignUpPage() {
         primaryColor: '#3157D5',
         secondaryColor: '#0F172A',
         fontFamily: 'sans',
-        currency: 'INR',
-        country: 'India',
-        gstState: '27 - Maharashtra',
+        currency: startingCurrency,
+        country: defaultCountry,
+        gstState: defaultState,
       });
 
       await refreshTenants();
@@ -127,7 +129,7 @@ export default function SignUpPage() {
           </Link>
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Create your Business Workspace</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Set up isolated multi-tenant GST & financial billing for your company
+            Set up invoicing for your company
           </p>
         </div>
 
@@ -158,7 +160,7 @@ export default function SignUpPage() {
                     value={workspaceName}
                     onChange={(e) => setWorkspaceName(e.target.value)}
                     className="pl-9 text-sm bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                    placeholder="e.g. Sharma Enterprises Pvt Ltd"
+                    placeholder="e.g. Northwind Trading"
                   />
                 </div>
               </div>
@@ -174,7 +176,7 @@ export default function SignUpPage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="pl-9 text-sm bg-transparent dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                    placeholder="e.g. Rahul Sharma"
+                    placeholder="e.g. Alex Morgan"
                   />
                 </div>
               </div>

@@ -365,7 +365,7 @@ export default function TenantDashboardPage() {
                   </div>
                   <div>
                     <div>Items</div>
-                    <div className="text-xs text-slate-400 dark:text-slate-500 font-normal">Define reusable items, HSN & tax rates</div>
+                    <div className="text-xs text-slate-400 dark:text-slate-500 font-normal">Define reusable items and tax rates</div>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500" />

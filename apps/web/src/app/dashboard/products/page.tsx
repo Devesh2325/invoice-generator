@@ -630,7 +630,7 @@ export default function ProductsAndInventoryPage() {
 
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      GST / Tax Rate (%)
+                      Tax Rate (%)
                     </label>
                     <select
                       value={taxRate}

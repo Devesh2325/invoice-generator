@@ -8,6 +8,7 @@ import {
   Party,
   CanonicalDocument,
   INDIAN_STATES,
+  getCurrencyTaxProfile,
   formatCurrency,
   SUPPORTED_CURRENCIES,
 } from '@invoice/core';
@@ -51,7 +52,7 @@ const CUSTOMER_FIELDS: { key: CustomerFieldKey; label: string; required?: boolea
   { key: 'taxId', label: 'Tax ID / GSTIN' },
   { key: 'street1', label: 'Street Address' },
   { key: 'city', label: 'City' },
-  { key: 'state', label: 'State / GST State' },
+  { key: 'state', label: 'State / Region' },
   { key: 'postalCode', label: 'Postal / ZIP Code' },
   { key: 'country', label: 'Country' },
   { key: 'notes', label: 'Notes' },
@@ -250,6 +251,7 @@ async function parseXlsxBuffer(buffer: ArrayBuffer): Promise<{ headers: string[]
 
 export default function TenantPartiesPage() {
   const { activeTenant, tenantCurrency } = useTenant();
+  const taxProfile = getCurrencyTaxProfile(tenantCurrency);
   const [parties, setParties] = useState<Party[]>([]);
   const [documents, setDocuments] = useState<CanonicalDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -293,10 +295,10 @@ export default function TenantPartiesPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [taxId, setTaxId] = useState('');
-  const [gstState, setGstState] = useState('27 - Maharashtra');
+  const [gstState, setGstState] = useState(taxProfile.defaultState);
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
-  const [country, setCountry] = useState('India');
+  const [country, setCountry] = useState(taxProfile.defaultCountry);
   const [notes, setNotes] = useState('');
 
   const loadPartiesAndDocs = async () => {
@@ -534,7 +536,7 @@ export default function TenantPartiesPage() {
         city: getVal('city'),
         state: getVal('state') || '27 - Maharashtra',
         postalCode: getVal('postalCode') || '400001',
-        country: getVal('country') || 'India',
+        country: getVal('country') || taxProfile.defaultCountry,
         notes: getVal('notes'),
       };
 
@@ -655,7 +657,7 @@ export default function TenantPartiesPage() {
             city: r.mapped.city || '',
             state: r.mapped.state || '27 - Maharashtra',
             postalCode: r.mapped.postalCode || '400001',
-            country: r.mapped.country || 'India',
+            country: r.mapped.country || taxProfile.defaultCountry,
           },
           notes: r.mapped.notes || undefined,
           isArchived: false,
@@ -713,7 +715,7 @@ export default function TenantPartiesPage() {
               Customers
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Manage customer profiles, GST/tax registration numbers, billing addresses, and account balances ({tenantCurrency}).
+              Manage customer profiles, tax numbers, billing addresses, and account balances ({tenantCurrency}).
             </p>
           </div>
 
@@ -775,7 +777,7 @@ export default function TenantPartiesPage() {
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
             <Input
-              placeholder={`Search ${activeTab}s by name, email, or GSTIN...`}
+              placeholder={`Search ${activeTab}s by name, email, or tax ID...`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 text-xs"
@@ -855,7 +857,7 @@ export default function TenantPartiesPage() {
                         {p.taxId && (
                           <div className="flex items-center gap-2">
                             <Building className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                            <span>Tax ID / GSTIN: {p.taxId}</span>
+                            <span>{taxProfile.taxIdLabel}: {p.taxId}</span>
                           </div>
                         )}
                         {p.billingAddress?.street1 && (
@@ -934,7 +936,7 @@ export default function TenantPartiesPage() {
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="e.g. Reliance Retail Ventures Ltd"
+                        placeholder="e.g. Globex Corporation"
                       />
                     </div>
                     <div>
@@ -955,35 +957,39 @@ export default function TenantPartiesPage() {
                       <Input
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+91 98765 43210"
+                        placeholder="Phone number"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                          GSTIN / Tax ID
+                          {taxProfile.taxIdLabel}
                         </label>
                         <Input
                           value={taxId}
                           onChange={(e) => setTaxId(e.target.value.toUpperCase())}
-                          placeholder="27AAACR5055K1Z7"
+                          placeholder={taxProfile.isIndiaGst ? '27AAACR5055K1Z7' : ''}
                         />
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                          GST State / Region
+                          {taxProfile.isIndiaGst ? 'GST State' : 'State / Region'}
                         </label>
-                        <select
-                          value={gstState}
-                          onChange={(e) => setGstState(e.target.value)}
-                          className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-2.5 text-xs font-medium text-slate-800 dark:text-slate-200"
-                        >
-                          {INDIAN_STATES.map((st) => (
-                            <option key={st.code} value={st.label}>
-                              {st.label}
-                            </option>
-                          ))}
-                        </select>
+                        {taxProfile.isIndiaGst ? (
+                          <select
+                            value={gstState}
+                            onChange={(e) => setGstState(e.target.value)}
+                            className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-2.5 text-xs font-medium text-slate-800 dark:text-slate-200"
+                          >
+                            {INDIAN_STATES.map((st) => (
+                              <option key={st.code} value={st.label}>
+                                {st.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <Input value={gstState} onChange={(e) => setGstState(e.target.value)} placeholder={taxProfile.defaultState} />
+                        )}
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -994,7 +1000,7 @@ export default function TenantPartiesPage() {
                         <Input
                           value={street}
                           onChange={(e) => setStreet(e.target.value)}
-                          placeholder="Plot 42, MIDC"
+                          placeholder="Street address"
                         />
                       </div>
                       <div>
@@ -1004,7 +1010,7 @@ export default function TenantPartiesPage() {
                         <Input
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          placeholder="Mumbai"
+                          placeholder="City"
                         />
                       </div>
                     </div>
@@ -1015,7 +1021,7 @@ export default function TenantPartiesPage() {
                       <Input
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
-                        placeholder="India"
+                        placeholder={taxProfile.defaultCountry}
                       />
                     </div>
                   </div>

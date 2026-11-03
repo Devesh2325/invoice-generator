@@ -1,3 +1,4 @@
+import { getCurrencyTaxProfile } from '../types/currency';
 /**
  * CENTRAL APPLICATION CONFIGURATION (Single Source of Truth)
  * Governs platform brand identity, trial allowances, subscription tiers,
@@ -135,6 +136,36 @@ const LEGACY_TEMPLATE_IDS: Record<string, string> = {
 /** Returns the current ID for a template, whether it's given an old ID or a current one. */
 export function resolveTemplateId(templateId: string): string {
   return LEGACY_TEMPLATE_IDS[templateId] || templateId;
+}
+
+/**
+ * The currency each country's tax design is made for. Tax labels, ID fields and the state list all
+ * follow the currency, so a country design with another country's currency would mix the two.
+ * Designs not listed here work in any currency.
+ */
+export const TEMPLATE_CURRENCIES: Record<string, string> = {
+  'in-gst': 'INR',
+  'uk-vat': 'GBP',
+  'eu-vat': 'EUR',
+  'eu-reverse-charge': 'EUR',
+  'us-sales-tax': 'USD',
+  'ca-hst': 'CAD',
+  'au-gst': 'AUD',
+  'sg-gst': 'SGD',
+  'ae-vat': 'AED',
+  'jp-qualified': 'JPY',
+  'ch-sidebar': 'CHF',
+};
+
+export function getTemplateCurrency(templateId: string): string | undefined {
+  return TEMPLATE_CURRENCIES[resolveTemplateId(templateId)];
+}
+
+/** The given template, or that currency's usual one if the template belongs to another country. */
+export function templateForCurrency(templateId: string, currency: string): string {
+  const resolved = resolveTemplateId(templateId);
+  const owner = TEMPLATE_CURRENCIES[resolved];
+  return owner && owner !== currency.toUpperCase() ? getCurrencyTaxProfile(currency).defaultTemplateId : resolved;
 }
 
 export const APP_CONFIG: AppConfig = {

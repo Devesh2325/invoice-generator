@@ -14,6 +14,7 @@ import {
   validateUpiId,
   validateBankAccount,
   generateVerifiedUpiQrSvgDataUrl,
+  getCurrencyTaxProfile,
 } from '@invoice/core';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -315,7 +316,7 @@ export default function TenantSettingsPage() {
               Settings & Invoice Configuration
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Configure application-wide currency, payment methods (Bank, UPI, Verified QR), rounding rules, and invoice defaults.
+              Set your currency, payment methods, rounding rules and invoice defaults.
             </p>
           </div>
 
@@ -433,7 +434,7 @@ export default function TenantSettingsPage() {
                 <Input
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  placeholder="e.g. Devesh Mani Chaturvedi"
+                  placeholder="e.g. Alex Morgan"
                   className="text-xs bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                 />
               </div>
@@ -459,7 +460,7 @@ export default function TenantSettingsPage() {
                 <Input
                   value={profilePhone}
                   onChange={(e) => setProfilePhone(e.target.value)}
-                  placeholder="+91 98765 43210 or +1 (555) 019-2834"
+                  placeholder="Phone number with country code"
                   className="text-xs bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 tabular-nums"
                 />
               </div>
@@ -516,7 +517,7 @@ export default function TenantSettingsPage() {
               <Landmark className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Payment Settings (Invoice Configuration)
             </CardTitle>
             <CardDescription className="text-xs">
-              Configure structured bank accounts, UPI ID, and verified QR codes, and control which payment methods appear on generated invoices, previews, and PDFs.
+              Add your bank accounts and payment QR code, and choose which payment methods appear on your invoices.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -528,7 +529,7 @@ export default function TenantSettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {[
                   { key: 'showBankDetails', label: 'Show Bank Details' },
-                  { key: 'showUpiId', label: 'Show UPI ID' },
+                  ...(getCurrencyTaxProfile(defaultCurrency).supportsUpi ? [{ key: 'showUpiId', label: 'Show UPI ID' }] : []),
                   { key: 'showQrCode', label: 'Show QR Code' },
                   { key: 'showPaymentInstructions', label: 'Show Instructions' },
                   { key: 'showPaymentTerms', label: 'Show Payment Terms' },
@@ -637,7 +638,7 @@ export default function TenantSettingsPage() {
                           onChange={(e) =>
                             handleUpdateBank(idx, { accountHolderName: e.target.value })
                           }
-                          placeholder="e.g. Acme Solutions Pvt Ltd"
+                          placeholder="e.g. Acme Solutions"
                           className="h-9 text-xs"
                         />
                       </div>
@@ -649,7 +650,7 @@ export default function TenantSettingsPage() {
                         <Input
                           value={acct.bankName}
                           onChange={(e) => handleUpdateBank(idx, { bankName: e.target.value })}
-                          placeholder="e.g. HDFC Bank / Chase"
+                          placeholder="e.g. Your bank name"
                           className="h-9 text-xs"
                         />
                       </div>
@@ -714,7 +715,7 @@ export default function TenantSettingsPage() {
                           onChange={(e) =>
                             handleUpdateBank(idx, { branchName: e.target.value })
                           }
-                          placeholder="e.g. Nariman Point, Mumbai"
+                          placeholder="e.g. Main branch"
                           className="h-9 text-xs"
                         />
                       </div>
@@ -764,10 +765,10 @@ export default function TenantSettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <QrCode className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> UPI & Payment QR Code
+                    <QrCode className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> Payment QR Code
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Configure a verified UPI ID / VPA or upload a custom payment QR code. QR codes are never generated from incomplete or unverified details.
+                    Add a UPI ID (India) or upload a QR code from your bank or payment app. QR codes are never generated from incomplete details.
                   </p>
                 </div>
               </div>
@@ -807,7 +808,7 @@ export default function TenantSettingsPage() {
                       <Input
                         value={upiPayeeName}
                         onChange={(e) => setUpiPayeeName(e.target.value)}
-                        placeholder="Acme Solutions Pvt Ltd"
+                        placeholder="Your business name"
                         className="h-9 text-xs bg-white dark:bg-slate-950"
                       />
                     </div>
@@ -950,36 +951,45 @@ export default function TenantSettingsPage() {
                 <Input
                   value={sellerName}
                   onChange={(e) => setSellerName(e.target.value)}
-                  placeholder="Acme Solutions Pvt Ltd"
+                  placeholder="Your business name"
                   className="text-xs"
                 />
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Company Tax ID / GSTIN
+                  {getCurrencyTaxProfile(defaultCurrency).taxIdLabel}
                 </label>
                 <Input
                   value={sellerTaxId}
                   onChange={(e) => setSellerTaxId(e.target.value.toUpperCase())}
-                  placeholder="27AABCU9603R1ZM"
+                  placeholder={getCurrencyTaxProfile(defaultCurrency).isIndiaGst ? '27AABCU9603R1ZM' : ''}
                   className="text-xs tabular-nums"
                 />
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Seller GST State
+                  {getCurrencyTaxProfile(defaultCurrency).isIndiaGst ? 'Seller GST State' : 'State / Region'}
                 </label>
-                <select
-                  value={sellerGstState}
-                  onChange={(e) => setSellerGstState(e.target.value)}
-                  className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2.5 text-xs"
-                >
-                  {INDIAN_STATES.map((st) => (
-                    <option key={st.code} value={st.label}>
-                      {st.label}
-                    </option>
-                  ))}
-                </select>
+                {getCurrencyTaxProfile(defaultCurrency).isIndiaGst ? (
+                  <select
+                    value={sellerGstState}
+                    onChange={(e) => setSellerGstState(e.target.value)}
+                    className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-2.5 text-xs"
+                  >
+                    {INDIAN_STATES.map((st) => (
+                      <option key={st.code} value={st.label}>
+                        {st.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    value={sellerGstState}
+                    onChange={(e) => setSellerGstState(e.target.value)}
+                    placeholder={getCurrencyTaxProfile(defaultCurrency).defaultState}
+                    className="text-xs"
+                  />
+                )}
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
@@ -999,7 +1009,7 @@ export default function TenantSettingsPage() {
                 <Input
                   value={sellerCity}
                   onChange={(e) => setSellerCity(e.target.value)}
-                  placeholder="Mumbai"
+                  placeholder="City"
                   className="text-xs"
                 />
               </div>
@@ -1010,7 +1020,7 @@ export default function TenantSettingsPage() {
                 <Input
                   value={sellerCountry}
                   onChange={(e) => setSellerCountry(e.target.value)}
-                  placeholder="India"
+                  placeholder={getCurrencyTaxProfile(defaultCurrency).defaultCountry}
                   className="text-xs"
                 />
               </div>

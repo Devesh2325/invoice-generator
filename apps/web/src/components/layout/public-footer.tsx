@@ -39,7 +39,7 @@ export function PublicFooter() {
             <FileText className="h-4 w-4 text-primary" aria-hidden="true" />
             {APP_CONFIG.brandName}
           </Link>
-          <p className="mt-2">Invoices for Indian and international businesses.</p>
+          <p className="mt-2">Invoices for businesses in any country.</p>
         </div>
         {GROUPS.map((group) => (
           <div key={group.title}>
