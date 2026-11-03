@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { APP_CONFIG } from '@invoice/core';
 import { useTenant } from '@/lib/auth/tenant-context';
+import { useHostBrand } from '@/lib/platform/platform-provider';
 import { useTheme } from '@/lib/theme/theme-provider';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { Button } from '@/components/ui/button';
@@ -23,18 +24,20 @@ export function PublicHeader({ className = '', hideNavLinks = false }: PublicHea
   const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const brandName =
-    brandSettings?.whiteLabelEnabled && brandSettings?.businessName
-      ? brandSettings.businessName
-      : APP_CONFIG.brandName;
+  const hostBrand = useHostBrand();
+  const tenantLabel = Boolean(brandSettings?.whiteLabelEnabled && brandSettings?.businessName);
+  const whiteLabel = tenantLabel || Boolean(hostBrand);
+  const brandName = tenantLabel ? brandSettings!.businessName : hostBrand?.name || APP_CONFIG.brandName;
+  const brandLogo = tenantLabel ? brandSettings?.logoUrl : hostBrand?.logoUrl;
 
   const navLinks = [
     { label: t('nav.features', 'Features'), href: '/features' },
     { label: 'Templates', href: '/templates' },
+    { label: 'Integrations', href: '/integrations' },
+    { label: 'White-label', href: '/white-label' },
     { label: t('nav.pricing', 'Pricing'), href: '/pricing' },
     { label: t('nav.faq', 'FAQ'), href: '/faq' },
     { label: t('nav.blog', 'Blog'), href: '/blog' },
-    { label: t('nav.about', 'About'), href: '/about' },
   ];
 
   return (
@@ -42,9 +45,14 @@ export function PublicHeader({ className = '', hideNavLinks = false }: PublicHea
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-8">
           <Link href="/" className="flex shrink-0 items-center gap-2 text-base font-semibold tracking-tight text-foreground">
-            <span className="brand-gradient flex h-8 w-8 items-center justify-center rounded-xl text-white">
-              <FileText className="h-4 w-4" />
-            </span>
+            {whiteLabel && brandLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={brandLogo} alt="" className="h-8 w-8 rounded-xl object-contain" />
+            ) : (
+              <span className="brand-gradient flex h-8 w-8 items-center justify-center rounded-xl text-white">
+                <FileText className="h-4 w-4" />
+              </span>
+            )}
             <span>{brandName}</span>
           </Link>
 

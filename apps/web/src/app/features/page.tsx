@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import {
   ArrowRight,
   Calculator,
+  Code2,
+  Layers,
   CreditCard,
   FileCheck,
   Globe,
@@ -78,6 +80,20 @@ const FEATURES = [
     body: 'Bill in USD, EUR, GBP, INR and more, with tax labels and defaults set for each one.',
     cta: 'Pick your currency',
     href: '/create',
+  },
+  {
+    icon: Code2,
+    title: 'Integrations for any code stack',
+    body: 'Paid plans can add the invoice editor to their own product with React, Next.js, Vue, Angular, WordPress, PHP, Python, Node, Java or .NET.',
+    cta: 'See integrations',
+    href: '/integrations',
+  },
+  {
+    icon: Layers,
+    title: 'White-label branding',
+    body: 'On Enterprise, your customers see your name, logo and colours instead of ours.',
+    cta: 'See white-label',
+    href: '/white-label',
   },
   {
     icon: CreditCard,

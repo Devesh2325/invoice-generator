@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Sparkles, Check, X, ArrowRight, HelpCircle, FilePlus, ShieldCheck } from 'lucide-react';
-import { APP_CONFIG, PLANS } from '@invoice/core';
+import { APP_CONFIG, PLANS, UNLIMITED_DOCUMENTS } from '@invoice/core';
 import { PublicHeader } from '@/components/layout/public-header';
 import { PublicFooter } from '@/components/layout/public-footer';
+import { usePlatformPlans } from '@/lib/platform/platform-provider';
 
 export default function PricingPage() {
   const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  usePlatformPlans();
 
   const plans = [
     {
@@ -41,10 +43,11 @@ export default function PricingPage() {
       ctaVariant: 'default' as const,
       popular: true,
       highlights: [
-        'Unlimited documents',
+        PLANS.pro.maxInvoicesPerMonth >= UNLIMITED_DOCUMENTS ? 'Unlimited documents' : `${PLANS.pro.maxInvoicesPerMonth} documents`,
         'All templates',
         'Products and stock tracking',
-      'Integration Docs',
+        ...(PLANS.pro.hasIntegrationDocs ? ['Integrations for any code stack'] : []),
+        ...(PLANS.pro.hasWhiteLabel ? ['White-label branding'] : []),
         `Up to ${PLANS.pro.maxMembers} users`,
       ],
     },
@@ -57,18 +60,22 @@ export default function PricingPage() {
       ctaHref: '/contact',
       ctaVariant: 'outline' as const,
       popular: false,
-      highlights: ['Everything in Pro', 'White-label branding', 'Unlimited users'],
+      highlights: ['Everything in Pro', ...(PLANS.enterprise.hasWhiteLabel ? ['White-label branding'] : []), 'Unlimited users'],
     },
   ];
 
+  const documentLimit = (id: 'starter' | 'pro' | 'enterprise') =>
+    PLANS[id].maxInvoicesPerMonth >= UNLIMITED_DOCUMENTS ? 'Unlimited' : String(PLANS[id].maxInvoicesPerMonth);
+
   const comparisonRows = [
-    { feature: 'Documents', starter: String(APP_CONFIG.trialInvoiceLimit), pro: 'Unlimited', enterprise: 'Unlimited' },
+    { feature: 'Documents', starter: documentLimit('starter'), pro: documentLimit('pro'), enterprise: documentLimit('enterprise') },
     { feature: 'Automatic GST, VAT and sales tax', starter: true, pro: true, enterprise: true },
     { feature: 'Bank details and payment QR codes', starter: true, pro: true, enterprise: true },
-    { feature: 'Templates', starter: 'Starter set', pro: 'All', enterprise: 'All' },
+    { feature: 'Templates', starter: PLANS.starter.hasAllTemplates ? 'All' : 'Starter set', pro: PLANS.pro.hasAllTemplates ? 'All' : 'Starter set', enterprise: PLANS.enterprise.hasAllTemplates ? 'All' : 'Starter set' },
     { feature: 'Products and stock', starter: false, pro: true, enterprise: true },
     { feature: 'Users', starter: String(PLANS.starter.maxMembers), pro: `Up to ${PLANS.pro.maxMembers}`, enterprise: 'Unlimited' },
-    { feature: 'White-label branding', starter: false, pro: false, enterprise: true },
+    { feature: 'Integrations for any code stack', starter: PLANS.starter.hasIntegrationDocs, pro: PLANS.pro.hasIntegrationDocs, enterprise: PLANS.enterprise.hasIntegrationDocs },
+    { feature: 'White-label branding', starter: PLANS.starter.hasWhiteLabel, pro: PLANS.pro.hasWhiteLabel, enterprise: PLANS.enterprise.hasWhiteLabel },
   ];
 
   return (

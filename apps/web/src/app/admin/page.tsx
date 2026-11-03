@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AdminApi } from '@invoice/api';
+import { syncWorkspaces } from '@/lib/platform/admin-client';
 import { Badge } from '@/components/ui/badge';
 import { Users, CreditCard, TrendingUp, FileText, ArrowRight, Info } from 'lucide-react';
 
@@ -19,8 +20,13 @@ export default function AdminDashboardPage() {
   const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
-    setMetrics(AdminApi.getDashboardMetrics());
-    setUsers(AdminApi.getUsers());
+    const show = () => {
+      setMetrics(AdminApi.getDashboardMetrics());
+      setUsers(AdminApi.getUsers());
+    };
+    show();
+    // Counts signups from every browser once the shared list has loaded.
+    syncWorkspaces().then(show);
   }, []);
 
   if (!metrics) {
@@ -50,7 +56,7 @@ export default function AdminDashboardPage() {
 
       <div className="flex items-start gap-2.5 rounded-lg border border-border bg-card p-3 text-sm text-foreground">
         <Info className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-        <p>These figures come from data saved in this browser, not a shared database, so they won&apos;t include activity on other devices.</p>
+        <p>Users and plans include every browser once shared storage is connected. Document counts only cover this browser.</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

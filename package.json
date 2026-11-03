@@ -7,7 +7,8 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "setup:appwrite": "tsx scripts/setup-appwrite.ts"
+    "setup:appwrite": "tsx scripts/setup-appwrite.ts",
+    "setup:platform": "tsx scripts/setup-platform-store.ts"
   },
   "devDependencies": {
     "next": "^14.2.24",

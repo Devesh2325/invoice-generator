@@ -35,6 +35,7 @@ export interface PlanLimits {
   canUseCustomDomain: boolean;
   hasPrioritySupport: boolean;
   hasIntegrationDocs: boolean;
+  hasWhiteLabel: boolean;
 }
 
 export const PLANS: Record<PlanId, PlanLimits> = {
@@ -44,12 +45,13 @@ export const PLANS: Record<PlanId, PlanLimits> = {
     priceMonthly: 0,
     priceYearly: 0,
     maxMembers: 1,
-    maxInvoicesPerMonth: 50,
+    maxInvoicesPerMonth: 7,
     hasAllTemplates: false,
     canRemoveWatermark: false,
     canUseCustomDomain: false,
     hasPrioritySupport: false,
     hasIntegrationDocs: false,
+    hasWhiteLabel: false,
   },
   pro: {
     id: 'pro',
@@ -57,12 +59,13 @@ export const PLANS: Record<PlanId, PlanLimits> = {
     priceMonthly: 799,
     priceYearly: 639,
     maxMembers: 5,
-    maxInvoicesPerMonth: 500,
+    maxInvoicesPerMonth: 99999,
     hasAllTemplates: true,
     canRemoveWatermark: true,
     canUseCustomDomain: false,
     hasPrioritySupport: true,
     hasIntegrationDocs: true,
+    hasWhiteLabel: false,
   },
   enterprise: {
     id: 'enterprise',
@@ -76,8 +79,12 @@ export const PLANS: Record<PlanId, PlanLimits> = {
     canUseCustomDomain: true,
     hasPrioritySupport: true,
     hasIntegrationDocs: true,
+    hasWhiteLabel: true,
   },
 };
+
+/** Document limits at or above this count as unlimited. */
+export const UNLIMITED_DOCUMENTS = 99999;
 
 /** Whether a plan includes the Integration Docs. Unknown plans don't. */
 export function canUseIntegrationDocs(planId: string | null | undefined): boolean {

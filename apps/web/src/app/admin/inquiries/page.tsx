@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AdminApi } from '@invoice/api';
+import { adminRequest } from '@/lib/platform/admin-client';
 import { AdminInquiry } from '@invoice/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,14 @@ import {
   Eye,
 } from 'lucide-react';
 
+function StorageNotice() {
+  return (
+    <p role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-300">
+      Shared storage is not connected, so enquiries from the website can&apos;t be saved or shown here yet.
+    </p>
+  );
+}
+
 export default function AdminInquiriesPage() {
   const { toast } = useToast();
   const [inquiries, setInquiries] = useState<AdminInquiry[]>([]);
@@ -30,8 +39,12 @@ export default function AdminInquiriesPage() {
   const [replyNotes, setReplyNotes] = useState('');
   const [newStatus, setNewStatus] = useState<'new' | 'in_progress' | 'resolved'>('new');
 
-  const loadInquiries = () => {
-    setInquiries(AdminApi.getInquiries());
+  const [connected, setConnected] = useState(true);
+
+  const loadInquiries = async () => {
+    const result = await adminRequest<{ inquiries: AdminInquiry[] }>('/api/admin/inquiries');
+    setConnected(result.ok);
+    setInquiries(result.ok ? result.data.inquiries : AdminApi.getInquiries());
   };
 
   useEffect(() => {
@@ -44,10 +57,17 @@ export default function AdminInquiriesPage() {
     setNewStatus(inq.status);
   };
 
-  const handleSaveNotes = () => {
+  const handleSaveNotes = async () => {
     if (!selectedInquiry) return;
-    AdminApi.updateInquiry(selectedInquiry.id, newStatus, replyNotes);
-    loadInquiries();
+    const result = await adminRequest('/api/admin/inquiries', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: selectedInquiry.id, status: newStatus, notes: replyNotes }),
+    });
+    if (!result.ok) {
+      toast({ title: 'Inquiry not saved', description: result.error, variant: 'destructive' });
+      return;
+    }
+    await loadInquiries();
     setSelectedInquiry(null);
     toast({
       title: 'Inquiry Updated',
@@ -55,11 +75,15 @@ export default function AdminInquiriesPage() {
     });
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Are you sure you want to delete this customer inquiry?')) {
-      AdminApi.deleteInquiry(id);
-      loadInquiries();
+      const result = await adminRequest(`/api/admin/inquiries?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!result.ok) {
+        toast({ title: 'Inquiry not deleted', description: result.error, variant: 'destructive' });
+        return;
+      }
+      await loadInquiries();
       toast({
         title: 'Inquiry Deleted',
         description: 'Customer inquiry has been permanently removed.',
@@ -99,6 +123,8 @@ export default function AdminInquiriesPage() {
           </Badge>
         </div>
       </div>
+
+      {!connected && <StorageNotice />}
 
       {/* Filter Bar */}
       <div className="flex flex-col md:flex-row items-center gap-4 bg-card border border-border p-4 rounded-xl">

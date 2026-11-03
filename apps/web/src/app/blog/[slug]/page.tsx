@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
+import { loadPublishedBlog } from '@/lib/platform/blog-sync';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
 import { BlogApi, SEEDED_BLOG_POSTS } from '@invoice/api';
@@ -41,6 +42,7 @@ export default function BlogPostPage() {
       } catch {}
     };
     refresh();
+    void loadPublishedBlog();
     window.addEventListener('invoxa-blog-updated', refresh);
     window.addEventListener('storage', refresh);
     return () => {

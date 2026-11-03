@@ -170,6 +170,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
       window.localStorage.removeItem('billcraft_current_user');
       window.localStorage.removeItem('billcraft_current_user_id');
       window.localStorage.removeItem('billcraft_active_tenant_id');
+      void fetch('/api/workspaces/logout', { method: 'POST' }).catch(() => {});
     }
     setUser(null);
     setActiveTenantState(null);

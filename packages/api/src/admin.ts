@@ -302,6 +302,11 @@ export class AdminApi {
     isWhiteLabel?: boolean;
     companyDisplayName?: string;
     logoUrl?: string;
+    primaryColor?: string;
+    supportEmail?: string;
+    websiteUrl?: string;
+    footerText?: string;
+    customDomain?: string;
   }): AdminTeam {
     const teams = this.getTeams();
     const newTeam: AdminTeam = {
@@ -316,6 +321,11 @@ export class AdminApi {
       isWhiteLabel: Boolean(params.isWhiteLabel),
       companyDisplayName: params.companyDisplayName,
       logoUrl: params.logoUrl,
+      primaryColor: params.primaryColor,
+      supportEmail: params.supportEmail,
+      websiteUrl: params.websiteUrl,
+      footerText: params.footerText,
+      customDomain: params.customDomain,
       ownerPassword: params.ownerPassword,
     };
     const updated = [newTeam, ...teams];
@@ -350,17 +360,20 @@ export class AdminApi {
         (params.companyDisplayName || params.logoUrl)
       ) {
         try {
-          const brandKey = `billcraft_brand_${newTeam.id}`;
-          const brandSettings = {
+          const brands = JSON.parse(localStorage.getItem("billcraft_tenant_brand") || "{}");
+          brands[newTeam.id] = {
             tenantId: newTeam.id,
             businessName: params.companyDisplayName || params.name,
             logoUrl: params.logoUrl || "",
             whiteLabelEnabled: true,
-            primaryColor: "#3B82F6",
+            primaryColor: params.primaryColor || "#3B82F6",
             secondaryColor: "#64748B",
-            fontFamily: "Inter",
+            fontFamily: "sans",
+            supportEmail: params.supportEmail || "",
+            websiteUrl: params.websiteUrl || "",
+            footerText: params.footerText,
           };
-          localStorage.setItem(brandKey, JSON.stringify(brandSettings));
+          localStorage.setItem("billcraft_tenant_brand", JSON.stringify(brands));
         } catch { }
       }
       // Store owner credentials if password provided
@@ -470,9 +483,8 @@ export class AdminApi {
 
       // Sync brand settings
       try {
-        const brandKey = `billcraft_brand_${teamId}`;
-        const existingBrand = localStorage.getItem(brandKey);
-        const currentBrand = existingBrand ? JSON.parse(existingBrand) : {};
+        const brands = JSON.parse(localStorage.getItem("billcraft_tenant_brand") || "{}");
+        const currentBrand = brands[teamId] || {};
         const updatedBrand = {
           ...currentBrand,
           tenantId: teamId,
@@ -484,8 +496,13 @@ export class AdminApi {
             patch.isWhiteLabel !== undefined
               ? patch.isWhiteLabel
               : currentBrand.whiteLabelEnabled,
+          primaryColor: patch.primaryColor || currentBrand.primaryColor,
+          supportEmail: patch.supportEmail ?? currentBrand.supportEmail,
+          websiteUrl: patch.websiteUrl ?? currentBrand.websiteUrl,
+          footerText: patch.footerText ?? currentBrand.footerText,
         };
-        localStorage.setItem(brandKey, JSON.stringify(updatedBrand));
+        brands[teamId] = updatedBrand;
+        localStorage.setItem("billcraft_tenant_brand", JSON.stringify(brands));
       } catch { }
 
       // Sync with registered users

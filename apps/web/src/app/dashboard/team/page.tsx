@@ -1,5 +1,6 @@
 'use client';
 
+import { usePlatformPlans } from '@/lib/platform/platform-provider';
 import React, { useState, useEffect } from 'react';
 import { useTenant } from '@/lib/auth/tenant-context';
 import { TeamApi } from '@invoice/api';
@@ -27,6 +28,7 @@ import {
 import Link from 'next/link';
 
 export default function TeamManagementPage() {
+  usePlatformPlans();
   const { activeTenant } = useTenant();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invites, setInvites] = useState<TeamInvite[]>([]);

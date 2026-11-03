@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { adminRequest } from '@/lib/platform/admin-client';
 import Link from 'next/link';
 import { BlogApi } from '@invoice/api';
 import { BlogPost, APP_CONFIG } from '@invoice/core';
@@ -51,7 +52,21 @@ export default function AdminBlogPage() {
 
   useEffect(() => {
     loadPosts();
+    // The server's copy is the real one. The first time, this browser's posts become that copy.
+    adminRequest<{ posts: BlogPost[] | null }>('/api/admin/blog').then((result) => {
+      if (!result.ok) return;
+      if (result.data.posts) {
+        window.localStorage.setItem('billcraft_blog_posts', JSON.stringify(result.data.posts));
+        loadPosts();
+      }
+    });
   }, []);
+
+  /** Visitors only see posts once they're on the server, so a failure has to be visible. */
+  const publishPosts = async () => {
+    const result = await adminRequest('/api/admin/blog', { method: 'PUT', body: JSON.stringify({ posts: BlogApi.getPosts() }) });
+    if (!result.ok) toast({ title: 'Not published to the website', description: result.error, variant: 'destructive' });
+  };
 
   const COVER_PRESETS = [
     { label: 'Fintech & Cards', url: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=1200&auto=format&fit=crop&q=80' },
@@ -137,6 +152,7 @@ export default function AdminBlogPage() {
 
     BlogApi.savePost(sanitizedPost);
     loadPosts();
+    void publishPosts();
     setEditingPost(null);
     toast({
       title: 'Post Saved',
@@ -148,6 +164,7 @@ export default function AdminBlogPage() {
     if (confirm(`Are you sure you want to delete "${title}"?`)) {
       BlogApi.deletePost(id);
       loadPosts();
+      void publishPosts();
       toast({
         title: 'Post Deleted',
         description: 'The blog article has been removed.',

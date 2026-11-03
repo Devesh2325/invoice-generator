@@ -5,6 +5,7 @@
  *   <script src="https://YOUR-INVOXA-DOMAIN/embed.js"></script>
  *   <script>
  *     Invoxa.mount('#invoice', {
+ *       key: 'YOUR_EMBED_KEY',
  *       document: { client: { name: 'Globex' } },
  *       onSave: function (invoice) { console.log(invoice); },
  *     });
@@ -22,7 +23,7 @@
     if (!container) throw new Error('Invoxa.mount: could not find ' + target);
 
     var iframe = document.createElement('iframe');
-    iframe.src = origin + '/embed';
+    iframe.src = origin + '/embed' + (options.key ? '?key=' + encodeURIComponent(options.key) : '');
     iframe.title = options.title || 'Invoice editor';
     iframe.style.width = '100%';
     iframe.style.height = options.height || '900px';
@@ -54,6 +55,30 @@
           if (options.onError) options.onError(event.data.message);
           else console.error('Invoxa: ' + event.data.message);
           break;
+      }
+    }
+
+    function refuse(message) {
+      if (options.onError) options.onError(message);
+      else console.error('Invoxa: ' + message);
+    }
+
+    // The browser blocks the editor on sites the key doesn't allow, without saying why, so explain it here.
+    if (window.location.origin !== origin) {
+      if (!options.key) {
+        refuse('An embed key is required. Create one under Integration Docs in your dashboard.');
+      } else {
+        fetch(origin + '/api/embed/verify?key=' + encodeURIComponent(options.key))
+          .then(function (res) {
+            return res.json();
+          })
+          .then(function (result) {
+            if (!result.ok) refuse('This embed key is not valid, or your plan does not include integrations.');
+            else if (result.origins.indexOf(window.location.origin) === -1) {
+              refuse(window.location.origin + ' is not an approved website for this embed key.');
+            }
+          })
+          .catch(function () {});
       }
     }
 

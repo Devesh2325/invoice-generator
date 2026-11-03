@@ -44,6 +44,36 @@ export default function PublicShareInvoicePage() {
         return;
       }
 
+      // Signed links are read from the server, so they open on any device.
+      if (token.startsWith('sv1.')) {
+        try {
+          const res = await fetch(`/api/share?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+          const body = await res.json();
+          if (!res.ok) {
+            setError(body.error || 'Invalid or expired invoice link.');
+            return;
+          }
+          const { displayName, logoUrl, supportEmail, websiteUrl, footerText } = body.branding || {};
+          setDocument(body.document);
+          setBrandSettings({
+            ...body.brand,
+            whiteLabelEnabled: body.isWhiteLabel,
+            ...(body.isWhiteLabel && {
+              businessName: displayName || body.brand.businessName,
+              logoUrl: logoUrl || body.brand.logoUrl,
+              supportEmail,
+              websiteUrl,
+              footerText: footerText || body.brand.footerText,
+            }),
+          });
+        } catch {
+          setError('Unable to access shared invoice.');
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
       const decoded = decodePublicShareToken(token);
       if (!decoded) {
         setError('Invalid or expired invoice link.');
@@ -60,8 +90,27 @@ export default function PublicShareInvoicePage() {
         }
 
         const brand = await TenantApi.getBrandSettings(decoded.tenantId);
+        // The person opening this link is usually on another device, so brand details come from the server.
+        const server = await fetch(`/api/workspaces/${encodeURIComponent(decoded.tenantId)}/config`, { cache: 'no-store' })
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null);
+        const workspace = server?.workspace;
         setDocument(doc);
-        setBrandSettings(brand);
+        setBrandSettings(
+          workspace
+            ? {
+                ...brand,
+                whiteLabelEnabled: workspace.isWhiteLabel,
+                ...(workspace.isWhiteLabel && {
+                  businessName: workspace.branding?.displayName || brand.businessName,
+                  logoUrl: workspace.branding?.logoUrl || brand.logoUrl,
+                  supportEmail: workspace.branding?.supportEmail,
+                  websiteUrl: workspace.branding?.websiteUrl,
+                  footerText: workspace.branding?.footerText || brand.footerText,
+                }),
+              }
+            : brand
+        );
       } catch (err: any) {
         setError(err.message || 'Unable to access shared invoice.');
       } finally {
@@ -282,16 +331,28 @@ export default function PublicShareInvoicePage() {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 py-6 text-center text-sm text-slate-500 dark:text-slate-400 print:hidden">
-        <p>
-          Generated securely via{' '}
-          <Link
-            href="/"
-            className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
-            {brandSettings?.whiteLabelEnabled ? senderName : APP_CONFIG.brandName}
-          </Link>
-          . Free, open & modern invoicing platform.
-        </p>
+        {brandSettings?.whiteLabelEnabled ? (
+          <div className="space-y-1">
+            {brandSettings.footerText && <p>{brandSettings.footerText}</p>}
+            <p className="flex flex-wrap justify-center gap-x-3">
+              <span>{brandSettings.businessName || senderName}</span>
+              {brandSettings.supportEmail && (
+                <a href={`mailto:${brandSettings.supportEmail}`} className="hover:underline">{brandSettings.supportEmail}</a>
+              )}
+              {brandSettings.websiteUrl && (
+                <a href={brandSettings.websiteUrl} target="_blank" rel="noreferrer" className="hover:underline">{brandSettings.websiteUrl.replace(/^https:\/\//, '')}</a>
+              )}
+            </p>
+          </div>
+        ) : (
+          <p>
+            Generated securely via{' '}
+            <Link href="/" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              {APP_CONFIG.brandName}
+            </Link>
+            .
+          </p>
+        )}
       </footer>
     </div>
   );

@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { writeAudit } from '@/lib/server/settings';
 import { NextResponse, type NextRequest } from 'next/server';
 import {
   ADMIN_COOKIE,
@@ -87,6 +88,8 @@ export async function POST(request: NextRequest) {
 
   attempts.delete(client);
   attempts.delete(ALL_CLIENTS);
+  // A failed log write mustn't stop the admin signing in.
+  await writeAudit('SUPER_ADMIN_LOGIN', 'Portal Access', client).catch(() => {});
   const response = NextResponse.json({ success: true });
   response.cookies.set(ADMIN_COOKIE, await createAdminSession(secret), {
     httpOnly: true,

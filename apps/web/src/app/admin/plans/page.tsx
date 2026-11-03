@@ -2,12 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { AdminApi } from '@invoice/api';
-import { PlanId, PlanLimits, PLANS, APP_CONFIG } from '@invoice/core';
+import { DEFAULT_PLANS, PlanId, PlanLimits, PLANS, APP_CONFIG, UNLIMITED_DOCUMENTS, applyPlanOverrides, type PlanOverrides } from '@invoice/core';
+import { adminRequest } from '@/lib/platform/admin-client';
+import { PLANS_CHANGED_EVENT } from '@/lib/platform/platform-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { CreditCard, Save, RotateCcw, Check, Users, FileText, Sparkles, ShieldCheck } from 'lucide-react';
+import { CreditCard, Save, RotateCcw, Check, Users, FileText, Sparkles, ShieldCheck, Code2, Layers } from 'lucide-react';
 
 export default function AdminPlansPage() {
   const { toast } = useToast();
@@ -15,8 +17,36 @@ export default function AdminPlansPage() {
   const [savingPlan, setSavingPlan] = useState<PlanId | null>(null);
 
   useEffect(() => {
-    setPlans(AdminApi.getPlans());
+    fetch('/api/platform/plans', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((body) => {
+        applyPlanOverrides(body.plans || {});
+        setPlans(JSON.parse(JSON.stringify(PLANS)));
+      })
+      .catch(() => setPlans(AdminApi.getPlans()));
   }, []);
+
+  /** Saves every plan together, so visitors never see one plan's new values with another's old ones. */
+  const publish = async (next: Record<PlanId, PlanLimits>) => {
+    const editable = (plan: PlanLimits) => ({
+      priceMonthly: plan.priceMonthly,
+      priceYearly: plan.priceYearly,
+      maxMembers: plan.maxMembers,
+      maxInvoicesPerMonth: plan.maxInvoicesPerMonth,
+      hasAllTemplates: plan.hasAllTemplates,
+      canRemoveWatermark: plan.canRemoveWatermark,
+      hasPrioritySupport: plan.hasPrioritySupport,
+      hasIntegrationDocs: plan.hasIntegrationDocs,
+      hasWhiteLabel: plan.hasWhiteLabel,
+    });
+    const body: PlanOverrides = { starter: editable(next.starter), pro: editable(next.pro), enterprise: editable(next.enterprise) };
+    const result = await adminRequest('/api/admin/plans', { method: 'PUT', body: JSON.stringify(body) });
+    if (result.ok) {
+      applyPlanOverrides(body);
+      window.dispatchEvent(new Event(PLANS_CHANGED_EVENT));
+    }
+    return result;
+  };
 
   const handleChange = (planId: PlanId, field: keyof PlanLimits, value: any) => {
     setPlans((prev) => ({
@@ -28,27 +58,35 @@ export default function AdminPlansPage() {
     }));
   };
 
-  const handleSave = (planId: PlanId) => {
+  const handleSave = async (planId: PlanId) => {
     setSavingPlan(planId);
-    AdminApi.updatePlan(planId, plans[planId]);
-    setTimeout(() => {
-      setSavingPlan(null);
+    const result = await publish(plans);
+    setSavingPlan(null);
+    if (!result.ok) {
       toast({
-        title: 'Plan Updated',
-        description: `Configuration and limits for ${plans[planId].name} have been updated.`,
+        title: 'Plan not saved',
+        description: result.offline ? 'Shared storage is not connected, so visitors would not see this change.' : result.error,
+        variant: 'destructive',
       });
-    }, 300);
+      return;
+    }
+    toast({
+      title: 'Plan Updated',
+      description: `${plans[planId].name} is now live on the website.`,
+    });
   };
 
-  const handleReset = (planId: PlanId) => {
-    setPlans((prev) => ({
-      ...prev,
-      [planId]: { ...PLANS[planId] },
-    }));
-    AdminApi.updatePlan(planId, PLANS[planId]);
+  const handleReset = async (planId: PlanId) => {
+    const next = { ...plans, [planId]: { ...DEFAULT_PLANS[planId] } };
+    const result = await publish(next);
+    if (!result.ok) {
+      toast({ title: 'Plan not reset', description: result.error, variant: 'destructive' });
+      return;
+    }
+    setPlans(next);
     toast({
       title: 'Plan Reset',
-      description: `${PLANS[planId].name} restored to system defaults.`,
+      description: `${DEFAULT_PLANS[planId].name} restored to its original settings.`,
     });
   };
 
@@ -150,7 +188,7 @@ export default function AdminPlansPage() {
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground block mb-1 flex items-center gap-1">
-                        <FileText className="h-3 w-3" /> Invoices/mo
+                        <FileText className="h-3 w-3" /> Documents ({UNLIMITED_DOCUMENTS} = unlimited)
                       </label>
                       <Input
                         type="number"
@@ -169,7 +207,7 @@ export default function AdminPlansPage() {
                   <label className="flex items-center justify-between text-xs text-foreground p-2 rounded-lg bg-background border border-border cursor-pointer">
                     <span className="flex items-center gap-2">
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      All 17+ Design Templates
+                      All Design Templates
                     </span>
                     <input
                       type="checkbox"
@@ -188,6 +226,32 @@ export default function AdminPlansPage() {
                       type="checkbox"
                       checked={plan.canRemoveWatermark}
                       onChange={(e) => handleChange(id, 'canRemoveWatermark', e.target.checked)}
+                      className="rounded border-border bg-card text-primary h-4 w-4"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between text-xs text-foreground p-2 rounded-lg bg-background border border-border cursor-pointer">
+                    <span className="flex items-center gap-2">
+                      <Code2 className="h-3.5 w-3.5 text-violet-700 dark:text-violet-400" />
+                      Integration Docs
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={plan.hasIntegrationDocs}
+                      onChange={(e) => handleChange(id, 'hasIntegrationDocs', e.target.checked)}
+                      className="rounded border-border bg-card text-primary h-4 w-4"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between text-xs text-foreground p-2 rounded-lg bg-background border border-border cursor-pointer">
+                    <span className="flex items-center gap-2">
+                      <Layers className="h-3.5 w-3.5 text-indigo-700 dark:text-indigo-400" />
+                      White-label branding
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={plan.hasWhiteLabel}
+                      onChange={(e) => handleChange(id, 'hasWhiteLabel', e.target.checked)}
                       className="rounded border-border bg-card text-primary h-4 w-4"
                     />
                   </label>

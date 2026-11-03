@@ -1,3 +1,4 @@
+import { PLANS, UNLIMITED_DOCUMENTS, type PlanId, type PlanLimits } from '../types/team';
 import { getCurrencyTaxProfile } from '../types/currency';
 /**
  * CENTRAL APPLICATION CONFIGURATION (Single Source of Truth)
@@ -263,10 +264,51 @@ export function isTemplateAllowedForPlan(planId: string | undefined, templateId:
     return APP_CONFIG.plans.anonymous.allowedTemplateIds.includes(id);
   }
   if (planId === 'starter') {
+    if (PLANS.starter.hasAllTemplates) return true;
     return APP_CONFIG.plans.starter.allowedTemplateIds.includes(id);
   }
   if (planId === 'pro' || planId === 'enterprise') {
     return true;
   }
   return false;
+}
+
+/** The plans as shipped, for resetting a plan in the super admin. */
+export const DEFAULT_PLANS: Record<PlanId, PlanLimits> = JSON.parse(JSON.stringify(PLANS));
+
+/** The parts of a plan the super admin can change. */
+export type PlanOverrides = Partial<
+  Record<
+    PlanId,
+    Partial<
+      Pick<
+        PlanLimits,
+        | 'priceMonthly'
+        | 'priceYearly'
+        | 'maxMembers'
+        | 'maxInvoicesPerMonth'
+        | 'hasAllTemplates'
+        | 'canRemoveWatermark'
+        | 'hasPrioritySupport'
+        | 'hasIntegrationDocs'
+        | 'hasWhiteLabel'
+      >
+    >
+  >
+>;
+
+/**
+ * Applies the super admin's plan settings everywhere at once. Both plan lists are updated in place,
+ * because limits are read by code that runs outside React, such as TenantApi.saveDocument.
+ */
+export function applyPlanOverrides(overrides: PlanOverrides): void {
+  (Object.keys(DEFAULT_PLANS) as PlanId[]).forEach((id) => {
+    const plan = Object.assign(PLANS[id], DEFAULT_PLANS[id], overrides[id] || {});
+    const config = APP_CONFIG.plans[id];
+    config.price = plan.priceMonthly;
+    config.invoiceLimit = plan.maxInvoicesPerMonth >= UNLIMITED_DOCUMENTS ? Infinity : plan.maxInvoicesPerMonth;
+    config.integrationDocs = plan.hasIntegrationDocs;
+    config.whiteLabel = plan.hasWhiteLabel;
+  });
+  APP_CONFIG.trialInvoiceLimit = PLANS.starter.maxInvoicesPerMonth;
 }
