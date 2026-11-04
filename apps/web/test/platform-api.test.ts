@@ -43,6 +43,9 @@ const request = (url: string, body?: unknown, method = body ? 'POST' : 'GET', ad
 beforeEach(async () => {
   process.env.PLATFORM_STORE_FILE = join(dir, `store-${++counter}.json`);
   process.env.ADMIN_SESSION_SECRET = 'x'.repeat(40);
+  // Tests must never reach a real database, whatever this machine has configured.
+  delete process.env.MONGODB_URI;
+  delete process.env.APPWRITE_API_KEY;
   resetPlatformStoreForTests();
   cookie = await createAdminSession(process.env.ADMIN_SESSION_SECRET);
 });

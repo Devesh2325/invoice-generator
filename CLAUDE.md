@@ -68,8 +68,8 @@ Appwrite stores each record as a few indexed attributes plus the full object as 
 
 Enquiries, plan settings and the workspace directory must be the same for everyone, so they live on the server rather than in browser storage: `lib/server/platform-store.ts`, used by `app/api/inquiries`, `app/api/platform`, `app/api/workspaces` and `app/api/admin/*`.
 
-- **Storage:** a private Appwrite collection, created with `pnpm setup:platform`. Without Appwrite it uses `apps/web/.data/platform-store.json` in development, and returns 503 in production so pages can say it isn't connected.
-- **Env names:** use `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_DATABASE_ID` and `APPWRITE_API_KEY`. Setting `NEXT_PUBLIC_APPWRITE_*` on the site would also switch `TenantApi` to Appwrite in every browser.
+- **Storage:** MongoDB through `MONGODB_URI`, in the `platform_records` collection. `MONGODB_DB` picks the database (`invoxa` by default, so set `invoxa_dev` locally). If that isn't set it can use Appwrite through `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_DATABASE_ID` and `APPWRITE_API_KEY`, set up with `pnpm setup:platform`. With neither, it uses `apps/web/.data/platform-store.json` in development and returns 503 in production, so pages can say it isn't connected.
+- **Env names:** setting `NEXT_PUBLIC_APPWRITE_*` on the site would also switch `TenantApi` to Appwrite in every browser, so don't.
 - **Admin routes:** middleware only guards `/admin` pages, so every `/api/admin/*` route must call `isAdminRequest` itself (except login and logout).
 - **Plans:** `applyPlanOverrides` updates `PLANS` and `APP_CONFIG.plans` in place. `PlatformProvider` loads the settings, and components that show plan values call `usePlatformPlans()` to re-render.
 - **Workspaces:** signup registers the account and `/api/workspaces/login` signs owners in from any browser with a signed httpOnly cookie. `PlatformProvider` copies plan and branding into browser storage through `applyWorkspaceConfig`. The server's plan always wins, and the billing page only sends a request to the admin inbox.

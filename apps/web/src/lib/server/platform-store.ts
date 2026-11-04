@@ -1,16 +1,16 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { MongoClient, type Collection as MongoCollection } from 'mongodb';
 
 /**
  * Data the whole platform shares: enquiries, plan settings and the workspace directory. Unlike the
  * browser storage used elsewhere, every visitor and the super admin see the same records.
  *
- * Production uses Appwrite with a server-only API key. The collection has no public permissions, so
- * nothing here can be read except through the API routes. Local development without Appwrite uses a
- * JSON file, because a file wouldn't survive on Vercel.
- *
- * Use the APPWRITE_* names rather than NEXT_PUBLIC_APPWRITE_*: the public ones would also switch
- * TenantApi to Appwrite in every visitor's browser.
+ * Production uses MongoDB through MONGODB_URI, which only the server can read, so nothing here can be
+ * reached except through the API routes. MONGODB_DB picks the database, and local development should
+ * set it to something other than the live one. Appwrite also works if MONGODB_URI isn't set, using the
+ * APPWRITE_* names: NEXT_PUBLIC_APPWRITE_* would also switch TenantApi to Appwrite in every visitor's
+ * browser. Local development with neither uses a JSON file, because a file wouldn't survive on Vercel.
  */
 export type RecordKind = 'inquiry' | 'workspace' | 'workspace_item' | 'settings' | 'audit';
 
@@ -37,6 +37,61 @@ interface Driver {
 }
 
 const COLLECTION_ID = 'platform_records';
+
+interface MongoRecord {
+  _id: string;
+  kind: RecordKind;
+  lookup: string;
+  // Kept as text, because invoice data can hold keys MongoDB doesn't allow, such as ones containing dots.
+  data: string;
+}
+
+// Serverless functions and dev reloads reuse one connection instead of opening a new one each time.
+const mongoCache = globalThis as unknown as { __platformMongo?: Promise<MongoCollection<MongoRecord>> };
+
+function mongoDriver(uri: string, database: string): Driver {
+  const collection = () => {
+    if (!mongoCache.__platformMongo) {
+      mongoCache.__platformMongo = (async () => {
+        const client = await new MongoClient(uri, { serverSelectionTimeoutMS: 8000, maxPoolSize: 5 }).connect();
+        const records = client.db(database).collection<MongoRecord>(COLLECTION_ID);
+        await records.createIndex({ kind: 1, lookup: 1 });
+        return records;
+      })().catch((error) => {
+        // The next request can try again rather than staying broken until a restart.
+        mongoCache.__platformMongo = undefined;
+        throw error;
+      });
+    }
+    return mongoCache.__platformMongo;
+  };
+  const fromDocument = (doc: MongoRecord): PlatformRecord => ({
+    id: doc._id,
+    kind: doc.kind,
+    lookup: doc.lookup,
+    data: JSON.parse(doc.data),
+  });
+  return {
+    async get(id) {
+      const doc = await (await collection()).findOne({ _id: id });
+      return doc ? fromDocument(doc) : null;
+    },
+    async put(record) {
+      await (await collection()).replaceOne(
+        { _id: record.id },
+        { kind: record.kind, lookup: record.lookup, data: JSON.stringify(record.data) },
+        { upsert: true }
+      );
+    },
+    async remove(id) {
+      await (await collection()).deleteOne({ _id: id });
+    },
+    async list(kind, lookup) {
+      const docs = await (await collection()).find({ kind, ...(lookup ? { lookup } : {}) }).toArray();
+      return docs.map(fromDocument);
+    },
+  };
+}
 
 function appwriteDriver(endpoint: string, project: string, database: string, key: string): Driver {
   const base = `${endpoint.replace(/\/$/, '')}/databases/${database}/collections/${COLLECTION_ID}/documents`;
@@ -134,7 +189,9 @@ function getDriver(): Driver {
   const database = process.env.APPWRITE_DATABASE_ID || process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'invoxa_main';
   const key = process.env.APPWRITE_API_KEY || '';
 
-  if (endpoint && project && key) {
+  if (process.env.MONGODB_URI) {
+    driver = mongoDriver(process.env.MONGODB_URI, process.env.MONGODB_DB || 'invoxa');
+  } else if (endpoint && project && key) {
     driver = appwriteDriver(endpoint, project, database, key);
   } else if (process.env.NODE_ENV !== 'production') {
     driver = fileDriver(process.env.PLATFORM_STORE_FILE || path.join(process.cwd(), '.data', 'platform-store.json'));
