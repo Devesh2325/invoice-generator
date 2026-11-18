@@ -250,7 +250,7 @@ export function getCurrencyTaxProfile(currencyCode: string = 'INR'): CurrencyTax
         defaultTaxRate: 18,
         routingLabel: 'IFSC',
         defaultCountry: 'India',
-        defaultState: '27 - Maharashtra',
+        defaultState: '',
         defaultTemplateId: 'in-gst',
         isIndiaGst: true,
         supportsUpi: true,

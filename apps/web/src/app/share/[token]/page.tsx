@@ -26,6 +26,7 @@ import {
   Share2,
   ExternalLink,
   Loader2,
+  CreditCard,
 } from 'lucide-react';
 
 export default function PublicShareInvoicePage() {
@@ -39,6 +40,7 @@ export default function PublicShareInvoicePage() {
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showUpiModal, setShowUpiModal] = useState<boolean>(false);
+  const [showBankModal, setShowBankModal] = useState<boolean>(false);
 
   useEffect(() => {
     async function loadSharedInvoice() {
@@ -213,6 +215,7 @@ export default function PublicShareInvoicePage() {
   const totalAmount = document.summary?.grandTotal || 0;
   const balanceDue = document.summary?.balanceDue ?? totalAmount;
   const upiId = document.paymentConfig?.upiId || brandSettings?.paymentConfig?.upiId;
+  const bankAccounts = document.paymentConfig?.bankAccounts || brandSettings?.paymentConfig?.bankAccounts || [];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -246,6 +249,18 @@ export default function PublicShareInvoicePage() {
               >
                 <QrCode className="w-4 h-4" />
                 <span>Pay via UPI</span>
+              </Button>
+            )}
+
+            {!upiId && bankAccounts.length > 0 && document.status !== 'paid' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowBankModal(true)}
+                className="border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-950/50 gap-1.5"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>Pay via Bank</span>
               </Button>
             )}
 
@@ -371,6 +386,55 @@ export default function PublicShareInvoicePage() {
             <Button
               className="w-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700"
               onClick={() => setShowUpiModal(false)}
+            >
+              Done / Close
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Direct Bank Transfer Modal */}
+      {showBankModal && bankAccounts.length > 0 && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-left animate-in fade-in zoom-in-95 space-y-4">
+            <div className="flex items-center gap-2 border-b pb-3">
+              <CreditCard className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Direct Bank Wire / Transfer</h3>
+            </div>
+            <p className="text-xs text-slate-500">
+              Please transfer <strong className="text-slate-900 dark:text-slate-100">{formatCurrency(balanceDue, currency)}</strong> to any of the verified bank accounts below:
+            </p>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {bankAccounts.map((b) => (
+                <div key={b.id} className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg text-xs space-y-1.5 border border-slate-200 dark:border-slate-700">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Account Holder:</span>
+                    <strong className="text-slate-800 dark:text-slate-200">{b.accountHolderName}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Bank:</span>
+                    <strong className="text-slate-800 dark:text-slate-200">{b.bankName}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Account Number:</span>
+                    <strong className="font-mono text-slate-900 dark:text-slate-100">{b.accountNumber}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">IFSC / Code:</span>
+                    <strong className="font-mono text-slate-900 dark:text-slate-100">{b.ifscOrRoutingCode}</strong>
+                  </div>
+                  {b.branchName && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Branch:</span>
+                      <span>{b.branchName}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <Button
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700"
+              onClick={() => setShowBankModal(false)}
             >
               Done / Close
             </Button>

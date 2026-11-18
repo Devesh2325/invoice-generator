@@ -191,7 +191,80 @@ export default function CustomerDetailPage() {
   // Handle Record Payment
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeTenant || !payTargetDocId || payAmount <= 0) return;
+    if (!activeTenant || !customer || !payTargetDocId || payAmount <= 0) return;
+
+    if (payTargetDocId === 'advance') {
+      const receiptId = `doc_${Date.now()}`;
+      const newPayment: PaymentRecord = {
+        id: `pay_${Date.now()}`,
+        documentId: receiptId,
+        amount: Number(payAmount),
+        paymentDate: new Date().toISOString().split('T')[0],
+        paymentMethod: payMethod,
+        reference: payRef || 'Direct / Advance Deposit',
+        createdAt: new Date().toISOString(),
+      };
+
+      const receiptDoc: DocumentModel = {
+        id: receiptId,
+        type: 'receipt',
+        documentNumber: `REC-${Date.now().toString().slice(-5)}`,
+        status: 'paid',
+        templateId: 'modern',
+        issueDate: new Date().toISOString().split('T')[0],
+        currency: tenantCurrency,
+        sender: {
+          name: activeTenant.name,
+          email: activeTenant.email,
+          address: {
+            street1: '',
+            city: '',
+            state: activeTenant.gstState || '',
+            postalCode: '',
+            country: 'India',
+          },
+        },
+        client: customer,
+        items: [
+          {
+            id: `item_adv_${Date.now()}`,
+            description: payRef ? `Direct deposit (Ref: ${payRef})` : 'Advance payment receipt',
+            quantity: 1,
+            unitPrice: Number(payAmount),
+            taxRate: 0,
+            lineGross: Number(payAmount),
+            lineDiscount: 0,
+            lineNet: Number(payAmount),
+            taxAmount: 0,
+            lineTotal: Number(payAmount),
+          },
+        ],
+        payments: [newPayment],
+        summary: {
+          subtotal: Number(payAmount),
+          discountTotal: 0,
+          taxableSubtotal: Number(payAmount),
+          totalTax: 0,
+          taxBreakdown: [],
+          shippingFee: 0,
+          extraCharges: 0,
+          grandTotal: Number(payAmount),
+          amountPaid: Number(payAmount),
+          balanceDue: 0,
+        },
+        paymentTerms: 'Paid in Full',
+        notes: payRef ? `Transaction Ref: ${payRef}` : 'Direct Customer Payment',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await TenantApi.saveDocument(activeTenant.id, receiptDoc);
+      setRecordPaymentModalOpen(false);
+      setPayAmount(0);
+      setPayRef('');
+      await loadData();
+      return;
+    }
 
     const targetDoc = invoices.find((d) => d.id === payTargetDocId);
     if (!targetDoc) return;
@@ -290,6 +363,23 @@ export default function CustomerDetailPage() {
             >
               <Send className="h-3.5 w-3.5 mr-1" /> Send Reminder
             </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                const unpaid = invoices.find((d) => Number(d.summary?.balanceDue || 0) > 0);
+                if (unpaid) {
+                  setPayTargetDocId(unpaid.id);
+                  setPayAmount(Number(unpaid.summary.balanceDue) || 0);
+                } else {
+                  setPayTargetDocId('advance');
+                  setPayAmount(0);
+                }
+                setRecordPaymentModalOpen(true);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold h-8 shadow-xs"
+            >
+              <CreditCard className="h-3.5 w-3.5 mr-1" /> Record Payment
+            </Button>
             <Link href={`/create?customerId=${encodeURIComponent(customer.id)}&customerName=${encodeURIComponent(customer.name)}`}>
               <Button size="sm" className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold h-8 shadow-sm">
                 <Plus className="h-4 w-4 mr-1" /> Create Invoice
@@ -365,15 +455,23 @@ export default function CustomerDetailPage() {
               >
                 {formatCurrency(financialSummary.totalOutstanding, tenantCurrency)}
               </div>
-              {financialSummary.totalOutstanding > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setRecordPaymentModalOpen(true)}
-                  className="text-xs font-bold text-primary hover:underline mt-1 block w-full text-right cursor-pointer"
-                >
-                  + Record Payment
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  const unpaid = invoices.find((d) => Number(d.summary?.balanceDue || 0) > 0);
+                  if (unpaid) {
+                    setPayTargetDocId(unpaid.id);
+                    setPayAmount(Number(unpaid.summary.balanceDue) || 0);
+                  } else {
+                    setPayTargetDocId('advance');
+                    setPayAmount(0);
+                  }
+                  setRecordPaymentModalOpen(true);
+                }}
+                className="text-xs font-bold text-primary hover:underline mt-1 block w-full text-right cursor-pointer"
+              >
+                + Record Payment
+              </button>
             </div>
           </div>
         </Card>
@@ -576,8 +674,23 @@ export default function CustomerDetailPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {allPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-400">
-                      No payments recorded yet for this customer.
+                    <td colSpan={5} className="py-12 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                        <CreditCard className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-1" />
+                        <p className="font-medium text-slate-600 dark:text-slate-300">No payments recorded yet for this customer.</p>
+                        <p className="text-[11px] text-slate-400">You can collect or record payments directly anytime, even before generating an invoice.</p>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setPayTargetDocId('advance');
+                            setPayAmount(0);
+                            setRecordPaymentModalOpen(true);
+                          }}
+                          className="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs"
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" /> Record Direct / Advance Payment
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -765,18 +878,23 @@ export default function CustomerDetailPage() {
 
               <form onSubmit={handleRecordPayment} className="space-y-3 text-xs">
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Apply to Invoice *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Apply to Invoice / Type *</label>
                   <select
                     value={payTargetDocId}
                     onChange={(e) => {
                       setPayTargetDocId(e.target.value);
-                      const doc = invoices.find((d) => d.id === e.target.value);
-                      if (doc) setPayAmount(Number(doc.summary.balanceDue) || 0);
+                      if (e.target.value === 'advance') {
+                        setPayAmount(0);
+                      } else {
+                        const doc = invoices.find((d) => d.id === e.target.value);
+                        if (doc) setPayAmount(Number(doc.summary.balanceDue) || 0);
+                      }
                     }}
                     className="w-full h-9 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs tabular-nums"
                     required
                   >
-                    <option value="">Select Invoice...</option>
+                    <option value="">Select Invoice or Direct Deposit...</option>
+                    <option value="advance">✨ Direct / Advance Customer Deposit (No Invoice Required)</option>
                     {invoices
                       .filter((d) => Number(d.summary?.balanceDue || 0) > 0)
                       .map((d) => (
@@ -785,6 +903,11 @@ export default function CustomerDetailPage() {
                         </option>
                       ))}
                   </select>
+                  {payTargetDocId === 'advance' && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">
+                      Direct payment will be recorded as a verified payment receipt and credited to {customer.name}&apos;s ledger.
+                    </p>
+                  )}
                 </div>
 
                 <div>

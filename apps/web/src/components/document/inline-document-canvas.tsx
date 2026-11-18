@@ -561,6 +561,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 <input
                   type="date"
                   value={document.dueDate || ''}
+                  min={document.issueDate || undefined}
                   onChange={(e) => onUpdateDoc('dueDate', e.target.value)}
                   className={`${editableInput} w-full`}
                 />
@@ -676,6 +677,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                     <input
                       type="date"
                       value={document.dueDate || ''}
+                      min={document.issueDate || undefined}
                       onChange={(e) => onUpdateDoc('dueDate', e.target.value)}
                       className={`${bannerEditableInput} w-36 md:text-right`}
                     />
@@ -941,6 +943,7 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                       <input
                         type="date"
                         value={document.dueDate || ''}
+                        min={document.issueDate || undefined}
                         onChange={(e) => onUpdateDoc('dueDate', e.target.value)}
                         className={`${editableInput} font-medium w-40`}
                         style={{ backgroundColor: paperColor }}
@@ -1780,6 +1783,21 @@ export const InlineDocumentCanvas: React.FC<InlineDocumentCanvasProps> = ({
                 )}
               </div>
             )}
+
+          {/* Payment method setup prompt when empty */}
+          {(!activeBankAccounts.length && !document.paymentConfig?.upiId) && (
+            <div
+              className="no-print p-3 rounded-xl border border-dashed flex flex-col sm:flex-row items-center justify-between gap-3 text-xs"
+              style={{ backgroundColor: tintBg, borderColor }}
+            >
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 shrink-0" style={{ color: effectiveAccent }} />
+                <span className="font-semibold" style={{ color: textColor }}>
+                  Direct Payment: Add your Bank Account or UPI ID under Payment Settings (or specify instructions below) so clients can pay you instantly.
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Payment instructions note */}
           <div>

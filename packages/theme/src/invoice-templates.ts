@@ -898,8 +898,9 @@ const wrap = (t: TemplatePreset, inner: string, showWatermark: boolean = false) 
     }`,
     (showWatermark
       ? d(
-          'position:absolute;top:45%;left:50%;transform:translate(-50%,-50%) rotate(-32deg);font-size:46px;font-weight:900;letter-spacing:.16em;opacity:.06;pointer-events:none;user-select:none;z-index:2;text-transform:uppercase;white-space:nowrap;',
-          'INVOXA &bull; FREE INVOICE'
+          'position:absolute;top:46%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);text-align:center;pointer-events:none;user-select:none;z-index:2;opacity:.07;white-space:nowrap;',
+          d('font-size:40px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#1e293b;line-height:1.15;', 'INVOXA FREE INVOICE') +
+            d('font-size:14px;font-weight:700;letter-spacing:.22em;text-transform:lowercase;color:#64748b;margin-top:8px;', 'invoice-generator-web-xi.vercel.app')
         )
       : '') + inner,
     'inv'
@@ -936,9 +937,12 @@ export function renderInvoice(
 
   const watermarkFooter = hasWatermark
     ? d(
-        'margin-top:20px;padding-top:10px;border-top:1px dashed currentColor;opacity:.65;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;',
-        d('display:flex;align-items:center;gap:4px;', '⚡ Created with <b>Invoxa</b> &bull; Free Invoicing &amp; Billing') +
-          d('font-size:9px;font-weight:600;', 'Upgrade to Pro to remove watermark')
+        'margin-top:24px;padding-top:12px;border-top:1px dashed #cbd5e1;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#64748b;',
+        d(
+          'display:flex;align-items:center;gap:5px;',
+          '⚡ Generated with <b>Invoxa Free</b> &bull; <a href="https://invoice-generator-web-xi.vercel.app" target="_blank" rel="noopener noreferrer" style="color:#4f46e5;text-decoration:underline;font-weight:600;">invoice-generator-web-xi.vercel.app</a>'
+        ) +
+          d('font-size:9.5px;font-weight:600;color:#94a3b8;', 'Upgrade to Pro to remove watermark')
       )
     : '';
 
@@ -1224,21 +1228,27 @@ export function mapCanonicalDocumentToTemplateInv(doc: CanonicalDocument): any {
         doc.client.taxId && doc.client.taxId.length === 15 ? 'GSTIN' : (doc.currency === 'GBP' ? 'VAT Reg No.' : 'Tax ID'),
     },
     items,
-    supply: isIndia ? {
-      title:
-        isInterState
-          ? 'Inter-state supply (IGST applicable)'
-          : 'Intra-state supply (CGST + SGST applicable)',
-      fields: {
-        'Supplier state': supplierState,
-        'Place of supply': placeOfSupply,
-      },
-    } : {
-      fields: {
-        'Tax point': doc.issueDate,
-        'Place of supply': doc.client.billingAddress?.country || (doc.currency === 'GBP' ? 'United Kingdom' : 'Standard'),
-      },
-    },
+    supply: isIndia
+      ? (supplierState || placeOfSupply)
+        ? {
+            title: isInterState
+              ? 'Inter-state supply (IGST applicable)'
+              : 'Intra-state supply (CGST + SGST applicable)',
+            fields: {
+              ...(supplierState ? { 'Supplier state': supplierState } : {}),
+              ...(placeOfSupply ? { 'Place of supply': placeOfSupply } : {}),
+            },
+          }
+        : {
+            title: 'Tax Invoice Details',
+            fields: {},
+          }
+      : {
+          fields: {
+            'Tax point': doc.issueDate,
+            'Place of supply': doc.client.billingAddress?.country || (doc.currency === 'GBP' ? 'United Kingdom' : 'Standard'),
+          },
+        },
     payment,
     calculatedTotals,
     // The label follows the invoice's currency, not the region the chosen template was designed for.

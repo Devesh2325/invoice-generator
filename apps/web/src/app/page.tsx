@@ -559,7 +559,7 @@ export default function LandingPage() {
                   </Button>
                 </Link>
                 <Link href="/signup">
-                  <Button size="lg" variant="outline" className="h-12 border-white/40 text-white hover:bg-white/10 font-semibold px-6 rounded-xl">
+                  <Button size="lg" className="h-12 border-2 border-white/70 bg-white/10 hover:bg-white/20 text-white font-semibold px-6 rounded-xl backdrop-blur-xs shadow-xs">
                     Create Company Account
                   </Button>
                 </Link>

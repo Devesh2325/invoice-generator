@@ -289,6 +289,22 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
         </div>
       </div>
 
+      {/* Free Plan Watermark Indicator with Live Link */}
+      {!isPrintOnly && effectiveShowWatermark && (
+        <div className="mb-2 px-3 py-1.5 rounded-lg bg-indigo-50/80 dark:bg-slate-900/80 border border-indigo-200/60 dark:border-indigo-900/60 text-xs text-slate-700 dark:text-slate-300 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-indigo-600 dark:text-indigo-400">⚡ Invoxa Free Preview</span>
+            <span className="text-slate-500 hidden sm:inline">&bull; Generated at <a href="https://invoice-generator-web-xi.vercel.app" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-primary hover:text-primary-hover">invoice-generator-web-xi.vercel.app</a></span>
+          </div>
+          <a
+            href="/pricing"
+            className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+          >
+            Remove Watermark with Pro &rarr;
+          </a>
+        </div>
+      )}
+
       {/* Main A4 Invoice Container (Rendered with iframe for complete CSS isolation and auto-scaled) */}
       <div
         className="relative w-full flex justify-center overflow-x-hidden overflow-y-auto py-1"

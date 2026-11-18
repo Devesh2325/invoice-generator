@@ -307,7 +307,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const [senderState, setSenderState] = useState(
     initialDocument?.sender.address?.state ||
       brandSettings?.gstState ||
-      (initialTaxProfile.isIndiaGst ? '27 - Maharashtra' : initialTaxProfile.defaultState)
+      ''
   );
   const [senderPostalCode, setSenderPostalCode] = useState(
     initialDocument?.sender.address?.postalCode || brandSettings?.postalCode || ''
@@ -336,8 +336,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     initialDocument?.client.billingAddress?.city || ''
   );
   const [clientState, setClientState] = useState(
-    initialDocument?.client.billingAddress?.state ||
-      (initialTaxProfile.isIndiaGst ? '27 - Maharashtra' : initialTaxProfile.defaultState)
+    initialDocument?.client.billingAddress?.state || ''
   );
   const [clientPostalCode, setClientPostalCode] = useState(
     initialDocument?.client.billingAddress?.postalCode || ''
@@ -514,11 +513,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       // Switching from foreign currency to INR:
       if (!hasSavedAddress && (!senderCountry || senderCountry === prevProfile.defaultCountry)) {
         setSenderCountry('India');
-        setSenderState('27 - Maharashtra');
+        setSenderState(brandSettings?.gstState || '');
       }
       if (!clientCountry || clientCountry === prevProfile.defaultCountry) {
         setClientCountry('India');
-        setClientState('27 - Maharashtra');
+        setClientState('');
       }
       setItems((prev) =>
         prev.map((it) => ({
@@ -669,13 +668,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       setSenderState(
         brandSettings.gstState ||
           activeTenant.gstState ||
-          (prof.isIndiaGst ? '27 - Maharashtra' : prof.defaultState)
+          ''
       );
-      setClientState(
-        brandSettings.gstState ||
-          activeTenant.gstState ||
-          (prof.isIndiaGst ? '27 - Maharashtra' : prof.defaultState)
-      );
+      setClientState('');
       if (brandSettings.postalCode) setSenderPostalCode(brandSettings.postalCode);
       setSenderCountry(
         brandSettings.country || activeTenant.country || prof.defaultCountry
@@ -1198,8 +1193,23 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     } else if (field === 'invoiceName') setInvoiceName(value);
     else if (field === 'documentNumber') setDocNumber(value);
     else if (field === 'referenceNumber') setReferenceNumber(value);
-    else if (field === 'issueDate') setIssueDate(value);
-    else if (field === 'dueDate') setDueDate(value);
+    else if (field === 'issueDate') {
+      setIssueDate(value);
+      if (dueDate && value && dueDate < value) {
+        setDueDate(value);
+      }
+    }
+    else if (field === 'dueDate') {
+      if (value && issueDate && value < issueDate) {
+        toast({
+          title: 'Invalid Due Date',
+          description: 'Payment Due Date cannot be before the Invoice Date.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setDueDate(value);
+    }
     else if (field === 'currency') handleCurrencyChange(value);
     else if (field === 'templateId') applyTemplate(value);
     else if (field === 'notes') setNotes(value);

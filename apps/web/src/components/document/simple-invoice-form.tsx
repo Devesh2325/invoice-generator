@@ -542,7 +542,7 @@ export const SimpleInvoiceForm: React.FC<SimpleInvoiceFormProps> = (props) => {
             <Input className="h-10 text-sm" type="date" value={props.issueDate} onChange={(e) => props.onIssueDateChange(e.target.value)} />
           </Field>
           <Field label="Due date">
-            <Input className="h-10 text-sm" type="date" value={props.dueDate} onChange={(e) => props.onDueDateChange(e.target.value)} />
+            <Input className="h-10 text-sm" type="date" value={props.dueDate} min={props.issueDate} onChange={(e) => props.onDueDateChange(e.target.value)} />
           </Field>
         </div>
       </Step>
