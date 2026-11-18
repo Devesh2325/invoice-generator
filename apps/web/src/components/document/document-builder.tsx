@@ -591,6 +591,32 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         const activeProducts = productsList.filter((p) => !p.isArchived);
         setSavedCustomers(customersOnly);
         setSavedItems(activeProducts);
+
+        // Pre-fill from URL params if creating a new document
+        if (typeof window !== 'undefined' && !initialDocument) {
+          const sp = new URLSearchParams(window.location.search);
+          const pId = sp.get('customerId') || sp.get('customer_id');
+          const pName = sp.get('customerName') || sp.get('customer_name') || sp.get('clientName');
+          if (pId || pName) {
+            const match = customersOnly.find(
+              (c) =>
+                (pId && c.id === pId) ||
+                (pName && c.name?.trim().toLowerCase() === pName.trim().toLowerCase())
+            );
+            if (match) {
+              setSelectedCustomerId(match.id);
+              setClientName(match.name || pName || '');
+              if (match.email) setClientEmail(match.email);
+              if (match.phone) setClientPhone(match.phone);
+              if (match.taxId) setClientTaxId(match.taxId);
+              if (match.billingAddress?.street1) setClientStreet(match.billingAddress.street1);
+              if (match.billingAddress?.city) setClientCity(match.billingAddress.city);
+              if (match.billingAddress?.state) setClientState(match.billingAddress.state);
+              if (match.billingAddress?.postalCode) setClientPostalCode(match.billingAddress.postalCode);
+              if (match.billingAddress?.country) setClientCountry(match.billingAddress.country);
+            }
+          }
+        }
       } catch (err) {
         console.error('Failed to load workspace customers & items:', err);
       }
@@ -607,7 +633,17 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [activeTenant?.id]);
+  }, [activeTenant?.id, initialDocument]);
+
+  // Immediate URL query param prefill for client name
+  useEffect(() => {
+    if (initialDocument || typeof window === 'undefined') return;
+    const sp = new URLSearchParams(window.location.search);
+    const pName = sp.get('customerName') || sp.get('customer_name') || sp.get('clientName');
+    if (pName) {
+      setClientName((prev) => prev || pName);
+    }
+  }, [initialDocument]);
 
   // Sync workspace defaults when creating a brand-new invoice or when active workspace changes
   const [appliedTenantId, setAppliedTenantId] = useState<string | null>(
@@ -1192,6 +1228,24 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const handleSaveDraft = async () => {
     try {
       setSaveStatus('saving');
+
+      // Verify and sync authoritative calculations from backend
+      try {
+        const calcRes = await fetch('/api/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(calculationInput),
+        });
+        if (calcRes.ok) {
+          const calcData = await calcRes.json();
+          if (calcData?.summary) {
+            documentModel.summary = calcData.summary;
+          }
+        }
+      } catch {
+        // Fallback to local calculation
+      }
+
       await saveDocument(documentModel);
       if (activeTenant?.id) {
         await TenantApi.saveDocument(activeTenant.id, documentModel);

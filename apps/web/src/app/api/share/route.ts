@@ -24,11 +24,15 @@ export async function GET(request: NextRequest) {
     if (!item || item.deleted || !workspace || workspace.status !== 'active') {
       return json({ error: 'This invoice could not be found or has been revoked.' }, 404);
     }
+    const canRemoveWatermark =
+      workspace.plan === 'pro' || workspace.plan === 'enterprise' || Boolean(workspace.isWhiteLabel);
     return json({
       document: item.data,
       brand: brand?.data || { tenantId: workspaceId },
       isWhiteLabel: workspace.isWhiteLabel,
       branding: workspace.isWhiteLabel ? cleanBranding(workspace.branding) : {},
+      plan: workspace.plan,
+      canRemoveWatermark,
     });
   });
 }

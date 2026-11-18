@@ -290,7 +290,7 @@ export default function CustomerDetailPage() {
             >
               <Send className="h-3.5 w-3.5 mr-1" /> Send Reminder
             </Button>
-            <Link href={`/create?customerName=${encodeURIComponent(customer.name)}`}>
+            <Link href={`/create?customerId=${encodeURIComponent(customer.id)}&customerName=${encodeURIComponent(customer.name)}`}>
               <Button size="sm" className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold h-8 shadow-sm">
                 <Plus className="h-4 w-4 mr-1" /> Create Invoice
               </Button>

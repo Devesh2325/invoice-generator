@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { calculateDocument } from '@invoice/core';
 import { canAccessWorkspace, handleErrors, json } from '@/lib/server/api-helpers';
 import { DATA_COLLECTIONS, listItems, putItem } from '@/lib/server/workspace-data';
 
@@ -41,11 +42,44 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         rejected.push(`${item.collection}:${item.id}`);
         continue;
       }
+
+      let itemData = item.data;
+      // Server-side calculation enforcement for invoice documents
+      if (item.collection === 'documents' && itemData && typeof itemData === 'object' && !item.deleted) {
+        try {
+          const doc = itemData as any;
+          if (Array.isArray(doc.items)) {
+            const calculated = calculateDocument({
+              currency: doc.currency,
+              senderState: doc.sender?.address?.state,
+              clientState: doc.client?.billingAddress?.state,
+              items: doc.items,
+              documentDiscountType: doc.documentDiscountType,
+              documentDiscountValue: doc.documentDiscountValue,
+              shippingFee: doc.shippingFee,
+              extraCharges: doc.extraCharges,
+              amountPaid: doc.amountPaid,
+              refundedAmount: doc.refundedAmount,
+              enableRoundOff: doc.enableRoundOff,
+              roundingMode: doc.roundingMode,
+              decimalPrecision: doc.decimalPrecision,
+            });
+            itemData = {
+              ...doc,
+              items: calculated.items,
+              summary: calculated.summary,
+            };
+          }
+        } catch (calcErr) {
+          console.warn('Server recalculation fallback:', calcErr);
+        }
+      }
+
       await putItem(params.id, {
         collection: item.collection,
         id: item.id,
         updatedAt,
-        ...(item.deleted ? { deleted: true } : { data: item.data }),
+        ...(item.deleted ? { deleted: true } : { data: itemData }),
       });
     }
     return json({ ok: true, rejected });

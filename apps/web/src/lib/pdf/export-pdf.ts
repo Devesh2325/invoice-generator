@@ -15,15 +15,33 @@ export async function captureInvoice(elementId: string): Promise<HTMLCanvasEleme
   // Without this, a download can use a fallback font and stop matching the preview.
   await document.fonts.ready;
 
-  // Render high-resolution 3x DPI canvas
+  // Render high-resolution canvas with clean onclone positioning
   return html2canvas(element, {
-    scale: 2.5,
+    scale: 2,
     useCORS: true,
     // A tainted canvas can't be exported, so an image without CORS is left out instead.
     allowTaint: false,
     logging: false,
     backgroundColor: '#ffffff',
-    windowWidth: 920,
+    windowWidth: 850,
+    scrollX: 0,
+    scrollY: 0,
+    onclone: (clonedDoc) => {
+      const clonedTarget =
+        clonedDoc.getElementById(elementId) ||
+        clonedDoc.getElementById('invoice-pdf-export-sheet') ||
+        clonedDoc.getElementById('invoice-document-capture');
+      if (clonedTarget) {
+        clonedTarget.style.position = 'static';
+        clonedTarget.style.left = '0';
+        clonedTarget.style.top = '0';
+        clonedTarget.style.visibility = 'visible';
+        clonedTarget.style.display = 'block';
+        clonedTarget.style.opacity = '1';
+        clonedTarget.style.transform = 'none';
+        clonedTarget.style.margin = '0 auto';
+      }
+    },
   });
 }
 
@@ -76,7 +94,50 @@ export async function exportDocumentToPdf(elementId: string, filename: string): 
   }
 
   const safeName = filename.replace(/[^a-zA-Z0-9_-]/g, '_');
-  pdf.save(safeName.endsWith('.pdf') ? safeName : `${safeName}.pdf`);
+  const pdfName = safeName.endsWith('.pdf') ? safeName : `${safeName}.pdf`;
+
+  // Mobile-friendly download / sharing via Web Share API
+  const isMobile =
+    typeof navigator !== 'undefined' &&
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent || ''
+    );
+
+  const pdfBlob = pdf.output('blob');
+
+  if (isMobile && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    try {
+      const pdfFile = new File([pdfBlob], pdfName, { type: 'application/pdf' });
+      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          files: [pdfFile],
+          title: pdfName,
+        });
+        return;
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        return; // User cancelled share sheet
+      }
+      console.warn('Mobile Web Share failed, falling back to direct download:', err);
+    }
+  }
+
+  try {
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = pdfName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }, 60000);
+  } catch (err) {
+    pdf.save(pdfName);
+  }
 }
 
 export function triggerPrint(): void {

@@ -11,6 +11,7 @@ import {
 import { TenantApi, TenantBrandSettings } from '@invoice/api';
 import { decodePublicShareToken } from '@/components/modals/share-invoice-modal';
 import { DocumentPreview } from '@/components/document/document-preview';
+import { exportDocumentToPdf } from '@/lib/pdf/export-pdf';
 import { Button } from '@/components/ui/button';
 import {
   Download,
@@ -24,6 +25,7 @@ import {
   ArrowLeft,
   Share2,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
 
 export default function PublicShareInvoicePage() {
@@ -32,7 +34,9 @@ export default function PublicShareInvoicePage() {
 
   const [document, setDocument] = useState<DocumentModel | null>(null);
   const [brandSettings, setBrandSettings] = useState<TenantBrandSettings | null>(null);
+  const [canRemoveWatermark, setCanRemoveWatermark] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showUpiModal, setShowUpiModal] = useState<boolean>(false);
 
@@ -55,6 +59,7 @@ export default function PublicShareInvoicePage() {
           }
           const { displayName, logoUrl, supportEmail, websiteUrl, footerText } = body.branding || {};
           setDocument(body.document);
+          setCanRemoveWatermark(Boolean(body.canRemoveWatermark));
           setBrandSettings({
             ...body.brand,
             whiteLabelEnabled: body.isWhiteLabel,
@@ -96,6 +101,9 @@ export default function PublicShareInvoicePage() {
           .catch(() => null);
         const workspace = server?.workspace;
         setDocument(doc);
+        const plan = workspace?.plan || 'starter';
+        const canRemove = plan === 'pro' || plan === 'enterprise' || Boolean(workspace?.isWhiteLabel);
+        setCanRemoveWatermark(canRemove);
         setBrandSettings(
           workspace
             ? {
@@ -123,6 +131,22 @@ export default function PublicShareInvoicePage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!document) return;
+    setIsExportingPdf(true);
+    try {
+      await exportDocumentToPdf(
+        'invoice-pdf-export-sheet',
+        document.documentNumber || 'invoice'
+      );
+    } catch (err) {
+      console.error('PDF export failed, using print fallback:', err);
+      window.print();
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   const statusBadge = useMemo(() => {
@@ -237,11 +261,21 @@ export default function PublicShareInvoicePage() {
 
             <Button
               size="sm"
-              onClick={handlePrint}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm"
+              disabled={isExportingPdf}
+              onClick={handleDownloadPdf}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm min-w-[130px]"
             >
-              <Download className="w-4 h-4" />
-              <span>Download PDF</span>
+              {isExportingPdf ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Preparing PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>Download PDF</span>
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -270,15 +304,30 @@ export default function PublicShareInvoicePage() {
       </div>
 
       {/* Main Canvas with dynamic high-resolution preview */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex justify-center">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex justify-center print:hidden">
         <div className="w-full bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-2 sm:p-6 overflow-hidden">
           <DocumentPreview
             document={document}
             className="w-full"
             isPrintOnly={false}
+            showWatermark={!canRemoveWatermark}
           />
         </div>
       </main>
+
+      {/* Clean dedicated print & PDF capture sheet */}
+      <div
+        translate="no"
+        className="print-only-sheet fixed -left-[9999px] top-0 w-[860px] bg-white z-[-1]"
+        aria-hidden="true"
+      >
+        <DocumentPreview
+          document={document}
+          captureId="invoice-pdf-export-sheet"
+          isPrintOnly
+          showWatermark={!canRemoveWatermark}
+        />
+      </div>
 
       {/* Payment / UPI Modal */}
       {showUpiModal && upiId && (

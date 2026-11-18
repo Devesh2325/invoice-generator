@@ -17,6 +17,7 @@ import {
   Download,
   ShieldCheck,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 
 export default function BillingPage() {
@@ -39,7 +40,7 @@ export default function BillingPage() {
 
   const [currentPlanId, setCurrentPlanId] = useState<PlanId>(getResolvedPlan);
   const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly');
-  const [upgrading, setUpgrading] = useState(false);
+  const [requestingPlanId, setRequestingPlanId] = useState<PlanId | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export default function BillingPage() {
   /** Plans change when the super admin approves them, so choosing one here can't unlock it by itself. */
   const handleRequestPlan = async (newPlan: PlanId) => {
     if (newPlan === currentPlanId) return;
-    setUpgrading(true);
+    setRequestingPlanId(newPlan);
     setRequestError(null);
     try {
       const res = await fetch(`/api/workspaces/${encodeURIComponent(tenantId)}/plan-request`, {
@@ -83,7 +84,7 @@ export default function BillingPage() {
     } catch {
       setRequestError('We could not send your request. Please contact us instead.');
     } finally {
-      setUpgrading(false);
+      setRequestingPlanId(null);
     }
   };
 
@@ -190,7 +191,7 @@ export default function BillingPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>Integration Docs: {currentPlan.hasIntegrationDocs ? 'Included' : 'Paid plans'}</span>
+                <span>Priority Support: {currentPlan.hasPrioritySupport ? '24/7 Dedicated' : 'Standard'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -211,17 +212,15 @@ export default function BillingPage() {
             <div className="inline-flex items-center gap-2 p-1 rounded-xl bg-card border border-border text-xs font-semibold">
               <button
                 onClick={() => setPeriod('monthly')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  period === 'monthly' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground'
-                }`}
+                className={`px-3 py-1.5 rounded-lg transition-all ${period === 'monthly' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground'
+                  }`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setPeriod('yearly')}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                  period === 'yearly' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground'
-                }`}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${period === 'yearly' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground'
+                  }`}
               >
                 <span>Yearly</span>
                 <span className="rounded bg-emerald-500/20 text-emerald-600 px-1 py-0.2 text-xs font-bold">
@@ -240,9 +239,8 @@ export default function BillingPage() {
               return (
                 <Card
                   key={pid}
-                  className={`border p-6 rounded-xl flex flex-col justify-between space-y-6 bg-card transition-all ${
-                    isCurrent ? 'border-primary ring-2 ring-primary shadow-lg' : 'border-border hover:shadow-md'
-                  }`}
+                  className={`border p-6 rounded-xl flex flex-col justify-between space-y-6 bg-card transition-all ${isCurrent ? 'border-primary ring-2 ring-primary shadow-lg' : 'border-border hover:shadow-md'
+                    }`}
                 >
                   <div className="space-y-3">
                     <div className="flex justify-between items-start">
@@ -273,16 +271,24 @@ export default function BillingPage() {
                   </div>
 
                   <Button
-                    disabled={isCurrent || upgrading}
+                    disabled={isCurrent || Boolean(requestingPlanId)}
                     onClick={() => handleRequestPlan(pid)}
                     variant={isCurrent ? 'outline' : 'default'}
-                    className={`w-full text-xs font-bold transition-all ${
-                      isCurrent
+                    className={`w-full text-xs font-bold transition-all ${isCurrent
                         ? 'border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 cursor-default'
                         : 'bg-primary hover:bg-primary-hover text-white shadow-sm font-semibold'
-                    }`}
+                      }`}
                   >
-                    {isCurrent ? 'Current Plan' : upgrading ? 'Sending...' : `Request ${p.name}`}
+                    {isCurrent ? (
+                      'Current Plan'
+                    ) : requestingPlanId === pid ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Sending...</span>
+                      </span>
+                    ) : (
+                      `Request ${p.name}`
+                    )}
                   </Button>
                 </Card>
               );

@@ -891,12 +891,17 @@ const terms = (x: any) => {
   );
 };
 
-const wrap = (t: TemplatePreset, inner: string) =>
+const wrap = (t: TemplatePreset, inner: string, showWatermark: boolean = false) =>
   d(
     `width:794px;min-height:1123px;height:auto;overflow:visible;box-sizing:border-box;position:relative;font-family:${t.font};font-size:11px;background:${t.paper};color:${t.ink};${
       t.strip ? `border-top:10px solid ${t.accent};` : ''
     }`,
-    inner,
+    (showWatermark
+      ? d(
+          'position:absolute;top:45%;left:50%;transform:translate(-50%,-50%) rotate(-32deg);font-size:46px;font-weight:900;letter-spacing:.16em;opacity:.06;pointer-events:none;user-select:none;z-index:2;text-transform:uppercase;white-space:nowrap;',
+          'INVOXA &bull; FREE INVOICE'
+        )
+      : '') + inner,
     'inv'
   );
 
@@ -904,8 +909,9 @@ const wrap = (t: TemplatePreset, inner: string) =>
 export function renderInvoice(
   inv: any,
   templateId: string = 'in-gst',
-  opts: { preview?: boolean; override?: any } = {}
+  opts: { preview?: boolean; override?: any; watermark?: boolean } = {}
 ): string {
+  const hasWatermark = Boolean(opts.watermark ?? inv.watermark ?? false);
   const t: TemplatePreset = {
     ...getInvoiceTemplate(templateId),
     ...(opts.override || {}),
@@ -928,6 +934,14 @@ export function renderInvoice(
     a = t.accent,
     pp = t.paper;
 
+  const watermarkFooter = hasWatermark
+    ? d(
+        'margin-top:20px;padding-top:10px;border-top:1px dashed currentColor;opacity:.65;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;',
+        d('display:flex;align-items:center;gap:4px;', '⚡ Created with <b>Invoxa</b> &bull; Free Invoicing &amp; Billing') +
+          d('font-size:9px;font-weight:600;', 'Upgrade to Pro to remove watermark')
+      )
+    : '';
+
   if (t.header === 'side') {
     const x2 = { ...x, t: { ...t, card: 'plain' as const, accent: pp, line: 'rgba(128,128,128,.5)' } };
     const sidebar = d(
@@ -944,9 +958,10 @@ export function renderInvoice(
         table(x, true) +
         taxSummary(x) +
         totals(x) +
-        terms(x)
+        terms(x) +
+        watermarkFooter
     );
-    return wrap(t, d('display:flex;min-height:1123px;', sidebar + main));
+    return wrap(t, d('display:flex;min-height:1123px;', sidebar + main), hasWatermark);
   }
 
   let top = '',
@@ -990,16 +1005,17 @@ export function renderInvoice(
         d('display:flex;flex-direction:column;gap:14px;', totals(x) + signature(x))
     ) +
     d('height:16px') +
-    terms(x);
+    terms(x) +
+    watermarkFooter;
 
-  return wrap(t, top + d('padding:32px 44px;', body));
+  return wrap(t, top + d('padding:32px 44px;', body), hasWatermark);
 }
 
 /** Complete, print-ready HTML document (A4, fonts, colour-exact printing). */
 export function renderInvoiceDocument(
   inv: any,
   templateId: string = 'in-gst',
-  opts: { preview?: boolean; override?: any } = {}
+  opts: { preview?: boolean; override?: any; watermark?: boolean } = {}
 ): string {
   const t = getInvoiceTemplate(templateId);
   const fontLink = t.googleFont

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useRef, useMemo, useState, useEffect } from 'react';
-import { DocumentModel, getCurrencyTaxProfile } from '@invoice/core';
+import { DocumentModel, getCurrencyTaxProfile, PLANS, PlanId } from '@invoice/core';
+import { useTenant } from '@/lib/auth/tenant-context';
 import {
   renderInvoiceDocument,
   renderInvoice,
@@ -26,6 +27,7 @@ interface DocumentPreviewProps {
   captureId?: string;
   isPrintOnly?: boolean;
   hideToolbar?: boolean;
+  showWatermark?: boolean;
   onLogoUpload?: (dataUrl: string) => void;
   onRemoveLogo?: () => void;
 }
@@ -36,6 +38,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   captureId = 'invoice-document-capture',
   isPrintOnly = false,
   hideToolbar = false,
+  showWatermark,
   onLogoUpload,
   onRemoveLogo,
 }) => {
@@ -45,6 +48,16 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [fitToWidth, setFitToWidth] = useState<boolean>(true);
   const [iframeHeight, setIframeHeight] = useState<number>(1140);
+  const { activeTenant } = useTenant();
+
+  const isPaidPlan = useMemo(() => {
+    if (!activeTenant) return false;
+    if (activeTenant.isWhiteLabel) return true;
+    const plan = (activeTenant.plan || 'starter').toLowerCase() as PlanId;
+    return Boolean(PLANS[plan]?.canRemoveWatermark || plan === 'pro' || plan === 'enterprise');
+  }, [activeTenant]);
+
+  const effectiveShowWatermark = showWatermark !== undefined ? showWatermark : !isPaidPlan;
 
   // Template ID with currency-aware fallback
   const templateId = useMemo(() => {
@@ -76,8 +89,9 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     return {
       preview: !isPrintOnly,
       override: customAccent ? { accent: customAccent } : undefined,
+      watermark: effectiveShowWatermark,
     };
-  }, [document.customTheme?.primaryColor, isPrintOnly]);
+  }, [document.customTheme?.primaryColor, isPrintOnly, effectiveShowWatermark]);
 
   // Full HTML document for iframe rendering (A4 layout, Google font link, zero CSS bleed)
   const fullHtmlDocument = useMemo(() => {

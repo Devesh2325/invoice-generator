@@ -33,8 +33,6 @@ export function PublicHeader({ className = '', hideNavLinks = false }: PublicHea
   const navLinks = [
     { label: t('nav.features', 'Features'), href: '/features' },
     { label: 'Templates', href: '/templates' },
-    { label: 'Integrations', href: '/integrations' },
-    { label: 'White-label', href: '/white-label' },
     { label: t('nav.pricing', 'Pricing'), href: '/pricing' },
     { label: t('nav.faq', 'FAQ'), href: '/faq' },
     { label: t('nav.blog', 'Blog'), href: '/blog' },

@@ -11,7 +11,7 @@ import { NotificationCenter } from '@/components/ui/notification-center';
 import { PlanBadge } from '@/components/ui/plan-badge';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useTheme } from '@/lib/theme/theme-provider';
-import { APP_CONFIG, canUseIntegrationDocs } from '@invoice/core';
+import { APP_CONFIG } from '@invoice/core';
 import { TeamApi } from '@invoice/api';
 import {
   LayoutDashboard,
@@ -35,8 +35,6 @@ import {
   Search,
   Sun,
   Moon,
-  BookOpen,
-  Lock,
 } from 'lucide-react';
 
 interface TenantLayoutProps {
@@ -52,15 +50,6 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [impersonatedInfo, setImpersonatedInfo] = useState<{ name?: string; email?: string } | null>(null);
-  const [hasIntegrationDocs, setHasIntegrationDocs] = useState(false);
-
-  useEffect(() => {
-    if (!activeTenant?.id) return;
-    const check = () => setHasIntegrationDocs(canUseIntegrationDocs(TeamApi.getTenantPlan(activeTenant.id)));
-    check();
-    window.addEventListener('billcraft-plan-updated', check);
-    return () => window.removeEventListener('billcraft-plan-updated', check);
-  }, [activeTenant?.id]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -141,7 +130,6 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
     { label: 'Reports', href: '/dashboard/reports', icon: BarChart3 },
     { label: 'Brand Studio', href: '/dashboard/brand', icon: Palette },
     { label: 'Team', href: '/dashboard/team', icon: UserCheck },
-    { label: 'Integration Docs', href: '/dashboard/developers', icon: BookOpen, paid: true },
     { label: 'Plans & Billing', href: '/dashboard/billing', icon: Shield },
     { label: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
@@ -353,9 +341,6 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({ children }) => {
                 >
                   <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                   <span>{item.label}</span>
-                  {item.paid && !hasIntegrationDocs && (
-                    <Lock className="ml-auto h-3 w-3 opacity-70" aria-label="Paid plans" />
-                  )}
                 </Link>
               );
             })}

@@ -10,11 +10,9 @@ const GROUPS = [
   {
     title: 'Product',
     links: [
-      { label: 'Invoice generator', href: '/create' },
+      { label: 'Invoice Generator', href: '/create' },
       { label: 'Templates', href: '/templates' },
       { label: 'Features', href: '/features' },
-      { label: 'Integrations', href: '/integrations' },
-      { label: 'White-label', href: '/white-label' },
       { label: 'Pricing', href: '/pricing' },
     ],
   },
@@ -23,15 +21,15 @@ const GROUPS = [
     links: [
       { label: 'Blog', href: '/blog' },
       { label: 'FAQ', href: '/faq' },
-      { label: 'Contact', href: '/contact' },
+      { label: 'Contact Support', href: '/contact' },
     ],
   },
   {
-    title: 'Company',
+    title: 'Legal & Company',
     links: [
-      { label: 'About', href: '/about' },
-      { label: 'Terms', href: '/terms' },
-      { label: 'Privacy', href: '/privacy' },
+      { label: 'About Us', href: '/about' },
+      { label: 'Terms of Service', href: '/terms' },
+      { label: 'Privacy Policy', href: '/privacy' },
     ],
   },
 ];

@@ -46,21 +46,21 @@ export default function PricingPage() {
         PLANS.pro.maxInvoicesPerMonth >= UNLIMITED_DOCUMENTS ? 'Unlimited documents' : `${PLANS.pro.maxInvoicesPerMonth} documents`,
         'All templates',
         'Products and stock tracking',
-        ...(PLANS.pro.hasIntegrationDocs ? ['Integrations for any code stack'] : []),
-        ...(PLANS.pro.hasWhiteLabel ? ['White-label branding'] : []),
+        'Watermark removed on PDFs',
+        'Priority customer support',
         `Up to ${PLANS.pro.maxMembers} users`,
       ],
     },
     {
       name: 'Enterprise',
-      description: 'For businesses that want invoicing under their own brand.',
+      description: 'For businesses that want dedicated high-volume invoicing.',
       price: `₹${(period === 'monthly' ? PLANS.enterprise.priceMonthly : PLANS.enterprise.priceYearly).toLocaleString('en-IN')}`,
       periodText: period === 'monthly' ? 'per month, billed monthly' : 'per month, billed yearly',
       cta: 'Contact us',
       ctaHref: '/contact',
       ctaVariant: 'outline' as const,
       popular: false,
-      highlights: ['Everything in Pro', ...(PLANS.enterprise.hasWhiteLabel ? ['White-label branding'] : []), 'Unlimited users'],
+      highlights: ['Everything in Pro', 'Custom brand themes & colors', 'Unlimited users', 'Dedicated account manager'],
     },
   ];
 
@@ -74,8 +74,8 @@ export default function PricingPage() {
     { feature: 'Templates', starter: PLANS.starter.hasAllTemplates ? 'All' : 'Starter set', pro: PLANS.pro.hasAllTemplates ? 'All' : 'Starter set', enterprise: PLANS.enterprise.hasAllTemplates ? 'All' : 'Starter set' },
     { feature: 'Products and stock', starter: false, pro: true, enterprise: true },
     { feature: 'Users', starter: String(PLANS.starter.maxMembers), pro: `Up to ${PLANS.pro.maxMembers}`, enterprise: 'Unlimited' },
-    { feature: 'Integrations for any code stack', starter: PLANS.starter.hasIntegrationDocs, pro: PLANS.pro.hasIntegrationDocs, enterprise: PLANS.enterprise.hasIntegrationDocs },
-    { feature: 'White-label branding', starter: PLANS.starter.hasWhiteLabel, pro: PLANS.pro.hasWhiteLabel, enterprise: PLANS.enterprise.hasWhiteLabel },
+    { feature: 'Watermark removed on PDFs', starter: false, pro: true, enterprise: true },
+    { feature: 'Dedicated priority support', starter: false, pro: true, enterprise: true },
   ];
 
   return (
