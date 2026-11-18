@@ -39,10 +39,70 @@ import {
 } from 'lucide-react';
 
 const SAMPLE_COUNTRIES = [
-  { currency: 'INR', label: 'India (GST)', taxRate: 18, unit: 50 },
-  { currency: 'USD', label: 'USA (Sales Tax)', taxRate: 8, unit: 1 },
-  { currency: 'GBP', label: 'UK (VAT)', taxRate: 20, unit: 1 },
-  { currency: 'SGD', label: 'Singapore (GST)', taxRate: 9, unit: 1 },
+  {
+    currency: 'INR',
+    label: 'India (GST)',
+    taxRate: 18,
+    unit: 50,
+    seller: {
+      name: 'Acme Solutions Pvt. Ltd.',
+      taxId: 'GSTIN: 29AAAAA0000A1Z5',
+    },
+    client: {
+      name: 'Nova Retail Enterprises',
+      location: 'State: 29 - Karnataka',
+    },
+    item1: 'Enterprise Software Consulting',
+    item2: 'Cloud Infrastructure & Setup',
+  },
+  {
+    currency: 'USD',
+    label: 'USA (Sales Tax)',
+    taxRate: 8,
+    unit: 1,
+    seller: {
+      name: 'Acme Global Cloud Inc.',
+      taxId: 'EIN: 12-3456789',
+    },
+    client: {
+      name: 'Nova Dynamic Systems LLC',
+      location: 'State: California, USA',
+    },
+    item1: 'Enterprise Software Consulting',
+    item2: 'Cloud Infrastructure & Setup',
+  },
+  {
+    currency: 'GBP',
+    label: 'UK (VAT)',
+    taxRate: 20,
+    unit: 1,
+    seller: {
+      name: 'Apex Digital Solutions UK Ltd',
+      taxId: 'VAT: GB 123 4567 89',
+    },
+    client: {
+      name: 'Sterling Retail Partners Ltd',
+      location: 'London, United Kingdom',
+    },
+    item1: 'Enterprise Software Consulting',
+    item2: 'Cloud Infrastructure & Setup',
+  },
+  {
+    currency: 'SGD',
+    label: 'Singapore (GST)',
+    taxRate: 9,
+    unit: 1,
+    seller: {
+      name: 'Pacific Core Digital Pte. Ltd.',
+      taxId: 'UEN: 202412345M',
+    },
+    client: {
+      name: 'Marina Bay Innovations Pte Ltd',
+      location: 'Singapore 048624',
+    },
+    item1: 'Enterprise Software Consulting',
+    item2: 'Cloud Infrastructure & Setup',
+  },
 ];
 
 const HIGHLIGHTED_FEATURES = [
@@ -143,8 +203,8 @@ export default function LandingPage() {
 
   const sampleItems = useMemo(
     () => [
-      { id: 'a', description: 'Enterprise Web Application Consulting', quantity: 1, unitPrice: 1500 * sample.unit, taxRate: sample.taxRate },
-      { id: 'b', description: 'Cloud Infrastructure & Security Setup', quantity: 2, unitPrice: 500 * sample.unit, taxRate: sample.taxRate },
+      { id: 'a', description: sample.item1, quantity: 1, unitPrice: 1500 * sample.unit, taxRate: sample.taxRate },
+      { id: 'b', description: sample.item2, quantity: 2, unitPrice: 500 * sample.unit, taxRate: sample.taxRate },
     ],
     [sample]
   );
@@ -337,17 +397,17 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  {/* Parties Details */}
+                  {/* Parties Details (Clean Placeholder Reference Data) */}
                   <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
                     <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
                       <span className="font-semibold text-slate-400 block uppercase text-[10px]">Billed By (Seller)</span>
-                      <span className="font-bold text-foreground block text-sm">Shivam Logistics Ltd.</span>
-                      <span className="text-muted-foreground">GSTIN: 09AAACS1429B1ZB</span>
+                      <span className="font-bold text-foreground block text-sm">{sample.seller.name}</span>
+                      <span className="text-muted-foreground">{sample.seller.taxId}</span>
                     </div>
                     <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
                       <span className="font-semibold text-slate-400 block uppercase text-[10px]">Billed To (Client)</span>
-                      <span className="font-bold text-foreground block text-sm">Suchi Tech Pvt Ltd</span>
-                      <span className="text-muted-foreground">State: 09 - Uttar Pradesh</span>
+                      <span className="font-bold text-foreground block text-sm">{sample.client.name}</span>
+                      <span className="text-muted-foreground">{sample.client.location}</span>
                     </div>
                   </div>
 
