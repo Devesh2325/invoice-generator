@@ -75,7 +75,25 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
-      const list = await TenantApi.getTenants(currentUser.id);
+      let list = await TenantApi.getTenants(currentUser.id);
+
+      // Auto-provision a default workspace if the logged-in user doesn't have one yet
+      if (list.length === 0 && currentUser) {
+        const fallbackTenant: Tenant = {
+          id: (currentUser as any).tenantId || `tm_${Date.now()}`,
+          name: (currentUser as any).workspaceName || currentUser.name || 'My Workspace',
+          slug: ((currentUser as any).workspaceName || currentUser.name || 'workspace')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-'),
+          ownerUserId: currentUser.id,
+          role: 'owner',
+          is_domain_verified: false,
+          currency: 'INR',
+        };
+        await TenantApi.createTenant(fallbackTenant);
+        list = [fallbackTenant];
+      }
+
       setTenants(list);
 
       let chosen: Tenant | null = list[0] || null;

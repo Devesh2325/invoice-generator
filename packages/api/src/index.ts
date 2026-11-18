@@ -299,11 +299,17 @@ export const TenantApi = {
             }
           } catch {}
         }
-        const userTenants = all
+        const storedActiveId =
+          typeof window !== 'undefined'
+            ? window.localStorage.getItem('billcraft_active_tenant_id')
+            : null;
+
+        let userTenants = all
           .filter(
             (t) =>
               t.ownerUserId === userId ||
-              (currentUserEmail && t.ownerUserId?.toLowerCase() === currentUserEmail)
+              (currentUserEmail && t.ownerUserId?.toLowerCase() === currentUserEmail) ||
+              (storedActiveId && t.id === storedActiveId)
           )
           .map((t) => {
             const storedPlan = getLocalStore<string | null>(`billcraft_tenant_plan_${t.id}`, null);
@@ -312,6 +318,16 @@ export const TenantApi = {
               plan: t.plan || storedPlan || 'starter',
             };
           });
+
+        if (userTenants.length === 0 && customTenants.length > 0) {
+          userTenants = customTenants.map((t) => {
+            const storedPlan = getLocalStore<string | null>(`billcraft_tenant_plan_${t.id}`, null);
+            return {
+              ...t,
+              plan: t.plan || storedPlan || 'starter',
+            };
+          });
+        }
         return userTenants;
       }
       return [];
