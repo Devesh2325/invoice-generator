@@ -1259,6 +1259,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       await saveDocument(documentModel);
       if (activeTenant?.id) {
         await TenantApi.saveDocument(activeTenant.id, documentModel);
+      } else {
+        fetch('/api/share/guest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ document: documentModel }),
+        }).catch(() => {});
       }
       setIsPersisted(true);
       setSaveStatus('saved');
@@ -1301,6 +1307,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       if (!embed) await saveDocument(updated);
       if (activeTenant?.id) {
         await TenantApi.saveDocument(activeTenant.id, updated);
+      } else if (!embed) {
+        fetch('/api/share/guest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ document: updated }),
+        }).catch(() => {});
       }
       if (!activeTenant && !embed) {
         try {

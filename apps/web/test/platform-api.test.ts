@@ -18,6 +18,7 @@ import { GET as workspaceConfig } from '../src/app/api/workspaces/[id]/config/ro
 import { GET as getData, POST as postData } from '../src/app/api/workspaces/[id]/data/route';
 import { POST as shareDoc } from '../src/app/api/workspaces/[id]/share/route';
 import { GET as openShare } from '../src/app/api/share/route';
+import { POST as shareGuestDoc, GET as getGuestDoc } from '../src/app/api/share/guest/route';
 import { POST as createKey } from '../src/app/api/workspaces/[id]/embed-key/route';
 import { GET as verifyKey } from '../src/app/api/embed/verify/route';
 import { POST as requestPlan } from '../src/app/api/workspaces/[id]/plan-request/route';
@@ -234,6 +235,28 @@ describe('workspace data', () => {
     expect((await openShare(request(`/api/share?token=${unsigned}`))).status).toBe(404);
     const stranger = await setup();
     expect((await shareDoc(asOwner(`/api/workspaces/${account.id}/share`, stranger.session, { documentId: 'doc1' }), route(account.id))).status).toBe(401);
+  });
+
+  it('allows anonymous guests to share invoices and open them on any device', async () => {
+    const guestDoc = { id: 'guest_inv_123', documentNumber: 'GST-999', sender: { name: 'Guest Freelancer' } };
+    const shareRes = await shareGuestDoc(request('/api/share/guest', { document: guestDoc }));
+    expect(shareRes.status).toBe(200);
+    const { token, docId } = await shareRes.json();
+    expect(token.startsWith('sv1.')).toBe(true);
+    expect(docId).toBe('guest_inv_123');
+
+    // Anyone opens the signed guest share link
+    const opened = await openShare(request(`/api/share?token=${encodeURIComponent(token)}`));
+    expect(opened.status).toBe(200);
+    const body = await opened.json();
+    expect(body.document.documentNumber).toBe('GST-999');
+    expect(body.brand.businessName).toBe('Guest Freelancer');
+    expect(body.canRemoveWatermark).toBe(false);
+
+    // Direct guest lookup by docId also works
+    const direct = await getGuestDoc(request(`/api/share/guest?docId=${docId}`));
+    expect(direct.status).toBe(200);
+    expect((await direct.json()).document.documentNumber).toBe('GST-999');
   });
 
   it('only issues embed keys on plans that include them, and locks them when the plan drops', async () => {

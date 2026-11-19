@@ -16,6 +16,23 @@ export async function GET(request: NextRequest) {
   const { t: workspaceId, d: documentId } = payload;
 
   return handleErrors(async () => {
+    // Guest or anonymous invoices don't require an active company workspace
+    if (workspaceId === 'guest' || workspaceId === 'default' || workspaceId === 'anonymous') {
+      const item = await getItem('guest', 'documents', documentId);
+      if (!item || item.deleted) {
+        return json({ error: 'This invoice could not be found or has been revoked.' }, 404);
+      }
+      const doc = item.data as any;
+      return json({
+        document: doc,
+        brand: { tenantId: 'guest', businessName: doc?.sender?.name || 'Your Business' },
+        isWhiteLabel: false,
+        branding: {},
+        plan: 'starter',
+        canRemoveWatermark: false,
+      });
+    }
+
     const [item, brand, workspace] = await Promise.all([
       getItem(workspaceId, 'documents', documentId),
       getItem(workspaceId, 'brand', 'brand'),

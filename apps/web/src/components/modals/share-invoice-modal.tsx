@@ -90,24 +90,37 @@ export const ShareInvoiceModal: React.FC<ShareInvoiceModalProps> = ({
   // A signed link works on the customer's own device. Without a server copy, the older link is all there is.
   const [signedToken, setSignedToken] = useState<string | null>(null);
   useEffect(() => {
-    if (!open || !document.tenantId) return;
+    if (!open) return;
     let cancelled = false;
     setSignedToken(null);
     (async () => {
       try {
-        await syncWorkspaceData(document.tenantId as string);
-        const res = await fetch(`/api/workspaces/${encodeURIComponent(document.tenantId as string)}/share`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ documentId: docId }),
-        });
-        if (res.ok && !cancelled) setSignedToken((await res.json()).token);
+        if (document.tenantId && document.tenantId !== 'default' && document.tenantId !== 'guest') {
+          await syncWorkspaceData(document.tenantId as string);
+          const res = await fetch(`/api/workspaces/${encodeURIComponent(document.tenantId as string)}/share`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ documentId: docId }),
+          });
+          if (res.ok && !cancelled) setSignedToken((await res.json()).token);
+        } else {
+          // Anonymous / guest invoice: sync to guest cloud share endpoint
+          const res = await fetch('/api/share/guest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ document }),
+          });
+          if (res.ok && !cancelled) {
+            const data = await res.json();
+            if (data.token) setSignedToken(data.token);
+          }
+        }
       } catch {}
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, document.tenantId, docId]);
+  }, [open, document.tenantId, docId, document]);
 
   const shareToken = useMemo(() => {
     return signedToken || generatePublicShareToken(tenantId, docId);

@@ -10,6 +10,7 @@ import {
 } from '@invoice/core';
 import { TenantApi, TenantBrandSettings } from '@invoice/api';
 import { decodePublicShareToken } from '@/components/modals/share-invoice-modal';
+import { getDocumentById } from '@/lib/storage/indexed-db';
 import { DocumentPreview } from '@/components/document/document-preview';
 import { exportDocumentToPdf } from '@/lib/pdf/export-pdf';
 import { Button } from '@/components/ui/button';
@@ -89,9 +90,58 @@ export default function PublicShareInvoicePage() {
       }
 
       try {
-        const doc = await TenantApi.getDocumentById(decoded.tenantId, decoded.docId);
+        let doc: DocumentModel | null = null;
+        const isGuest = decoded.tenantId === 'default' || decoded.tenantId === 'guest';
+
+        // 1. If it's a default/guest tenant, query the guest server endpoint first
+        if (isGuest) {
+          try {
+            const guestRes = await fetch(`/api/share/guest?docId=${encodeURIComponent(decoded.docId)}`, { cache: 'no-store' });
+            if (guestRes.ok) {
+              const body = await guestRes.json();
+              if (body.document) {
+                doc = body.document;
+              }
+            }
+          } catch {}
+
+          // 2. If not found on server, also check this browser's IndexedDB (for when creator tests their link)
+          if (!doc) {
+            try {
+              const localDoc = await getDocumentById(decoded.docId);
+              if (localDoc) {
+                doc = localDoc;
+                // Sync to guest endpoint so other devices can access it immediately
+                fetch('/api/share/guest', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ document: localDoc }),
+                }).catch(() => {});
+              }
+            } catch {}
+          }
+        }
+
+        // 3. Fallback to TenantApi
+        if (!doc) {
+          doc = await TenantApi.getDocumentById(decoded.tenantId, decoded.docId);
+        }
+
         if (!doc) {
           setError('This invoice could not be found or has been revoked.');
+          setLoading(false);
+          return;
+        }
+
+        if (isGuest) {
+          const guestBrand = await TenantApi.getBrandSettings('guest');
+          setDocument(doc);
+          setCanRemoveWatermark(false);
+          setBrandSettings({
+            ...guestBrand,
+            tenantId: 'guest',
+            businessName: doc.sender?.name || 'Your Business',
+          });
           setLoading(false);
           return;
         }
